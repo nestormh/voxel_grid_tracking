@@ -1,3 +1,19 @@
+/*
+ *  Copyright 2013 Néstor Morales Hernández <nestor@isaatc.ull.es>
+ * 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 #include "ObstaclesFromStereo.h"
 
 #include <iostream>
@@ -37,11 +53,11 @@ void testStereo() {
     const boost::filesystem::path seqName("Rectified_Images");
     const boost::filesystem::path maskName("../resultsHierarchical/pixel");
     
-    vector<ObstaclesFromStereo::t_Camera_params> cameraParams;
+    vector<polar_grid_tracking::t_Camera_params> cameraParams;
     ObstaclesFromStereo::getParamsFromDublinDataset("/local/imaged/calibrated/cdvp_3d_pedestrian_detection_dataset_vicon_1/Groundtruth3d/GroundtruthPlane.txt", cameraParams);
 
     boost::shared_ptr<ObstaclesFromStereo> pointCloudMaker;
-    ObstaclesFromStereo::t_SGBM_params sgbmParams;
+    polar_grid_tracking::t_SGBM_params sgbmParams;
     sgbmParams.minDisparity = 0;
     sgbmParams.numDisparities = 64;
     sgbmParams.SADWindowSize = 3;

@@ -1,6 +1,9 @@
-add_executable(PolarGridTracking
-  main.cpp
-  ObstaclesFromStereo.cpp
+add_executable(PolarGridTracking 
+    main.cpp
+    ObstaclesFromStereo.cpp
+    polargridtracking.cpp
+    particle.cpp
+    cell.cpp
 )
   
 include_directories(PolarGridTracking
@@ -19,7 +22,7 @@ include_directories(PolarGridTracking
 # )
 
 target_link_libraries(PolarGridTracking
-#   ${EIGEN3_LIBRARIES}
+  ${EIGEN3_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
 #   ${CUDA_LIBRARIES}

@@ -25,7 +25,21 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
+/*
+ *  Copyright 2013 Néstor Morales Hernández <nestor@isaatc.ull.es>
+ * 
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 #include "ObstaclesFromStereo.h"
 
 #include <fstream>
@@ -182,8 +196,8 @@ inline void ObstaclesFromStereo::setParamsGeometry(t_Camera_params & params) {
     params.height = m_size.height;
 }
 
-void ObstaclesFromStereo::setCameraParams(const ObstaclesFromStereo::t_Camera_params& leftCameraParams, 
-                                          const ObstaclesFromStereo::t_Camera_params& rightCameraParams) {
+void ObstaclesFromStereo::setCameraParams(const t_Camera_params& leftCameraParams, 
+                                          const t_Camera_params& rightCameraParams) {
 
     m_leftCameraParams = leftCameraParams;
     m_rightCameraParams = rightCameraParams;
@@ -338,7 +352,7 @@ void ObstaclesFromStereo::getParamsFromDublinDataset(const std::string& planeFil
 }
 
 // FIXME: This test will not work properly with the new version of ObstaclesFromStereo class
-void ObstaclesFromStereo::readi3DPostCalibrationFile(const std::string& fileName, std::vector< ObstaclesFromStereo::t_Camera_params >& cameraParams) {
+void ObstaclesFromStereo::readi3DPostCalibrationFile(const std::string& fileName, std::vector< t_Camera_params >& cameraParams) {
     
     std::ifstream fin(fileName.c_str());
     
