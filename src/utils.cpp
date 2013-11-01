@@ -28,3 +28,15 @@ cv::Mat getCvMatFromEigenBinary(const polar_grid_tracking::BinaryMap & map) {
     
     return img;
 }
+
+cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map) {
+    cv::Mat img(cv::Size(map.cols(), map.rows()), CV_8UC1);
+    
+    for (uint32_t i = 0; i < map.rows(); i++) {
+        for (uint32_t j = 0; j < map.cols(); j++) {
+            img.at<uint8_t>(i, j) = map(i, j).occupiedProb() * 255;
+        }
+    }
+    
+    return img;
+}

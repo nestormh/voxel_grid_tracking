@@ -71,7 +71,14 @@ void testStereo() {
     sgbmParams.speckleRange = 32;    
     sgbmParams.fullDP = true;
     
-    PolarGridTracking gridTracker(400, 128, 0.1, 0.1,  cameraParams[0]);
+    // TODO: Read from a parameters file
+    uint32_t rows = 400; // 400
+    uint32_t cols = 64; // 128
+    double cellSizeX = 0.2; // 0.1
+    double cellSizeZ = 0.2; // 0.1 
+    double particlesPerCell = 20;
+    double threshProbForCreation = 0.7;
+    PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, cameraParams[0], particlesPerCell, threshProbForCreation);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         stringstream ss;

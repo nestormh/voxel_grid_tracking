@@ -20,10 +20,17 @@
 
 #include <opencv2/opencv.hpp>
 #include <Eigen/Core>
+#include <chrono>
 
 #include "polargridtracking.h"
 
+using namespace std;
+
+#define INIT_CLOCK(start) auto start = std::chrono::high_resolution_clock::now();
+#define END_CLOCK(time, start) float time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
+
 cv::Mat getCvMatFromEigenBinary(const polar_grid_tracking::BinaryMap & map);
+cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map);
 
 // From http://stackoverflow.com/questions/16451111/cvmat-conversion-to-eigen-matrix-and-back
 template<typename _Tp, int _rows, int _cols, int _options, int _maxRows, int _maxCols>

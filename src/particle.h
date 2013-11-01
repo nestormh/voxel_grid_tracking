@@ -18,13 +18,23 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
+#include <opencv2/opencv.hpp>
+
 namespace polar_grid_tracking {
     
 class Particle
 {
 public:
-    Particle();
+    Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ);
+    
+    double x() { return m_x; }
+    double z() { return m_z; }
+    double vx() { return m_vx; }
+    double vz() { return m_vz; }
+    
+    void draw(cv::Mat & img, const uint32_t & pixelsPerCell, const double & cellSizeX, const double & cellSizeZ);
 private:
+    double m_x, m_z, m_vx, m_vz;
 };
     
 }

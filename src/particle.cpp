@@ -16,11 +16,35 @@
 
 #include "particle.h"
 
+#include <stdlib.h>
+#include <math.h>
+
+using namespace std;
+
 namespace polar_grid_tracking {
 
     
-Particle::Particle()
+Particle::Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ)
 {
+    m_x = (cellX + (double)rand() / RAND_MAX) * cellSizeX;
+    m_z = (cellZ + (double)rand() / RAND_MAX) * cellSizeZ;
+    const double theta = (double)rand() / RAND_MAX * 2.0 * 3.14;
+    m_vx = cellSizeX * (double)rand() / RAND_MAX * cos(theta);
+    m_vz = cellSizeZ * (double)rand() / RAND_MAX * sin(theta);
 }
+
+void Particle::draw(cv::Mat& img, const uint32_t& pixelsPerCell, const double & cellSizeX, const double & cellSizeZ)
+{
+    const double factorX = pixelsPerCell / cellSizeX;
+    const double factorZ = pixelsPerCell / cellSizeZ;
+    const cv::Point2i p(m_x * factorX, m_z * factorZ);
+    const cv::Point2i pSpeed((m_x + m_vx) * factorX, (m_z + m_vz) * factorZ);
+    cv::line(img, p, pSpeed, cv::Scalar(0, 0, 255));
+    img.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(255, 0, 0);
+    
+    
+    
+}
+
 
 }

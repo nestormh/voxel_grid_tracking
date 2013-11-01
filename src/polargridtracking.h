@@ -36,17 +36,23 @@ class PolarGridTracking
 public:
     
     PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
-                      const t_Camera_params & cameraParams);
+                      const t_Camera_params & cameraParams, 
+                      const double & particlesPerCell, const double & threshProbForCreation);
     
     void getMeasurementModelFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
     
+    void drawGrid(const uint32_t & pixelsPerCell, const BinaryMap & binaryMap);
+    
 protected:   
     
+    void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, BinaryMap & map);
+    
     CellGrid m_grid;
+    
+    // Params
     t_Camera_params m_cameraParams;
     double m_cellSizeX, m_cellSizeZ;
-    
-    void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, BinaryMap & map);
+    double m_particlesPerCell, m_threshProbForCreation;
     
 };
 }
