@@ -27,17 +27,26 @@
 #include <eigen3/Eigen/Dense>
 
 namespace polar_grid_tracking {
+    
+typedef Eigen::Matrix<Cell, Eigen::Dynamic, Eigen::Dynamic> CellGrid;
+typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> BinaryMap;
+
 class PolarGridTracking
 {
 public:
-    PolarGridTracking(const uint32_t & rows, const uint32_t & cols);
-    void getMeasurementModelFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, 
-                                                 const t_Camera_params & cameraParams);
     
-private:
-    typedef Eigen::Matrix<Cell, Eigen::Dynamic, Eigen::Dynamic> CellGrid;
+    PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
+                      const t_Camera_params & cameraParams);
+    
+    void getMeasurementModelFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
+    
+protected:   
+    
     CellGrid m_grid;
+    t_Camera_params m_cameraParams;
+    double m_cellSizeX, m_cellSizeZ;
     
+    void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, BinaryMap & map);
     
 };
 }

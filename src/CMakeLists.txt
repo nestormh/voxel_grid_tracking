@@ -4,6 +4,7 @@ add_executable(PolarGridTracking
     polargridtracking.cpp
     particle.cpp
     cell.cpp
+    utils.cpp
 )
   
 include_directories(PolarGridTracking

@@ -127,9 +127,13 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
             pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];
             pointMat = m_leftCameraParams.R * pointMat;
             
-            point.x = pointMat.data()[0];
-            point.y = pointMat.data()[1];
-            point.z = pointMat.data()[2];
+//             point.x = pointMat.data()[0];
+//             point.y = pointMat.data()[1];
+//             point.z = pointMat.data()[2];
+
+            point.x = pointMat.data()[1];
+            point.y = pointMat.data()[2];
+            point.z = pointMat.data()[0];
             
             //Get RGB info
             point.b = rgb_ptr[3*j];

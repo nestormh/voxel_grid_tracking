@@ -15,6 +15,7 @@
  */
 
 #include "ObstaclesFromStereo.h"
+#include "polargridtracking.h"
 
 #include <iostream>
 #include <iomanip>
@@ -70,6 +71,8 @@ void testStereo() {
     sgbmParams.speckleRange = 32;    
     sgbmParams.fullDP = true;
     
+    PolarGridTracking gridTracker(400, 128, 0.1, 0.1,  cameraParams[0]);
+    
     for (uint32_t i = initialIdx; i < 1000; i++) {
         stringstream ss;
         ss << setfill('0') << setw(3) << i;
@@ -104,7 +107,10 @@ void testStereo() {
         
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
         
-        visualizePointCloud(pointCloud);
+        
+        gridTracker.getMeasurementModelFromPointCloud(pointCloud);
+        
+//         visualizePointCloud(pointCloud);
         
         break;
     }

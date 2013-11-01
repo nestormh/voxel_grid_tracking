@@ -16,22 +16,57 @@
 
 
 #include "polargridtracking.h"
+#include "utils.h"
+
+#include <boost/foreach.hpp>
+
+using namespace std;
 
 namespace polar_grid_tracking {
 
-PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & cols)
+PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
+                                        const t_Camera_params & cameraParams) : 
+                                            m_cameraParams(cameraParams), m_grid(CellGrid(rows, cols)), m_cellSizeX(cellSizeX), m_cellSizeZ(cellSizeZ)
 {
-    m_grid = CellGrid(rows, cols);
+//     m_grid = CellGrid(rows, cols);
     
 }
 
     
-void PolarGridTracking::getMeasurementModelFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
-                                                                const t_Camera_params & cameraParams)
+void PolarGridTracking::getMeasurementModelFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud)
 {
+    BinaryMap map;
+    getBinaryMapFromPointCloud(pointCloud, map);
+    
+    cv::Mat binaryImg = getCvMatFromEigenBinary(map);
+    cv::imshow("binaryMap", binaryImg);
+    
+    cv::waitKey(0);
+}
 
+void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
+                                                   BinaryMap& map)
+{
+    map = BinaryMap::Zero(m_grid.rows(), m_grid.cols());
+
+    const double maxZ = m_grid.rows() * m_cellSizeZ;
+    const double maxX = m_grid.cols() / 2.0 * m_cellSizeX;
+    const double minX = -maxX;
     
+    const double factorX = m_grid.cols() / (maxX - minX);
+    const double factorZ = m_grid.rows() / maxZ;
     
+    BOOST_FOREACH(pcl::PointXYZRGB& point, *pointCloud) {
+        
+        const uint32_t xPos = (point.x - minX) * factorX;
+        const uint32_t zPos = point.z * factorZ;
+        
+        if ((xPos > 0) && (xPos < m_grid.cols()) && 
+            (zPos > 0) && (zPos < m_grid.rows())) {
+        
+            map(zPos, xPos) = true;
+        }
+    }
 }
 
     
