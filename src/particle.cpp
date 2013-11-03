@@ -19,8 +19,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <Eigen/Core>
-
 using namespace std;
 
 namespace polar_grid_tracking {
@@ -43,21 +41,33 @@ Particle::Particle(const Particle& particle)
     m_vz = particle.vz();
 }
 
-void Particle::transform(const double& deltaYaw, const double & dx, const double & dz, const double& deltaTime)
+void Particle::transform(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition)
 {
-    Eigen::Vector2d newPos, t, oldPos;
-    Eigen::Matrix2d R;
+    Eigen::Vector2d newPos, oldPos;
+    Eigen::Vector4d tmpPosAndVel, deltaPosAndVel, finalPosAndVel;
     oldPos << m_x, m_z;
-    R << cos(deltaYaw), -sin(deltaYaw), 
-         sin(deltaYaw), cos(deltaYaw);
-    t << dx, dz;
     
     newPos = R * oldPos - t;
     
-    cout << newPos;
+    tmpPosAndVel << newPos(0), newPos(1), m_vx, m_vz;
     
-    exit(0);
-         
+    // TODO: Fill with Q covariance, as indicated in the paper
+    deltaPosAndVel << 0, 0, 0, 0;
+    
+    finalPosAndVel = stateTransition * tmpPosAndVel + deltaPosAndVel;
+    
+    m_x = finalPosAndVel(0);
+    m_z = finalPosAndVel(1);
+    m_vx = finalPosAndVel(2);
+    m_vz = finalPosAndVel(3);
+
+//     cout << "+++oldPos\n" << oldPos << endl;
+//     cout << "+++newPos\n" << newPos << endl;
+//     cout << "+++tmpPosAndVel\n" << tmpPosAndVel << endl;
+//     cout << "+++deltaPosAndVel\n" << deltaPosAndVel << endl;
+//     cout << "+++finalPosAndVel\n" << finalPosAndVel << endl;
+//     
+//     exit(0);
 }
 
 

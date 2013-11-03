@@ -58,12 +58,13 @@ void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr &
     initialization(map); // FIXME: Remove this line once more than one image is used in the sequence
 
     if (m_initialized) {
-//         prediction();
-        measurementBasedUpdate();
+        prediction();
+//         measurementBasedUpdate();
     }
-    initialization(map); // FIXME: Uncomment this line once more than one image is used in the sequence
-    
+//     initialization(map); // FIXME: Uncomment this line once more than one image is used in the sequence
     drawGrid(20, map);
+    
+    
     
 }
     
@@ -176,11 +177,43 @@ void PolarGridTracking::measurementBasedUpdate()
 
 void PolarGridTracking::prediction()
 {
+    const double dx = m_deltaPos * cos(m_deltaYaw); // / m_cellSizeX;
+    const double dz = m_deltaPos * sin(m_deltaYaw); // / m_cellSizeZ;
+    
+    Eigen::Matrix2d R;
+    Eigen::Vector2d t;
+    Eigen::Matrix4d stateTransition;
+    R << cos(m_deltaYaw), -sin(m_deltaYaw), 
+         sin(m_deltaYaw), cos(m_deltaYaw);
+    t << dx, dz;
+    stateTransition << 1, 0, m_deltaTime, 0,
+                       0, 1, 0, m_deltaTime,
+                       0, 0, 1, 0,
+                       0, 0, 0, 1;
+                       
+//     cout << "deltaTime " << m_deltaTime << endl;
+//     
+//     cout << "dist " << m_deltaPos << endl;
+//     cout << "dx " << dx << endl;
+//     cout << "dz " << dz << endl;
+//     
+//     cout << "yaw " << m_deltaYaw / 3.14 * 180.0 << endl;
+//     cout << "cos " << cos(m_deltaYaw) << endl;
+//     cout << "sin " << sin(m_deltaYaw) << endl;
+//     
+//     cout << "R\n" << R << endl;
+//     cout << "t\n" << t << endl;
+//     cout << "stateTransition\n" << stateTransition << endl;
+    
+    // TODO: Put correct values for deltaX, deltaZ, deltaVX, deltaVZ in class Particle, based on the covariance matrix
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
             Cell & cell = m_grid(z, x);
+            cell.transformParticles(R, t, stateTransition);
         }
     }
+    
+    // TODO: Re-ubicate particles in their corresponding cells
 }
 
 void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap & binaryMap)

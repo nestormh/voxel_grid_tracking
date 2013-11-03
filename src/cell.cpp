@@ -74,12 +74,10 @@ void Cell::makeCopy(const Particle& particle)
     m_particles.push_back(particle);
 }
     
-void Cell::transformParticles(const double& deltaYaw, const double& deltaPos, const double& deltaTime)
+void Cell::transformParticles(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition)
 {
-    const double dx = deltaPos * cos(deltaYaw) / m_sizeX;
-    const double dz = deltaPos * sin(deltaYaw) / m_sizeZ;
     BOOST_FOREACH(Particle & particle, m_particles)
-        particle.transform(deltaYaw, dx, dz, deltaTime);
+    particle.transform(R, t, stateTransition);
 }
 
 void Cell::draw(cv::Mat& img, const uint32_t & pixelsPerCell)

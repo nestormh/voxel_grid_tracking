@@ -20,6 +20,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <Eigen/Core>
 
 using namespace std;
 
@@ -31,7 +32,7 @@ public:
     Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ);
     Particle(const Particle & particle);
     
-    void transform(const double & deltaYaw, const double & dx, const double & dz, const double & deltaTime);
+    void transform(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition);
     
     double x() const { return m_x; }
     double z() const { return m_z; }

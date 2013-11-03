@@ -53,7 +53,7 @@ public:
     bool empty() { return m_particles.size() == 0; }
     void makeCopy(const Particle & particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
-    void transformParticles(const double & deltaYaw, const double & deltaPos, const double & deltaTime);
+    void transformParticles(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition);
     
     void draw(cv::Mat & img, const uint32_t & pixelsPerCell);
     

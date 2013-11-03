@@ -114,7 +114,7 @@ void testStereo() {
         
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
         
-        
+        gridTracker.setDeltaYawPosAndTime(0.0 / 180.0 * 3.14, 1.0, 0.2);
         gridTracker.compute(pointCloud);
         
 //         visualizePointCloud(pointCloud);
