@@ -39,15 +39,21 @@ public:
     void createParticles(const uint32_t & numParticles);
     
     void setOccupiedProb(const double & occupiedProb) { m_occupiedProb = occupiedProb; }
+    void setOccupiedPosteriorProb(const uint32_t & particlesPerCell);
     
     double sigmaX() { return m_sigmaX; } 
     double sigmaZ() { return m_sigmaZ; }
     
     double occupiedProb() { return m_occupiedProb; }
+    double occupiedPosteriorProb() { return m_occupiedPosteriorProb; }
     double freeProb() { return 1.0 - m_occupiedProb; }
     
     uint32_t numParticles() { return m_particles.size(); }
+    Particle & getParticle(const uint32_t & idx) { return m_particles.at(idx); }
     bool empty() { return m_particles.size() == 0; }
+    void makeCopy(const Particle & particle);
+    void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
+    void transformParticles(const double & deltaYaw, const double & deltaPos, const double & deltaTime);
     
     void draw(cv::Mat & img, const uint32_t & pixelsPerCell);
     
@@ -57,6 +63,7 @@ private:
     double m_sizeX, m_sizeZ;
     
     double m_occupiedProb;
+    double m_occupiedPosteriorProb;
     
     vector <Particle> m_particles;
 };

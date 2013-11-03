@@ -25,7 +25,7 @@ using namespace std;
 namespace polar_grid_tracking {
     
 // FIXME: Use a bigger value after implementing this stage over the GPU
-#define DISPARITY_COMPUTATION_ERROR 0.075
+#define DISPARITY_COMPUTATION_ERROR 0.75//0.075
 
 Cell::Cell() 
 {
@@ -37,14 +37,17 @@ Cell::Cell(const double & x, const double & z, const double & sizeX, const doubl
                 m_x(x), m_z(z), m_sizeX(sizeX), m_sizeZ(sizeZ)
 {
     if ((z == 0) || (x == 0)) {
-        m_sigmaX = 0;
-        m_sigmaZ = 0;
+        m_sigmaX = 0.0;
+        m_sigmaZ = 0.0;
     } else {
-        const double sigmaZ = (m_z * m_z * DISPARITY_COMPUTATION_ERROR) / (params.baseline * params.ku);
-        const double sigmaX = (m_x * sigmaZ) / m_z;
+        double xReal = m_x * m_sizeX;
+        double zReal = m_z * m_sizeZ;
         
-        m_sigmaZ = sigmaZ * m_sizeZ;
-        m_sigmaX = sigmaX * m_sizeX;
+        const double sigmaZ = (zReal * zReal * DISPARITY_COMPUTATION_ERROR) / (params.baseline * params.ku);
+        const double sigmaX = (xReal * sigmaZ) / zReal;
+        
+        m_sigmaZ = sigmaZ / m_sizeZ;
+        m_sigmaX = sigmaX / m_sizeX;
     }
 }
 
@@ -53,7 +56,32 @@ void Cell::createParticles(const uint32_t & numParticles)
     for (uint32_t i = m_particles.size(); i < numParticles; i++)
         m_particles.push_back(Particle(m_x, m_z, m_sizeX, m_sizeZ));
 }
+
+void Cell::setOccupiedPosteriorProb(const uint32_t& particlesPerCell)
+{
+    const double weightedOccupied = m_occupiedProb * m_particles.size();
+    const double freeProb = 1.0 - m_occupiedProb;
+    const uint32_t numFree = particlesPerCell - m_particles.size();
+    const double weightedFree = freeProb * numFree;
     
+    m_occupiedPosteriorProb = weightedOccupied / (weightedOccupied + weightedFree);
+    
+}
+
+void Cell::makeCopy(const Particle& particle)
+{
+    Particle newParticle(particle);
+    m_particles.push_back(particle);
+}
+    
+void Cell::transformParticles(const double& deltaYaw, const double& deltaPos, const double& deltaTime)
+{
+    const double dx = deltaPos * cos(deltaYaw) / m_sizeX;
+    const double dz = deltaPos * sin(deltaYaw) / m_sizeZ;
+    BOOST_FOREACH(Particle & particle, m_particles)
+        particle.transform(deltaYaw, dx, dz, deltaTime);
+}
+
 void Cell::draw(cv::Mat& img, const uint32_t & pixelsPerCell)
 {
     const uint32_t color = m_occupiedProb * 255;

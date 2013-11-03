@@ -38,16 +38,39 @@ PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & col
         }
     }
     
+    m_initialized = false;
+    
 }
 
-    
-void PolarGridTracking::getMeasurementModelFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud)
+void PolarGridTracking::setDeltaYawPosAndTime(const double& deltaYaw, const double& deltaPos, const double& deltaTime)
 {
-    INIT_CLOCK(beginClock)
+    m_deltaYaw = deltaYaw;
+    m_deltaPos = deltaPos;
+    m_deltaTime = deltaTime;
+}
+
+void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud) {
     BinaryMap map;
     getBinaryMapFromPointCloud(pointCloud, map);
     
-#pragma omp for schedule(dynamic)
+    getMeasurementModel(map);
+
+    initialization(map); // FIXME: Remove this line once more than one image is used in the sequence
+
+    if (m_initialized) {
+//         prediction();
+        measurementBasedUpdate();
+    }
+    initialization(map); // FIXME: Uncomment this line once more than one image is used in the sequence
+    
+    drawGrid(20, map);
+    
+}
+    
+void PolarGridTracking::getMeasurementModel(const BinaryMap & map)
+{
+    
+// #pragma omp for schedule(dynamic)
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
             Cell & cell = m_grid(z, x);
@@ -62,24 +85,30 @@ void PolarGridTracking::getMeasurementModelFromPointCloud(const pcl::PointCloud<
             }
             
             // p(m(x,z) | occupied)
-            const double occupiedProb = (double)totalOccupied / ((2.0 * sigmaZ + 1.0) * (2.0 * sigmaX + 1.0));
+            const double occupiedProb = (double)totalOccupied / ((2.0 * (double)sigmaZ + 1.0) * (2.0 * (double)sigmaX + 1.0));
             cell.setOccupiedProb(occupiedProb);
+        }
+    }
+    
+}
+
+void PolarGridTracking::initialization(const BinaryMap & map) {
+    for (uint32_t z = 0; z < m_grid.rows(); z++) {
+        for (uint32_t x = 0; x < m_grid.cols(); x++) {
+            Cell & cell = m_grid(z, x);
             
+            const double & occupiedProb = cell.occupiedProb();
             if (map(z, x) && cell.empty() && (occupiedProb > m_threshProbForCreation)) {
+                const uint32_t numParticles = m_particlesPerCell * occupiedProb / 2.0;
                 cell.createParticles(m_particlesPerCell);
             }
             
             // TODO: Remove particles that are out of the grid
             // TODO: Remove particles if the limit of particles per cell is exceeded
-            
-             
         }
     }
-    END_CLOCK(tElapsed, beginClock)
     
-    cout << "tElapsed = " << tElapsed << endl;
-
-    drawGrid(20, map);
+    m_initialized = true;
 }
 
 void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
@@ -103,6 +132,53 @@ void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::P
             (zPos > 0) && (zPos < m_grid.rows())) {
         
             map(zPos, xPos) = true;
+        }
+    }
+}
+
+void PolarGridTracking::measurementBasedUpdate()
+{
+    for (uint32_t z = 0; z < m_grid.rows(); z++) {
+        for (uint32_t x = 0; x < m_grid.cols(); x++) {
+            Cell & cell = m_grid(z, x);
+            
+            
+            if (cell.numParticles() != 0) {
+                
+                cell.setOccupiedPosteriorProb(m_particlesPerCell);
+                const double Nrc = cell.occupiedPosteriorProb() * m_particlesPerCell;
+                const double fc = Nrc / cell.numParticles();
+                
+                if (fc > 1.0) {
+                    const double Fn = floor(fc);       // Integer part
+                    const double Ff = fc - Fn;         // Fractional part
+                    
+                    const uint32_t numParticles = cell.numParticles();
+                    for (uint32_t i = 0; i < numParticles; i++) {
+                        const Particle & p = cell.getParticle(i);
+                        for (uint32_t k = 1; k < Fn; k++)
+                            cell.makeCopy(p);
+                        const double r = (double)rand() / (double)RAND_MAX;
+                        if (r < Ff)
+                            cell.makeCopy(p);
+                    }
+                } else if (fc < 1.0) {
+                    for (uint32_t i = 0; i < cell.numParticles(); i++) {
+                        const double r = (double)rand() / (double)RAND_MAX;
+                        if (r > fc)
+                            cell.removeParticle(i);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void PolarGridTracking::prediction()
+{
+    for (uint32_t z = 0; z < m_grid.rows(); z++) {
+        for (uint32_t x = 0; x < m_grid.cols(); x++) {
+            Cell & cell = m_grid(z, x);
         }
     }
 }

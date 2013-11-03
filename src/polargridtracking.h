@@ -39,15 +39,23 @@ public:
                       const t_Camera_params & cameraParams, 
                       const double & particlesPerCell, const double & threshProbForCreation);
     
-    void getMeasurementModelFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
-    
-    void drawGrid(const uint32_t & pixelsPerCell, const BinaryMap & binaryMap);
+    void setDeltaYawPosAndTime(const double & deltaYaw, const double & deltaPos, const double & deltaTime);
+    void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     
 protected:   
     
     void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, BinaryMap & map);
+    void initialization(const BinaryMap & map);
+    void getMeasurementModel(const BinaryMap & map);
+    void measurementBasedUpdate();
+    void prediction();
+    void drawGrid(const uint32_t & pixelsPerCell, const BinaryMap & binaryMap);
     
     CellGrid m_grid;
+    
+    bool m_initialized;
+    
+    double m_deltaYaw, m_deltaPos, m_deltaTime;
     
     // Params
     t_Camera_params m_cameraParams;

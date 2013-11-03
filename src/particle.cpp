@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <Eigen/Core>
+
 using namespace std;
 
 namespace polar_grid_tracking {
@@ -33,6 +35,32 @@ Particle::Particle(const double & cellX, const double & cellZ, const double & ce
     m_vz = cellSizeZ * (double)rand() / RAND_MAX * sin(theta);
 }
 
+Particle::Particle(const Particle& particle)
+{
+    m_x = particle.x();
+    m_z = particle.z();
+    m_vx = particle.vx();
+    m_vz = particle.vz();
+}
+
+void Particle::transform(const double& deltaYaw, const double & dx, const double & dz, const double& deltaTime)
+{
+    Eigen::Vector2d newPos, t, oldPos;
+    Eigen::Matrix2d R;
+    oldPos << m_x, m_z;
+    R << cos(deltaYaw), -sin(deltaYaw), 
+         sin(deltaYaw), cos(deltaYaw);
+    t << dx, dz;
+    
+    newPos = R * oldPos - t;
+    
+    cout << newPos;
+    
+    exit(0);
+         
+}
+
+
 void Particle::draw(cv::Mat& img, const uint32_t& pixelsPerCell, const double & cellSizeX, const double & cellSizeZ)
 {
     const double factorX = pixelsPerCell / cellSizeX;
@@ -41,10 +69,13 @@ void Particle::draw(cv::Mat& img, const uint32_t& pixelsPerCell, const double & 
     const cv::Point2i pSpeed((m_x + m_vx) * factorX, (m_z + m_vz) * factorZ);
     cv::line(img, p, pSpeed, cv::Scalar(0, 0, 255));
     img.at<cv::Vec3b>(p.y, p.x) = cv::Vec3b(255, 0, 0);
-    
-    
-    
 }
+
+ostream& operator<<(ostream & stream, const Particle & in) {
+    stream << "[" << in.x() << ", " << in.z() << ", " << in.vx() << ", " << in.vz() << "]";
+    return stream;
+}
+
 
 
 }

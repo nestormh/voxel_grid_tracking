@@ -72,12 +72,12 @@ void testStereo() {
     sgbmParams.fullDP = true;
     
     // TODO: Read from a parameters file
-    uint32_t rows = 400; // 400
+    uint32_t rows = 50; // 400
     uint32_t cols = 64; // 128
     double cellSizeX = 0.2; // 0.1
     double cellSizeZ = 0.2; // 0.1 
     double particlesPerCell = 20;
-    double threshProbForCreation = 0.7;
+    double threshProbForCreation = 0.2;
     PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, cameraParams[0], particlesPerCell, threshProbForCreation);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
@@ -115,7 +115,7 @@ void testStereo() {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
         
         
-        gridTracker.getMeasurementModelFromPointCloud(pointCloud);
+        gridTracker.compute(pointCloud);
         
 //         visualizePointCloud(pointCloud);
         

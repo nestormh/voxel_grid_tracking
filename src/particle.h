@@ -19,6 +19,9 @@
 #define PARTICLE_H
 
 #include <opencv2/opencv.hpp>
+#include <iostream>
+
+using namespace std;
 
 namespace polar_grid_tracking {
     
@@ -26,16 +29,21 @@ class Particle
 {
 public:
     Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ);
+    Particle(const Particle & particle);
     
-    double x() { return m_x; }
-    double z() { return m_z; }
-    double vx() { return m_vx; }
-    double vz() { return m_vz; }
+    void transform(const double & deltaYaw, const double & dx, const double & dz, const double & deltaTime);
+    
+    double x() const { return m_x; }
+    double z() const { return m_z; }
+    double vx() const { return m_vx; }
+    double vz() const { return m_vz; }
     
     void draw(cv::Mat & img, const uint32_t & pixelsPerCell, const double & cellSizeX, const double & cellSizeZ);
 private:
     double m_x, m_z, m_vx, m_vz;
 };
+
+ostream& operator<<(ostream & stream, const Particle & in);
     
 }
 #endif // PARTICLE_H
