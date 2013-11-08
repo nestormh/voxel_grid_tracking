@@ -27,8 +27,7 @@
 #include <eigen3/Eigen/Dense>
 
 namespace polar_grid_tracking {
-    
-typedef Eigen::Matrix<Cell, Eigen::Dynamic, Eigen::Dynamic> CellGrid;
+
 typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> BinaryMap;
 
 class PolarGridTracking
@@ -39,7 +38,7 @@ public:
                       const t_Camera_params & cameraParams, 
                       const double & particlesPerCell, const double & threshProbForCreation);
     
-    void setDeltaYawPosAndTime(const double & deltaYaw, const double & deltaPos, const double & deltaTime);
+    void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     
 protected:   
@@ -55,7 +54,7 @@ protected:
     
     bool m_initialized;
     
-    double m_deltaYaw, m_deltaPos, m_deltaTime;
+    double m_deltaYaw, m_deltaSpeed, m_deltaTime;
     
     // Params
     t_Camera_params m_cameraParams;

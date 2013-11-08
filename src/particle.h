@@ -29,10 +29,10 @@ namespace polar_grid_tracking {
 class Particle
 {
 public:
-    Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ);
+    Particle(const double & param1, const double & param2, const double & param3, const double & param4, const bool & random = true);
     Particle(const Particle & particle);
     
-    void transform(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition);
+    void transform(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::Matrix4d & stateTransition);
     
     double x() const { return m_x; }
     double z() const { return m_z; }

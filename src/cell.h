@@ -28,6 +28,9 @@
 using namespace std;
 
 namespace polar_grid_tracking {
+
+class Cell;
+typedef Eigen::Matrix<Cell, Eigen::Dynamic, Eigen::Dynamic> CellGrid;
     
 class Cell
 {
@@ -50,14 +53,21 @@ public:
     
     uint32_t numParticles() { return m_particles.size(); }
     Particle & getParticle(const uint32_t & idx) { return m_particles.at(idx); }
+    vector <Particle> getParticles() { return m_particles; }
     bool empty() { return m_particles.size() == 0; }
     void makeCopy(const Particle & particle);
+    void addParticle(const Particle& particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
-    void transformParticles(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition);
+    void transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::Matrix4d & stateTransition, CellGrid & newGrid);
+    void clearParticles() { m_particles.clear(); }
+    void setParticles(const vector <Particle> & particles) { m_particles = particles; }
     
     void draw(cv::Mat & img, const uint32_t & pixelsPerCell);
+    void drawParticles(cv::Mat& img, const uint32_t & pixelsPerCell);
     
-private:
+protected:
+    double getAvgDir(double & vx, double & vz);
+    
     double m_x, m_z;
     double m_sigmaX, m_sigmaZ;
     double m_sizeX, m_sizeZ;

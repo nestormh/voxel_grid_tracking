@@ -59,34 +59,78 @@ void Cell::createParticles(const uint32_t & numParticles)
 
 void Cell::setOccupiedPosteriorProb(const uint32_t& particlesPerCell)
 {
-    const double weightedOccupied = m_occupiedProb * m_particles.size();
-    const double freeProb = 1.0 - m_occupiedProb;
-    const uint32_t numFree = particlesPerCell - m_particles.size();
-    const double weightedFree = freeProb * numFree;
-    
-    m_occupiedPosteriorProb = weightedOccupied / (weightedOccupied + weightedFree);
+    if (m_occupiedProb == 0) {
+        m_occupiedPosteriorProb = 0;
+    } else {
+        const double weightedOccupied = m_occupiedProb * m_particles.size();
+        const double freeProb = 1.0 - m_occupiedProb;
+        const uint32_t numFree = particlesPerCell - m_particles.size();
+        const double weightedFree = freeProb * numFree;
+        
+        m_occupiedPosteriorProb = weightedOccupied / (weightedOccupied + weightedFree);
+    }
     
 }
 
 void Cell::makeCopy(const Particle& particle)
 {
     Particle newParticle(particle);
+    m_particles.push_back(newParticle);
+}
+
+void Cell::addParticle(const Particle& particle)
+{
     m_particles.push_back(particle);
 }
     
-void Cell::transformParticles(const Eigen::Matrix2d & R, const Eigen::Vector2d & t, const Eigen::Matrix4d & stateTransition)
+void Cell::transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::Matrix4d & stateTransition, CellGrid & newGrid)
 {
-    BOOST_FOREACH(Particle & particle, m_particles)
-    particle.transform(R, t, stateTransition);
+    BOOST_FOREACH(Particle & particle, m_particles) {
+        particle.transform(R, t, stateTransition);
+        
+        const int newCellZ = particle.z() / m_sizeZ;
+        const int newCellX = particle.x() / m_sizeX;
+        
+        if ((newCellZ >= 0) && (newCellZ < newGrid.rows()) &&
+            (newCellX >= 0) && (newCellX < newGrid.cols())) {
+                
+            newGrid(newCellZ, newCellX).addParticle(particle);
+        }
+    }
+    m_particles.clear();
+}
+
+double Cell::getAvgDir(double & vx, double & vz) {
+    vx = 0.0;
+    vz = 0.0;
+    BOOST_FOREACH(Particle particle, m_particles) {
+        vx += particle.vx();
+        vz += particle.vz();
+    }
+    
+    vx /= m_particles.size();
+    vz /= m_particles.size();
 }
 
 void Cell::draw(cv::Mat& img, const uint32_t & pixelsPerCell)
 {
     const uint32_t color = m_occupiedProb * 255;
-    cv::rectangle(img, cv::Point2i(m_x * pixelsPerCell, m_z * pixelsPerCell), cv::Point2i((m_x + 1) * pixelsPerCell, (m_z + 1) * pixelsPerCell), cv::Scalar::all(color), -1);
+    cv::rectangle(img, cv::Point2i(m_x * pixelsPerCell + 1, m_z * pixelsPerCell + 1), cv::Point2i((m_x + 1) * pixelsPerCell - 1, (m_z + 1) * pixelsPerCell - 1), cv::Scalar::all(color), -1);
+}
+
+void Cell::drawParticles(cv::Mat& img, const uint32_t & pixelsPerCell)
+{
     BOOST_FOREACH(Particle particle, m_particles) {
         particle.draw(img, pixelsPerCell, m_sizeX, m_sizeZ);
     }
+    
+    double vx, vz;
+    getAvgDir(vx, vz);
+    const double factorX = pixelsPerCell / m_sizeX * 20;
+    const double factorZ = pixelsPerCell / m_sizeZ * 20;
+    cv::Point2i center(m_x * pixelsPerCell + pixelsPerCell / 2.0, m_z * pixelsPerCell + pixelsPerCell / 2.0);
+    cv::Point2i mainDirection(center.x + vx * factorX, center.y + vz * factorZ);
+    cv::line(img, center, mainDirection, cv::Scalar(255, 255, 0));
 }
 
 }

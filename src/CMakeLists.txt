@@ -1,10 +1,23 @@
-add_executable(PolarGridTracking 
+set(VISO_FILES
+    libviso2/filter.cpp
+    libviso2/matcher.cpp
+    libviso2/matrix.cpp
+    libviso2/reconstruction.cpp
+    libviso2/triangle.cpp
+    libviso2/viso.cpp
+    libviso2/viso_mono.cpp
+    libviso2/viso_stereo.cpp
+)
+
+
+add_executable(PolarGridTracking libvisohelper.cpp
     main.cpp
     ObstaclesFromStereo.cpp
     polargridtracking.cpp
     particle.cpp
     cell.cpp
     utils.cpp
+    ${VISO_FILES}
 )
   
 include_directories(PolarGridTracking

@@ -1,31 +1,4 @@
 /*
-    Copyright (c) 2013, Néstor Morales Hernández <email>
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are met:
-        * Redistributions of source code must retain the above copyright
-        notice, this list of conditions and the following disclaimer.
-        * Redistributions in binary form must reproduce the above copyright
-        notice, this list of conditions and the following disclaimer in the
-        documentation and/or other materials provided with the distribution.
-        * Neither the name of the <organization> nor the
-        names of its contributors may be used to endorse or promote products
-        derived from this software without specific prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY Néstor Morales Hernández <email> ''AS IS'' AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL Néstor Morales Hernández <email> BE LIABLE FOR ANY
-    DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
  *  Copyright 2013 Néstor Morales Hernández <nestor@isaatc.ull.es>
  * 
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +18,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <limits>
 
 #include <opencv2/core/core.hpp>
 
@@ -58,8 +32,10 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
-ObstaclesFromStereo::ObstaclesFromStereo(const cv::Size & size) : m_method(SGBM), m_size(size), 
-                                         m_groundThresh(0.2), m_backgroundThresh(100), m_leafSize(0.05) {
+using namespace std;
+
+ObstaclesFromStereo::ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType) : m_method(SGBM), m_size(size), 
+                                         m_groundThresh(0.2), m_backgroundThresh(100), m_leafSize(0.05), m_calibrationType(calibrationType) {
 
 }
 
@@ -120,20 +96,36 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
             // Get 3D coordinates
             pcl::PointXYZRGBL point;
 
-            point.x = (((j - m_leftCameraParams.u0) / m_leftCameraParams.ku) / norm);
-            point.y = (((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm);
-            point.z = 1.0 / norm;
-            
-            pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];
-            pointMat = m_leftCameraParams.R * pointMat;
-            
-//             point.x = pointMat.data()[0];
-//             point.y = pointMat.data()[1];
-//             point.z = pointMat.data()[2];
-
-            point.x = pointMat.data()[1];
-            point.y = pointMat.data()[2];
-            point.z = pointMat.data()[0];
+            switch(m_calibrationType) {
+                case KARLSRUHE:
+                {
+                    point.x = (((m_leftCameraParams.u0 - j) / m_leftCameraParams.ku) / norm);
+                    point.y = -(((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm)/* + 1.65*/;
+                    point.z = 1.0 / norm;
+                    
+                    pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];
+                    pointMat = m_leftCameraParams.R * pointMat;
+                    //             
+                    point.x = pointMat.data()[0];
+                    point.y = pointMat.data()[1];
+                    point.z = pointMat.data()[2];
+                    
+                    break;
+                }
+                case DUBLIN: 
+                {
+                    point.x = (((j - m_leftCameraParams.u0) / m_leftCameraParams.ku) / norm);
+                    point.y = (((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm);
+                    point.z = 1.0 / norm;
+                    
+                    pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];
+                    pointMat = m_leftCameraParams.R * pointMat;
+                    
+                    point.x = pointMat.data()[1];
+                    point.y = pointMat.data()[2];
+                    point.z = pointMat.data()[0];
+                }
+            }
             
             //Get RGB info
             point.b = rgb_ptr[3*j];
@@ -152,7 +144,7 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
     
     filterMasked(unmaskedPointCloud, m_pointCloud);
     
-    downsample(m_pointCloud);
+//     downsample(m_pointCloud);
     
     std::cout << "Points.size() = " << m_pointCloud->size() << std::endl;
         
@@ -228,15 +220,24 @@ void ObstaclesFromStereo::filterMasked(const pcl::PointCloud<pcl::PointXYZRGBL>:
 void ObstaclesFromStereo::removeGround(pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & pointCloud) {
 
     if ((m_groundThresh >= 0) && (m_backgroundThresh >= 0)) {
+        cout << __LINE__ << endl;
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
 
         std::vector<int> inliers;
         inliers.reserve(pointCloud->size());    
-        for (uint32_t i = 0; i < pointCloud->size(); i += 2) {
-            if ((pointCloud->points.at(i).z < m_groundThresh) && (pointCloud->points.at(i).x < m_backgroundThresh))
+/*        for (uint32_t i = 0; i < pointCloud->size(); i += 2) {
+            if ((pointCloud->points.at(i).y >= -m_groundThresh) && (pointCloud->points.at(i).y < m_groundThresh) && (pointCloud->points.at(i).z < m_backgroundThresh))
                 inliers.push_back(i);
-        }        
-        pcl::copyPointCloud<pcl::PointXYZRGBL>(*pointCloud, inliers, *tmpPointCloud);
+        } */       
+// //         pcl::copyPointCloud<pcl::PointXYZRGBL>(*pointCloud, inliers, *tmpPointCloud);
+
+        for (uint32_t i = 0; i < pointCloud->size(); i += 2) {
+            if ((pointCloud->points.at(i).y > m_groundThresh) && (pointCloud->points.at(i).z < m_backgroundThresh))
+                inliers.push_back(i);
+        } 
+        pcl::copyPointCloud<pcl::PointXYZRGBL>(*pointCloud, inliers, *pointCloud);
+        
+        return;
         
         if (tmpPointCloud->size() < 4) {
             std::cerr << "There are not enough points to continue removing the ground..." << std::endl;
@@ -275,7 +276,7 @@ void ObstaclesFromStereo::removeGround(pcl::PointCloud<pcl::PointXYZRGBL>::Ptr &
         inliers.clear();
         inliers.reserve(distances.size());
         for (uint32_t i = 0; i < distances.size(); i++) { 
-            if ((distances[i] > m_groundThresh) && (tmpPointCloud->points.at(i).x < m_backgroundThresh)) {
+            if ((distances[i] > m_groundThresh) && (tmpPointCloud->points.at(i).z < m_backgroundThresh)) {
                 inliers.push_back(i);
             }
         }
@@ -292,6 +293,15 @@ void ObstaclesFromStereo::downsample(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & po
         ds.filter (*pointCloud); 
     }
 }
+
+void ObstaclesFromStereo::getParams(const std::string& fileName, std::vector< t_Camera_params >& params, const ObstaclesFromStereo::t_CalibrationFileType& calibrationFileType)
+{
+    switch (calibrationFileType) {
+        case DUBLIN: return getParamsFromDublinDataset(fileName, params);
+        case KARLSRUHE: return getParamsFromKarlsruhe(fileName, params);
+    }
+}
+
 
 // More information about this method can be found at: http://nestormh.hol.es/?p=244
 void ObstaclesFromStereo::getParamsFromDublinDataset(const std::string& planeFilename, std::vector<t_Camera_params> & params, 
@@ -353,6 +363,81 @@ void ObstaclesFromStereo::getParamsFromDublinDataset(const std::string& planeFil
     
     params.push_back(leftCameraParams);
     params.push_back(rightCameraParams);
+}
+
+void ObstaclesFromStereo::getParamsFromKarlsruhe(const std::string& fileName, std::vector< t_Camera_params >& params)
+{
+    ifstream fin(fileName.c_str());
+
+//     // TODO: Get w, h from initial image
+//     const double width = 1392;
+//     const double height = 512;
+    
+    t_Camera_params leftCameraParams;
+    leftCameraParams.width = 1392;
+    leftCameraParams.height = 512;
+    
+    t_Camera_params rightCameraParams;
+    rightCameraParams.width = 1392;
+    rightCameraParams.height = 512;
+
+    for (uint32_t i = 0; i < 9; i++)
+        fin.ignore(numeric_limits<int>::max(), '\n');
+    
+    fin.ignore(numeric_limits<int>::max(), ' ');
+    leftCameraParams.R = Eigen::MatrixXd(3, 3);
+    for (uint32_t i = 0; i < 3; i++)
+        for (uint32_t j = 0; j < 3; j++)
+            fin >> leftCameraParams.R(i, j);
+    rightCameraParams.R = leftCameraParams.R;
+    
+    fin.ignore(numeric_limits<int>::max(), ' ');    
+    leftCameraParams.t = Eigen::MatrixXd(3, 1);
+    for (uint32_t i = 0; i < 3; i++)
+        fin >> leftCameraParams.t(i);
+    leftCameraParams.t(1) -= 1.65;
+    rightCameraParams.t = leftCameraParams.t;
+        
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), ' '); 
+    
+    Eigen::MatrixXd P(3, 4);
+    for (uint32_t i = 0; i < 3; i++)
+        for (uint32_t j = 0; j < 4; j++)
+            fin >> P(i, j);
+    
+    leftCameraParams.ku = P(0, 0);
+    leftCameraParams.kv = P(1, 1);
+    leftCameraParams.u0 = P(0, 2);
+    leftCameraParams.v0 = P(1, 2);
+
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), ' ');    
+    
+    for (uint32_t i = 0; i < 3; i++)
+        for (uint32_t j = 0; j < 4; j++)
+            fin >> P(i, j);
+
+    rightCameraParams.ku = P(0, 0);
+    rightCameraParams.kv = P(1, 1);
+    rightCameraParams.u0 = P(0, 2);
+    rightCameraParams.v0 = P(1, 2);
+    
+    rightCameraParams.baseline = - P(0, 3) / rightCameraParams.ku;
+    
+    leftCameraParams.baseline = rightCameraParams.baseline;
+    
+    fin.close();
+    
+    params.push_back(leftCameraParams);
+    params.push_back(rightCameraParams);
+}
+
+void ObstaclesFromStereo::getParamsFromKarlsruhe_v2(const string& fileName, vector< t_Camera_params >& params)
+{
+    // TODO
 }
 
 // FIXME: This test will not work properly with the new version of ObstaclesFromStereo class
@@ -433,4 +518,9 @@ void ObstaclesFromStereo::getFGMask(const std::string & fileName, cv::Mat & fgMa
     } else {
         fgMask = tmpMask;
     }
+}
+
+void ObstaclesFromStereo::filterGround()
+{
+    
 }

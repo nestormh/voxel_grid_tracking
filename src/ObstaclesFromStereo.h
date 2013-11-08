@@ -35,8 +35,9 @@ using namespace polar_grid_tracking;
 class ObstaclesFromStereo {
 public:
     typedef enum t_Method { SGBM = 0, STEREOVAR = 1};
+    typedef enum t_CalibrationFileType { DUBLIN = 0, KARLSRUHE = 1, KARLSRUHE_V2 = 2 };
     
-    ObstaclesFromStereo(const cv::Size & size);
+    ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType);
     ~ObstaclesFromStereo();
     
     void generatePointClouds(const cv::Mat & leftImg, const cv::Mat & rightImg, const cv::Mat & mask);
@@ -53,8 +54,12 @@ public:
     static void readi3DPostCalibrationFile(const std::string & fileName, std::vector<t_Camera_params> & cameraParams);
     static void getParamsFromDublinDataset(const std::string & planeFilename, std::vector<t_Camera_params> & params,
                                            double baseline = 0.0995964, double focalLength = 519.546875, cv::Size sz = cv::Size(640, 480));
+    static void getParamsFromKarlsruhe(const std::string & fileName, std::vector<t_Camera_params> & params);
+    static void getParamsFromKarlsruhe_v2(const std::string & fileName, std::vector<t_Camera_params> & params);
+    static void getParams(const std::string & fileName, std::vector<t_Camera_params> & params, const t_CalibrationFileType & calibrationFileType);
     static void getFGMask(const std::string & fileName, cv::Mat & fgMask, const cv::Size & sz);
-    
+
+    void filterGround();
 private:
     void setParamsGeometry(t_Camera_params & params);
     void filterMasked(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & inputCloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & outputCloud);
@@ -72,6 +77,8 @@ private:
     double m_leafSize;
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
+    
+    t_CalibrationFileType m_calibrationType;
     
     cv::Size m_size;
 };
