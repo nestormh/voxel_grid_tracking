@@ -35,7 +35,7 @@ class PolarGridTracking
 public:
     
     PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
-                      const t_Camera_params & cameraParams, 
+                      const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                       const double & particlesPerCell, const double & threshProbForCreation);
     
     void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
@@ -50,6 +50,7 @@ protected:
     void prediction();
     void drawGrid(const uint32_t & pixelsPerCell, const BinaryMap & binaryMap);
     void drawBinaryMap(const BinaryMap & map);
+    void drawTopDownMap(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
     
     CellGrid m_grid;
     
@@ -60,6 +61,7 @@ protected:
     // Params
     t_Camera_params m_cameraParams;
     double m_cellSizeX, m_cellSizeZ;
+    double m_maxVelX, m_maxVelZ;
     double m_particlesPerCell, m_threshProbForCreation;
     
 };

@@ -23,22 +23,22 @@ using namespace std;
 
 namespace polar_grid_tracking {
 
-// random = true => const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ
-    // random = false => const double & x, const double & z, const double & vx, const double & vz
-Particle::Particle(const double & param1, const double & param2, const double & param3, const double & param4, const bool & random)
+Particle::Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ, 
+                   const double & maxVelX, const double & maxVelZ) : m_maxVelX(maxVelX), m_maxVelZ(maxVelZ)
 {
-    if (random) {
-        m_x = (param1 + (double)rand() / RAND_MAX) * param3;
-        m_z = (param2 + (double)rand() / RAND_MAX) * param4;
-        const double theta = (double)rand() / RAND_MAX * 2.0 * 3.14;
-        m_vx = param3 * (double)rand() / RAND_MAX * cos(theta);
-        m_vz = param4 * (double)rand() / RAND_MAX * sin(theta);
-    } else {
-        m_x = param1;
-        m_z = param2;
-        m_vx = param3;
-        m_vz = param4;
-    }
+    m_x = (cellX + (double)rand() / RAND_MAX) * cellSizeX;
+    m_z = (cellZ + (double)rand() / RAND_MAX) * cellSizeZ;
+    const double theta = (double)rand() / RAND_MAX * 2.0 * 3.14;
+    m_vx = maxVelX * (double)rand() / RAND_MAX * cos(theta);
+    m_vz = maxVelZ * (double)rand() / RAND_MAX * sin(theta);
+}
+
+Particle::Particle(const double & x, const double & z, const double & vx, const double & vz)
+{
+    m_x = x;
+    m_z = z;
+    m_vx = vx;
+    m_vz = vz;
 }
 
 Particle::Particle(const Particle& particle)
@@ -94,6 +94,9 @@ void Particle::transform(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, c
     
 //     cout << newPosAndVel << endl;
     
+//     cout << "R\n" << R << endl;
+//     cout << "t\n" << t << endl;
+    
     finalPosAndVel = R * newPosAndVel + t;
 //     finalPosAndVel = newPosAndVel;
 
@@ -136,8 +139,8 @@ void Particle::transform(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, c
 
 void Particle::draw(cv::Mat& img, const uint32_t& pixelsPerCell, const double & cellSizeX, const double & cellSizeZ)
 {
-    const double factorX = pixelsPerCell / cellSizeX;
-    const double factorZ = pixelsPerCell / cellSizeZ;
+    const double factorX = (pixelsPerCell / cellSizeX) * (2 * pixelsPerCell / m_maxVelX);
+    const double factorZ = (pixelsPerCell / cellSizeZ) * (2 * pixelsPerCell / m_maxVelZ);
     const cv::Point2i p(m_x * factorX, m_z * factorZ);
     const cv::Point2i pSpeed((m_x + m_vx) * factorX, (m_z + m_vz) * factorZ);
     

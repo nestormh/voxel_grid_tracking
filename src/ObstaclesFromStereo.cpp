@@ -595,3 +595,79 @@ void ObstaclesFromStereo::showCameraParams(const t_Camera_params& params)
     cout << "R " << endl << params.R << endl;
     cout << "t " << endl << params.t << endl;
 }
+
+void ObstaclesFromStereo::readCurrentEgoValue(ifstream& fin, t_ego_value& egoValue)
+{
+    double values[8];
+    for (uint32_t i = 0; i <= 8; i++) {
+        fin >> values[i];
+    }
+    egoValue.deltaYaw = values[5];
+    egoValue.speed = values[8];
+}
+
+void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_ego_value >& egoValues)
+{
+    boost::filesystem3::path basePath(pathName);
+    boost::filesystem3::path timestampsPath("oxts/timestamps.txt");
+    
+    ifstream fin((basePath / timestampsPath).string().c_str());
+    
+    string date, time;
+    boost::posix_time::ptime lastTime;
+    bool initialized = false;
+    while (! fin.eof()) {
+        fin >> date;
+        fin >> time;
+        
+        boost::posix_time::ptime currTime = boost::posix_time::time_from_string(date + " " + time);
+        
+        t_ego_value egoVal;
+        if (initialized) {
+            boost::posix_time::time_duration diff = currTime - lastTime;
+            egoVal.deltaTime = diff.total_milliseconds() / 1000.0;
+            
+        } else {
+            egoVal.deltaTime = 0.0;
+            initialized = true;
+        }
+        egoValues.push_back(egoVal);
+
+        lastTime = currTime;
+    }
+    fin.close();
+    
+    
+    for (uint32_t i = 0; i < egoValues.size(); i++) {
+        stringstream ss;
+        ss << "oxts/data/";
+        ss << setfill('0') << setw(10) << i;
+        ss << ".txt";
+
+        boost::filesystem3::path filePath(ss.str());
+        fin.open((basePath / filePath).string().c_str());
+        if (fin.is_open()) {
+            
+            readCurrentEgoValue(fin, egoValues[i]);
+            
+            fin.close();
+        } else {
+            cout << "Not found: " << (basePath / filePath).string() << endl;
+            egoValues.erase(egoValues.begin() + i);
+            i--;
+        }
+    }
+    
+    for (uint32_t i = egoValues.size() - 1; i > 0; i--) {
+        const double & yaw2 = egoValues[i].deltaYaw;
+        const double & yaw1 = egoValues[i - 1].deltaYaw;
+        const double deltaYaw = atan2(sin(yaw2 - yaw1), cos(yaw2 - yaw1));
+        
+        egoValues[i].deltaYaw = deltaYaw;
+        egoValues[i].deltaPos = egoValues[i].speed * egoValues[i].deltaTime;
+    }
+    
+    egoValues[0].deltaYaw = 0;
+    egoValues[0].deltaPos = 0;
+}
+

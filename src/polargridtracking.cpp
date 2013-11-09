@@ -26,15 +26,16 @@ using namespace std;
 namespace polar_grid_tracking {
 
 PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
-                                     const t_Camera_params & cameraParams, 
+                                     const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                                      const double & particlesPerCell, const double & threshProbForCreation) : 
                                             m_cameraParams(cameraParams), m_grid(CellGrid(rows, cols)), 
                                             m_cellSizeX(cellSizeX), m_cellSizeZ(cellSizeZ),
+                                            m_maxVelX(maxVelX), m_maxVelZ(maxVelZ),
                                             m_particlesPerCell(particlesPerCell), m_threshProbForCreation(threshProbForCreation)
 {
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
-            m_grid(z, x) = Cell(x, z, m_cellSizeX, m_cellSizeZ, m_cameraParams);
+            m_grid(z, x) = Cell(x, z, m_cellSizeX, m_cellSizeZ, m_maxVelX, m_maxVelZ, m_cameraParams);
         }
     }
     
@@ -52,16 +53,19 @@ void PolarGridTracking::setDeltaYawSpeedAndTime(const double& deltaYaw, const do
 void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud) {
     BinaryMap map;
     getBinaryMapFromPointCloud(pointCloud, map);
+    
+    drawBinaryMap(map);
+    drawTopDownMap(pointCloud);
+    
     getMeasurementModel(map);
 
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
-    }
-    
+    } 
     initialization(map);
 
-    drawGrid(20, map);
+    drawGrid(10, map);
     
     
     
@@ -198,8 +202,8 @@ void PolarGridTracking::prediction()
     Eigen::Matrix4d stateTransition;
     R << cos(m_deltaYaw), -sin(m_deltaYaw), 0, 0,
          sin(m_deltaYaw), cos(m_deltaYaw), 0, 0,
-         0, 0, sin(-m_deltaYaw), cos(-m_deltaYaw),
-         0, 0, cos(-m_deltaYaw), -sin(-m_deltaYaw);
+         0, 0, cos(-m_deltaYaw), -sin(-m_deltaYaw),
+         0, 0, sin(-m_deltaYaw), cos(-m_deltaYaw);
             
     t << dx, dz, 0, 0;
     stateTransition << 1, 0, m_deltaTime, 0,
@@ -268,7 +272,7 @@ void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap 
 //     ss << "grid" << rand();
     ss << "grid";
     
-    cv::flip(gridImg, gridImg, 0);
+    cv::flip(gridImg, gridImg, -1);
     
     cv::imshow(ss.str(), gridImg);
 }
@@ -284,6 +288,37 @@ void PolarGridTracking::drawBinaryMap(const BinaryMap& map)
     }
     
     cv::imshow("map", imgMap);
+}
+
+void PolarGridTracking::drawTopDownMap(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+{
+    cv::Mat imgMap = cv::Mat::zeros(cv::Size(m_grid.cols(), m_grid.rows()), CV_8UC3);
+    
+    const double maxZ = m_grid.rows() * m_cellSizeZ;
+    const double maxX = m_grid.cols() / 2.0 * m_cellSizeX;
+    const double minX = -maxX;
+    
+    const double factorX = m_grid.cols() / (maxX - minX);
+    const double factorZ = m_grid.rows() / maxZ;
+    
+    BOOST_FOREACH(pcl::PointXYZRGB& point, *pointCloud) {
+        
+        const uint32_t xPos = (point.x - minX) * factorX;
+        const uint32_t zPos = point.z * factorZ;
+        
+        if ((xPos > 0) && (xPos < m_grid.cols()) && 
+            (zPos > 0) && (zPos < m_grid.rows())) {
+            
+            imgMap.at<cv::Vec3b>(zPos, xPos) = cv::Vec3b(point.b, point.g, point.r);
+        }
+    }
+    
+    cv::Mat resizedMap;
+    cv::resize(imgMap, resizedMap, cv::Size(4 * m_grid.cols(), 4 * m_grid.rows()), 0, 0, cv::INTER_NEAREST);
+    
+    cv::flip(imgMap, imgMap, -1);
+    
+    cv::imshow("TopDownMap", resizedMap);
 }
 
     

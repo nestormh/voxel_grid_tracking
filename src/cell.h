@@ -36,7 +36,7 @@ class Cell
 {
 public:
     Cell();
-    Cell(const double & x, const double & z, const double & sizeX, const double & sizeZ, 
+    Cell(const double & x, const double & z, const double & sizeX, const double & sizeZ, const double & maxVelX, const double & maxVelZ,
          const t_Camera_params & params);
     
     void createParticles(const uint32_t & numParticles);
@@ -71,6 +71,7 @@ protected:
     double m_x, m_z;
     double m_sigmaX, m_sigmaZ;
     double m_sizeX, m_sizeZ;
+    double m_maxVelX, m_maxVelZ;
     
     double m_occupiedProb;
     double m_occupiedPosteriorProb;

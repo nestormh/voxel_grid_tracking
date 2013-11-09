@@ -57,9 +57,10 @@ public:
                                            double baseline = 0.0995964, double focalLength = 519.546875, cv::Size sz = cv::Size(640, 480));
     static void getParamsFromKarlsruhe(const std::string & fileName, std::vector<t_Camera_params> & params);
     static void getParamsFromKarlsruhe_v2(const std::string & fileName, std::vector<t_Camera_params> & params);
-    static void getParamsFromKarlsruhe_v2(ifstream& fin, t_Camera_params & params);
     static void getParams(const std::string & fileName, std::vector<t_Camera_params> & params, const t_CalibrationFileType & calibrationFileType);
     static void getFGMask(const std::string & fileName, cv::Mat & fgMask, const cv::Size & sz);
+    
+    static void readEgoValues(const std::string & pathName, vector <t_ego_value> & egoValues);
 
     static void showCameraParams(const t_Camera_params & params);
 private:
@@ -67,6 +68,8 @@ private:
     void filterMasked(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & inputCloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & outputCloud);
     void removeGround(pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & pointCloud);
     void downsample(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
+    static void readCurrentEgoValue(ifstream & fin, t_ego_value & egoValue);
+    static void getParamsFromKarlsruhe_v2(ifstream& fin, t_Camera_params & params);
     
     t_Camera_params m_leftCameraParams;
     t_Camera_params m_rightCameraParams;

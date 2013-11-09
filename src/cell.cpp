@@ -32,9 +32,9 @@ Cell::Cell()
     
 }
 
-Cell::Cell(const double & x, const double & z, const double & sizeX, const double & sizeZ, 
+Cell::Cell(const double & x, const double & z, const double & sizeX, const double & sizeZ, const double & maxVelX, const double & maxVelZ,
            const t_Camera_params & params) : 
-                m_x(x), m_z(z), m_sizeX(sizeX), m_sizeZ(sizeZ)
+                m_x(x), m_z(z), m_sizeX(sizeX), m_sizeZ(sizeZ), m_maxVelX(maxVelX), m_maxVelZ(maxVelZ)
 {
     if ((z == 0) || (x == 0)) {
         m_sigmaX = 0.0;
@@ -54,7 +54,7 @@ Cell::Cell(const double & x, const double & z, const double & sizeX, const doubl
 void Cell::createParticles(const uint32_t & numParticles)
 {
     for (uint32_t i = m_particles.size(); i < numParticles; i++)
-        m_particles.push_back(Particle(m_x, m_z, m_sizeX, m_sizeZ));
+        m_particles.push_back(Particle(m_x, m_z, m_sizeX, m_sizeZ, m_maxVelX, m_maxVelZ));
 }
 
 void Cell::setOccupiedPosteriorProb(const uint32_t& particlesPerCell)
@@ -124,13 +124,15 @@ void Cell::drawParticles(cv::Mat& img, const uint32_t & pixelsPerCell)
         particle.draw(img, pixelsPerCell, m_sizeX, m_sizeZ);
     }
     
-    double vx, vz;
-    getAvgDir(vx, vz);
-    const double factorX = pixelsPerCell / m_sizeX * 20;
-    const double factorZ = pixelsPerCell / m_sizeZ * 20;
-    cv::Point2i center(m_x * pixelsPerCell + pixelsPerCell / 2.0, m_z * pixelsPerCell + pixelsPerCell / 2.0);
-    cv::Point2i mainDirection(center.x + vx * factorX, center.y + vz * factorZ);
-    cv::line(img, center, mainDirection, cv::Scalar(255, 255, 0));
+    if (m_particles.size() > 0) {
+        double vx, vz;
+        getAvgDir(vx, vz);
+        const double factorX = pixelsPerCell / m_sizeX;
+        const double factorZ = pixelsPerCell / m_sizeZ;
+        cv::Point2i center(m_x * pixelsPerCell + pixelsPerCell / 2.0, m_z * pixelsPerCell + pixelsPerCell / 2.0);
+        cv::Point2i mainDirection(center.x + vx * factorX, center.y + vz * factorZ);
+        cv::line(img, center, mainDirection, cv::Scalar(255, 255, 0));
+    }
 }
 
 }

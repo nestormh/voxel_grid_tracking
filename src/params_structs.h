@@ -47,6 +47,15 @@ typedef struct {
     int speckleWindowSize; 
     int speckleRange; 
     bool fullDP;
-} t_SGBM_params;    
+} t_SGBM_params;
+
+typedef struct {
+    double deltaYaw;
+    double deltaPos;
+    double deltaTime;
+    double speed;
+} t_ego_value;
+
 }
+
 #endif // PARAMS_STRUCTS_H

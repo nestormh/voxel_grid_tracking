@@ -113,7 +113,7 @@ void testPointCloud() {
 }
 
 void testStereoTracking() {
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::DUBLIN;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
     
     uint32_t initialIdx;
     boost::filesystem::path correspondencesPath;
@@ -121,6 +121,7 @@ void testStereoTracking() {
     string leftImagePattern;
     string rightImagePattern;
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
+    vector< t_ego_value > egoValues;
     
     switch (calibrationType) {
         case ObstaclesFromStereo::DUBLIN:
@@ -151,11 +152,13 @@ void testStereoTracking() {
         {
             initialIdx = 22;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-            seqName = boost::filesystem::path("2011_09_28");
-            leftImagePattern = "2011_09_28_drive_0038_sync/image_02/data/%010d.png";
-            rightImagePattern = "2011_09_28_drive_0038_sync/image_03/data/%010d.png";
+            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
+            leftImagePattern = "image_02/data/%010d.png";
+            rightImagePattern = "image_03/data/%010d.png";
             
             ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2011_09_28/calib_cam_to_cam.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE_V2);
+            
+            ObstaclesFromStereo::readEgoValues((correspondencesPath / seqName).string(), egoValues);
             
             break;
         }
@@ -180,17 +183,19 @@ void testStereoTracking() {
     sgbmParams.fullDP = true;
     
     // TODO: Read from a parameters file
-    uint32_t rows = 30; // 400
-    uint32_t cols = 30; // 128
+    uint32_t rows = 60; // 400
+    uint32_t cols = 60; // 128
     double cellSizeX = 0.2; // 0.1
-    double cellSizeZ = 0.2; // 0.1 
+    double cellSizeZ = 0.2; // 0.1
+    double maxVelX = 5.0; // 0.1
+    double maxVelZ= 5.0; // 0.1 
     double particlesPerCell = 100; //1000;
     double threshProbForCreation = 0.2;
     
     // TODO Get it from the real measurements
-    double deltaTime = 0.2; //1.0 / 25.0; //0.2;
+//     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
-    PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, cameraParams[0], particlesPerCell, threshProbForCreation);
+    PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
 //         stringstream ss;
@@ -231,8 +236,34 @@ void testStereoTracking() {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
         
         // TODO: Think in the right strategy in case yaw couldn't be obtained
-        double yaw, speed;
-//         if (calibrationType != ObstaclesFromStereo::KARLSRUHE_V2) {
+        double yaw, speed, deltaTime;
+        switch (calibrationType) {
+            case ObstaclesFromStereo::DUBLIN:
+            {
+                yaw = 0.0;
+                speed = 0.0;
+                deltaTime = 0.2;
+                break;
+            }
+            case ObstaclesFromStereo::KARLSRUHE:
+            {
+                deltaTime = 0.25;
+//                 visualOdom.compute(left, right, deltaTime, yaw, speed);
+                yaw = 0.0;
+                speed = 0.0;
+                
+                break;
+            }
+            case ObstaclesFromStereo::KARLSRUHE_V2:
+            {
+                yaw = egoValues[i].deltaYaw;
+                speed = egoValues[i].speed;
+                deltaTime = egoValues[i].deltaTime;
+                
+                break;
+            }
+        }
+        //         if (calibrationType != ObstaclesFromStereo::KARLSRUHE_V2) {
 //             visualOdom.compute(left, right, deltaTime, yaw, speed);
 //             cout << "Yaw = " << yaw * 180 / 3.14 << endl;
 //             cout << "speed = " << speed << endl;
@@ -259,9 +290,9 @@ void testStereoTracking() {
 }
 
 int main(int argc, char **argV) {
-//     if (fork() == 0) {
-//         testPointCloud();
-//     }
+    if (fork() == 0) {
+        testPointCloud();
+    }
     testStereoTracking();
     
     return 0;

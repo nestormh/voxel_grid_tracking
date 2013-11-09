@@ -29,7 +29,10 @@ namespace polar_grid_tracking {
 class Particle
 {
 public:
-    Particle(const double & param1, const double & param2, const double & param3, const double & param4, const bool & random = true);
+    Particle(const double & cellX, const double & cellZ, const double & cellSizeX, const double & cellSizeZ, 
+                       const double & maxVelX, const double & maxVelZ);
+    Particle(const double & x, const double & z, const double & vx, const double & vz);
+    
     Particle(const Particle & particle);
     
     void transform(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::Matrix4d & stateTransition);
@@ -42,6 +45,8 @@ public:
     void draw(cv::Mat & img, const uint32_t & pixelsPerCell, const double & cellSizeX, const double & cellSizeZ);
 private:
     double m_x, m_z, m_vx, m_vz;
+    
+    double m_maxVelX, m_maxVelZ;
 };
 
 ostream& operator<<(ostream & stream, const Particle & in);
