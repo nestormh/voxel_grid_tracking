@@ -49,6 +49,7 @@ protected:
     void measurementBasedUpdate();
     void prediction();
     void drawGrid(const uint32_t & pixelsPerCell, const BinaryMap & binaryMap);
+    void drawBinaryMap(const BinaryMap & map);
     
     CellGrid m_grid;
     

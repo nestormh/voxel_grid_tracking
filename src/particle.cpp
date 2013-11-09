@@ -95,6 +95,7 @@ void Particle::transform(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, c
 //     cout << newPosAndVel << endl;
     
     finalPosAndVel = R * newPosAndVel + t;
+//     finalPosAndVel = newPosAndVel;
 
 //     cout << "finalPosAndVel " << finalPosAndVel << endl;
     
@@ -103,8 +104,8 @@ void Particle::transform(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, c
     m_vx = finalPosAndVel(2);
     m_vz = finalPosAndVel(3);
     
-//     m_vx = newPosAndVel(2);
-//     m_vz = newPosAndVel(3);
+    m_vx = newPosAndVel(2);
+    m_vz = newPosAndVel(3);
     
 //     exit(0);
     

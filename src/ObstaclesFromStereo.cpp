@@ -98,6 +98,7 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
 
             switch(m_calibrationType) {
                 case KARLSRUHE:
+                case KARLSRUHE_V2:
                 {
                     point.x = (((m_leftCameraParams.u0 - j) / m_leftCameraParams.ku) / norm);
                     point.y = -(((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm)/* + 1.65*/;
@@ -299,6 +300,7 @@ void ObstaclesFromStereo::getParams(const std::string& fileName, std::vector< t_
     switch (calibrationFileType) {
         case DUBLIN: return getParamsFromDublinDataset(fileName, params);
         case KARLSRUHE: return getParamsFromKarlsruhe(fileName, params);
+        case KARLSRUHE_V2: return getParamsFromKarlsruhe_v2(fileName, params);
     }
 }
 
@@ -374,12 +376,12 @@ void ObstaclesFromStereo::getParamsFromKarlsruhe(const std::string& fileName, st
 //     const double height = 512;
     
     t_Camera_params leftCameraParams;
-    leftCameraParams.width = 1392;
-    leftCameraParams.height = 512;
+    leftCameraParams.width = 1344;
+    leftCameraParams.height = 391;
     
     t_Camera_params rightCameraParams;
-    rightCameraParams.width = 1392;
-    rightCameraParams.height = 512;
+    rightCameraParams.width = 1344;
+    rightCameraParams.height = 391;
 
     for (uint32_t i = 0; i < 9; i++)
         fin.ignore(numeric_limits<int>::max(), '\n');
@@ -395,7 +397,7 @@ void ObstaclesFromStereo::getParamsFromKarlsruhe(const std::string& fileName, st
     leftCameraParams.t = Eigen::MatrixXd(3, 1);
     for (uint32_t i = 0; i < 3; i++)
         fin >> leftCameraParams.t(i);
-    leftCameraParams.t(1) -= 1.65;
+    leftCameraParams.t(1) -= 1.0; //1.65;
     rightCameraParams.t = leftCameraParams.t;
         
     fin.ignore(numeric_limits<int>::max(), '\n');
@@ -419,7 +421,7 @@ void ObstaclesFromStereo::getParamsFromKarlsruhe(const std::string& fileName, st
     for (uint32_t i = 0; i < 3; i++)
         for (uint32_t j = 0; j < 4; j++)
             fin >> P(i, j);
-
+        
     rightCameraParams.ku = P(0, 0);
     rightCameraParams.kv = P(1, 1);
     rightCameraParams.u0 = P(0, 2);
@@ -435,9 +437,65 @@ void ObstaclesFromStereo::getParamsFromKarlsruhe(const std::string& fileName, st
     params.push_back(rightCameraParams);
 }
 
+void ObstaclesFromStereo::getParamsFromKarlsruhe_v2(ifstream& fin, t_Camera_params & params)
+{
+    params.width = 1244;
+    params.height = 370;
+    
+    fin.ignore(numeric_limits<int>::max(), '\n');           // S_XX
+    fin.ignore(numeric_limits<int>::max(), '\n');           // K_XX
+    fin.ignore(numeric_limits<int>::max(), '\n');           // D_XX
+    
+    fin.ignore(numeric_limits<int>::max(), ' ');
+    params.R = Eigen::MatrixXd(3, 3);
+    for (uint32_t i = 0; i < 3; i++)
+        for (uint32_t j = 0; j < 3; j++)
+            fin >> params.R(i, j);
+        
+    fin.ignore(numeric_limits<int>::max(), ' ');    
+    params.t = Eigen::MatrixXd(3, 1);
+    for (uint32_t i = 0; i < 3; i++)
+        fin >> params.t(i);
+    params.t(1) -= 1.0;
+    
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), ' '); 
+    
+    Eigen::MatrixXd P(3, 4);
+    for (uint32_t i = 0; i < 3; i++)
+        for (uint32_t j = 0; j < 4; j++)
+            fin >> P(i, j);
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    
+    params.ku = P(0, 0);
+    params.kv = P(1, 1);
+    params.u0 = P(0, 2);
+    params.v0 = P(1, 2);
+    
+    params.baseline = - P(0, 3) / params.ku;
+    
+}
+
 void ObstaclesFromStereo::getParamsFromKarlsruhe_v2(const string& fileName, vector< t_Camera_params >& params)
 {
-    // TODO
+    ifstream fin(fileName.c_str());
+    
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    fin.ignore(numeric_limits<int>::max(), '\n');
+    
+    vector< t_Camera_params > tmpParams(4);
+    for (uint32_t i = 0; i < 4; i++) {
+        getParamsFromKarlsruhe_v2(fin, tmpParams[i]);
+    }
+    
+    fin.close();
+    
+    tmpParams[2].baseline = tmpParams[3].baseline;
+    params.push_back(tmpParams[2]);
+    params.push_back(tmpParams[3]);
+    
 }
 
 // FIXME: This test will not work properly with the new version of ObstaclesFromStereo class
@@ -520,7 +578,20 @@ void ObstaclesFromStereo::getFGMask(const std::string & fileName, cv::Mat & fgMa
     }
 }
 
-void ObstaclesFromStereo::filterGround()
+
+void ObstaclesFromStereo::showCameraParams(const t_Camera_params& params)
 {
-    
+    cout << "Params: " << endl;
+    cout << "minX " << params.minX << endl;
+    cout << "minY " << params.minY << endl;
+    cout << "width " << params.width << endl;
+    cout << "height " << params.height << endl;
+    cout << "u0 " << params.u0 << endl;
+    cout << "v0 " << params.v0 << endl;
+    cout << "ku " << params.ku << endl;
+    cout << "kv " << params.kv << endl;
+    cout << "distortion " << params.distortion << endl;
+    cout << "baseline " << params.baseline << endl;
+    cout << "R " << endl << params.R << endl;
+    cout << "t " << endl << params.t << endl;
 }

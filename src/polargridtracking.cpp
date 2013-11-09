@@ -58,6 +58,7 @@ void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr &
         prediction();
         measurementBasedUpdate();
     }
+    
     initialization(map);
 
     drawGrid(20, map);
@@ -114,8 +115,8 @@ void PolarGridTracking::initialization(const BinaryMap & map) {
             
             const double & occupiedProb = cell.occupiedProb();
             if (map(z, x) && cell.empty() && (occupiedProb > m_threshProbForCreation)) {
-                const uint32_t numParticles = m_particlesPerCell * occupiedProb;
-                cell.createParticles(m_particlesPerCell);
+                const uint32_t numParticles = m_particlesPerCell * occupiedProb / 2.0;
+                cell.createParticles(numParticles);
             }
         }
     }
@@ -233,10 +234,10 @@ void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap 
     
     for (uint32_t r = 0; r < m_grid.rows(); r++) {
         for (uint32_t c = 0; c < m_grid.cols(); c++) {
-//             if (binaryMap(r, c)) {
+            if (binaryMap(r, c)) {
                 cv::rectangle(gridImg, cv::Point2i(c * pixelsPerCell, r * pixelsPerCell), cv::Point2i((c + 1) * pixelsPerCell, (r + 1) * pixelsPerCell), cv::Scalar(0, 255, 0));
                 m_grid(r,c).draw(gridImg, pixelsPerCell);
-//             }
+            }
         }
     }
     
@@ -271,5 +272,19 @@ void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap 
     
     cv::imshow(ss.str(), gridImg);
 }
+
+void PolarGridTracking::drawBinaryMap(const BinaryMap& map)
+{
+    cv::Mat imgMap(cv::Size(map.cols(), map.rows()), CV_8UC1);
+    
+    for (uint32_t i = 0; i < map.rows(); i++) {
+        for (uint32_t j = 0; j < map.cols(); j++) {
+            imgMap.at<uint8_t>(i, j) = map(i, j)? 255 : 0;
+        }
+    }
+    
+    cv::imshow("map", imgMap);
+}
+
     
 }

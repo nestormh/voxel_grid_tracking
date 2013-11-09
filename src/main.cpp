@@ -18,6 +18,7 @@
 #include "polargridtracking.h"
 #include "utils.h"
 #include "libvisohelper.h"
+#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 
 #include <iostream>
@@ -57,7 +58,8 @@ void testPointCloud() {
     
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
 //     ObstaclesFromStereo::getParamsFromDublinDataset("/local/imaged/calibrated/cdvp_3d_pedestrian_detection_dataset_vicon_1/Groundtruth3d/GroundtruthPlane.txt", cameraParams);
-    ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2009_09_08_drive_0010/2009_09_08_calib.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE);
+//     ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2009_09_08_drive_0010/2009_09_08_calib.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE);
+    ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2011_09_28/calib_cam_to_cam.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE_V2);
     
     boost::shared_ptr<ObstaclesFromStereo> pointCloudMaker;
     polar_grid_tracking::t_SGBM_params sgbmParams;
@@ -80,8 +82,12 @@ void testPointCloud() {
 //     boost::filesystem::path leftPath("/local/imaged/calibrated/stereocalib-001/image0000153LS.bmp");
 //     boost::filesystem::path rightPath("/local/imaged/calibrated/stereocalib-001/image0000153RS.bmp");
 
-    boost::filesystem::path leftPath("/local/imaged/Karlsruhe/2009_09_08_drive_0010/I1_000100.png");
-    boost::filesystem::path rightPath("/local/imaged/Karlsruhe/2009_09_08_drive_0010/I2_000100.png");
+//     boost::filesystem::path leftPath("/local/imaged/Karlsruhe/2009_09_08_drive_0010/I1_000100.png");
+//     boost::filesystem::path rightPath("/local/imaged/Karlsruhe/2009_09_08_drive_0010/I2_000100.png");
+    
+    boost::filesystem::path leftPath("/local/imaged/Karlsruhe/2011_09_28/2011_09_28_drive_0038_sync/image_02/data/0000000022.png");
+    boost::filesystem::path rightPath("/local/imaged/Karlsruhe/2011_09_28/2011_09_28_drive_0038_sync/image_03/data/0000000022.png");
+    
     
     cout << leftPath << endl;
     cout << rightPath << endl;
@@ -92,7 +98,7 @@ void testPointCloud() {
     cv::Mat leftMask(left.size(), CV_8UC1);
     leftMask.setTo(cv::Scalar(255));
     
-    pointCloudMaker.reset(new ObstaclesFromStereo(cv::Size(left.cols, left.rows), ObstaclesFromStereo::KARLSRUHE));
+    pointCloudMaker.reset(new ObstaclesFromStereo(cv::Size(left.cols, left.rows), ObstaclesFromStereo::KARLSRUHE_V2));
     pointCloudMaker->setCameraParams(cameraParams.at(0), cameraParams.at(1));
     pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
     pointCloudMaker->setSGBMParams(sgbmParams);
@@ -107,7 +113,7 @@ void testPointCloud() {
 }
 
 void testStereoTracking() {
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::DUBLIN;
     
     uint32_t initialIdx;
     boost::filesystem::path correspondencesPath;
@@ -141,6 +147,18 @@ void testStereoTracking() {
             
             break;
         }
+        case ObstaclesFromStereo::KARLSRUHE_V2:
+        {
+            initialIdx = 22;
+            correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
+            seqName = boost::filesystem::path("2011_09_28");
+            leftImagePattern = "2011_09_28_drive_0038_sync/image_02/data/%010d.png";
+            rightImagePattern = "2011_09_28_drive_0038_sync/image_03/data/%010d.png";
+            
+            ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2011_09_28/calib_cam_to_cam.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE_V2);
+            
+            break;
+        }
         default:
             exit(0);
     }
@@ -162,15 +180,15 @@ void testStereoTracking() {
     sgbmParams.fullDP = true;
     
     // TODO: Read from a parameters file
-    uint32_t rows = 60; // 400
-    uint32_t cols = 50; // 128
+    uint32_t rows = 30; // 400
+    uint32_t cols = 30; // 128
     double cellSizeX = 0.2; // 0.1
     double cellSizeZ = 0.2; // 0.1 
-    double particlesPerCell = 500; //1000;
+    double particlesPerCell = 100; //1000;
     double threshProbForCreation = 0.2;
     
     // TODO Get it from the real measurements
-    double deltaTime = 1.0 / 25.0; //0.2;
+    double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
     PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, cameraParams[0], particlesPerCell, threshProbForCreation);
     
@@ -214,10 +232,15 @@ void testStereoTracking() {
         
         // TODO: Think in the right strategy in case yaw couldn't be obtained
         double yaw, speed;
-        visualOdom.compute(left, right, deltaTime, yaw, speed);
-        cout << "Yaw = " << yaw * 180 / 3.14 << endl;
-        cout << "speed = " << speed << endl;
-        
+//         if (calibrationType != ObstaclesFromStereo::KARLSRUHE_V2) {
+//             visualOdom.compute(left, right, deltaTime, yaw, speed);
+//             cout << "Yaw = " << yaw * 180 / 3.14 << endl;
+//             cout << "speed = " << speed << endl;
+//         } else {
+            yaw = 0.0;
+            speed = 0.0;
+//         }
+            
 //         gridTracker.setDeltaYawSpeedAndTime(0.0 / 180.0 * 3.14, 0.0, 1.0);
         gridTracker.setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
 //         gridTracker.setDeltaYawSpeedAndTime(45.0 / 180.0 * 3.14, 0.0, deltaTime);
@@ -237,9 +260,9 @@ void testStereoTracking() {
 
 int main(int argc, char **argV) {
 //     if (fork() == 0) {
-        testPointCloud();
+//         testPointCloud();
 //     }
-//     testStereoTracking();
+    testStereoTracking();
     
     return 0;
 }

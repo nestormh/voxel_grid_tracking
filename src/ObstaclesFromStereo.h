@@ -30,6 +30,7 @@
 
 #include "params_structs.h"
 
+using namespace std;
 using namespace polar_grid_tracking;
 
 class ObstaclesFromStereo {
@@ -56,10 +57,11 @@ public:
                                            double baseline = 0.0995964, double focalLength = 519.546875, cv::Size sz = cv::Size(640, 480));
     static void getParamsFromKarlsruhe(const std::string & fileName, std::vector<t_Camera_params> & params);
     static void getParamsFromKarlsruhe_v2(const std::string & fileName, std::vector<t_Camera_params> & params);
+    static void getParamsFromKarlsruhe_v2(ifstream& fin, t_Camera_params & params);
     static void getParams(const std::string & fileName, std::vector<t_Camera_params> & params, const t_CalibrationFileType & calibrationFileType);
     static void getFGMask(const std::string & fileName, cv::Mat & fgMask, const cv::Size & sz);
 
-    void filterGround();
+    static void showCameraParams(const t_Camera_params & params);
 private:
     void setParamsGeometry(t_Camera_params & params);
     void filterMasked(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & inputCloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & outputCloud);
