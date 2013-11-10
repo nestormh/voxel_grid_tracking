@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<package>
+  <name>PolarGridTracking</name>
+  <version>0.0.1</version>
+  <description>Wrapper for the Polar Grid Tracking method described in the paper "Particle grid tracking system for stereovision based environment perception", by Danescu, R. ; Comput. Sci. Dept., Tech. Univ. of Cluj-Napoca, Cluj-Napoca, Romania ; Oniga, F. ; Nedevschi, S.</description>
+
+  <maintainer email="nestor@isaatc.ull.es">Néstor Morales Hernández</maintainer>
+
+  <license>Apache v2.0</license>
+
+
+  <!-- Url tags are optional, but mutiple are allowed, one per tag -->
+  <!-- Optional attribute type can be: website, bugtracker, or repository -->
+  <!-- Example: -->
+  <url type="repository">https://github.com/nestormh/PolarGridTracking</url>
+  <url type="website">http://nmorales.webs.ull.es</url>
+  <url type="website">http://verdino.webs.ull.es</url>
+
+  <!-- The *_depend tags are used to specify dependencies -->
+  <!-- Dependencies can be catkin packages or system dependencies -->
+  <!-- Examples: -->
+  <!-- Use build_depend for packages you need at compile time: -->
+  <!--   <build_depend>message_generation</build_depend> -->
+  <!-- Use buildtool_depend for build tool packages: -->
+  <!--   <buildtool_depend>catkin</buildtool_depend> -->
+  <!-- Use run_depend for packages you need at runtime: -->
+  <!--   <run_depend>message_runtime</run_depend> -->
+  <!-- Use test_depend for packages you need only for testing: -->
+  <!--   <test_depend>gtest</test_depend> -->
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>boost</build_depend>
+  <build_depend>eigen3</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>opencv2</build_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- You can specify that this package is a metapackage here: -->
+    <!-- <metapackage/> -->
+
+    <!-- Other tools can request additional information be placed here -->
+  </export>
+  
+</package>

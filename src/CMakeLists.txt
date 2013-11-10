@@ -10,14 +10,16 @@ set(VISO_FILES
 )
 
 
-add_executable(PolarGridTracking libvisohelper.cpp
-    main.cpp
+add_executable(PolarGridTracking 
+#     main.cpp
     ObstaclesFromStereo.cpp
     polargridtracking.cpp
     particle.cpp
     cell.cpp
     utils.cpp
+    libvisohelper.cpp
     ${VISO_FILES}
+  main_ros.cpp
 )
   
 include_directories(PolarGridTracking
@@ -41,6 +43,7 @@ target_link_libraries(PolarGridTracking
   ${OpenCV_LIBS}
 #   ${CUDA_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
 #   ${PROTOBUF_LIBRARIES}
 #   ${CMAKE_THREAD_LIBS_INIT}
 #   ${Boost_
