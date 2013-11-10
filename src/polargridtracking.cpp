@@ -51,21 +51,20 @@ void PolarGridTracking::setDeltaYawSpeedAndTime(const double& deltaYaw, const do
 }
 
 void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud) {
-    BinaryMap map;
-    getBinaryMapFromPointCloud(pointCloud, map);
+    getBinaryMapFromPointCloud(pointCloud);
     
-    drawBinaryMap(map);
+    drawBinaryMap();
     drawTopDownMap(pointCloud);
     
-    getMeasurementModel(map);
+    getMeasurementModel();
 
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
     } 
-    initialization(map);
+    initialization();
 
-    drawGrid(10, map);
+    drawGrid(10);
     
     
     
@@ -87,7 +86,7 @@ void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr &
     drawGrid(20, map);*/    
 }
     
-void PolarGridTracking::getMeasurementModel(const BinaryMap & map)
+void PolarGridTracking::getMeasurementModel()
 {
     
 // #pragma omp for schedule(dynamic)
@@ -100,7 +99,7 @@ void PolarGridTracking::getMeasurementModel(const BinaryMap & map)
             uint32_t totalOccupied = 0;
             for (uint32_t row = max(0, (int)(z - sigmaZ)); row <= min((int)(m_grid.rows() - 1), (int)(z + sigmaZ)); row++) {
                 for (uint32_t col = max(0, (int)(x - sigmaX)); col <= min((int)(m_grid.cols() - 1), (int)(x + sigmaX)); col++) {
-                    totalOccupied += map(row, col)? 1 : 0;
+                    totalOccupied += m_map(row, col)? 1 : 0;
                 }
             }
             
@@ -112,13 +111,13 @@ void PolarGridTracking::getMeasurementModel(const BinaryMap & map)
     
 }
 
-void PolarGridTracking::initialization(const BinaryMap & map) {
+void PolarGridTracking::initialization() {
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
             Cell & cell = m_grid(z, x);
             
             const double & occupiedProb = cell.occupiedProb();
-            if (map(z, x) && cell.empty() && (occupiedProb > m_threshProbForCreation)) {
+            if (m_map(z, x) && cell.empty() && (occupiedProb > m_threshProbForCreation)) {
                 const uint32_t numParticles = m_particlesPerCell * occupiedProb / 2.0;
                 cell.createParticles(numParticles);
             }
@@ -128,10 +127,9 @@ void PolarGridTracking::initialization(const BinaryMap & map) {
     m_initialized = true;
 }
 
-void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
-                                                   BinaryMap& map)
+void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
-    map = BinaryMap::Zero(m_grid.rows(), m_grid.cols());
+    m_map = BinaryMap::Zero(m_grid.rows(), m_grid.cols());
 
     const double maxZ = m_grid.rows() * m_cellSizeZ;
     const double maxX = m_grid.cols() / 2.0 * m_cellSizeX;
@@ -148,7 +146,7 @@ void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::P
         if ((xPos > 0) && (xPos < m_grid.cols()) && 
             (zPos > 0) && (zPos < m_grid.rows())) {
         
-            map(zPos, xPos) = true;
+            m_map(zPos, xPos) = true;
         }
     }
 }
@@ -215,30 +213,43 @@ void PolarGridTracking::prediction()
     CellGrid newGrid(m_grid.rows(), m_grid.cols());
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
-            Cell & cell = m_grid(z, x);
-            cell.transformParticles(R, t, stateTransition, newGrid);
+//             if (m_map(z, x)) {
+                Cell & cell = m_grid(z, x);
+                cell.transformParticles(R, t, stateTransition, newGrid);
+                cell.clearParticles();
+//             }
         }
     }
     
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
-            Cell & cellOrig = newGrid(z, x);
-            Cell & cellDest = m_grid(z, x);
-            
-            const vector<Particle> & particles = cellOrig.getParticles();
-            
-            cellDest.setParticles(particles);
+            if (m_map(z, x)) {
+                Cell & cellOrig = newGrid(z, x);
+//                 Cell & cellDest = m_grid(z, x);
+                
+                const vector<Particle> & particles = cellOrig.getParticles();
+                
+                BOOST_FOREACH(const Particle & particle, particles) {
+                    const uint32_t & zPos = particle.z() / m_cellSizeZ;
+                    const uint32_t & xPos = particle.x() / m_cellSizeX;
+//                     if (m_map(zPos, xPos)) {
+                        m_grid(zPos, xPos).addParticle(particle);
+//                     }
+                
+//                 cellDest.setParticles(particles);
+                }
+            }
         }
     }
 }
 
-void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap & binaryMap)
+void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell)
 {
     cv::Mat gridImg = cv::Mat::zeros(cv::Size(m_grid.cols() * pixelsPerCell + 1, m_grid.rows() * pixelsPerCell + 1), CV_8UC3);
     
     for (uint32_t r = 0; r < m_grid.rows(); r++) {
         for (uint32_t c = 0; c < m_grid.cols(); c++) {
-            if (binaryMap(r, c)) {
+            if (m_map(r, c)) {
                 cv::rectangle(gridImg, cv::Point2i(c * pixelsPerCell, r * pixelsPerCell), cv::Point2i((c + 1) * pixelsPerCell, (r + 1) * pixelsPerCell), cv::Scalar(0, 255, 0));
                 m_grid(r,c).draw(gridImg, pixelsPerCell);
             }
@@ -257,7 +268,7 @@ void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap 
     
     for (uint32_t r = 0; r < m_grid.rows(); r++) {
         for (uint32_t c = 0; c < m_grid.cols(); c++) {
-            if (binaryMap(r, c)) {
+            if (m_map(r, c)) {
                 m_grid(r,c).drawParticles(gridImg, pixelsPerCell);
             }
         }
@@ -277,13 +288,13 @@ void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell, const BinaryMap 
     cv::imshow(ss.str(), gridImg);
 }
 
-void PolarGridTracking::drawBinaryMap(const BinaryMap& map)
+void PolarGridTracking::drawBinaryMap()
 {
-    cv::Mat imgMap(cv::Size(map.cols(), map.rows()), CV_8UC1);
+    cv::Mat imgMap(cv::Size(m_map.cols(), m_map.rows()), CV_8UC1);
     
-    for (uint32_t i = 0; i < map.rows(); i++) {
-        for (uint32_t j = 0; j < map.cols(); j++) {
-            imgMap.at<uint8_t>(i, j) = map(i, j)? 255 : 0;
+    for (uint32_t i = 0; i < m_map.rows(); i++) {
+        for (uint32_t j = 0; j < m_map.cols(); j++) {
+            imgMap.at<uint8_t>(i, j) = m_map(i, j)? 255 : 0;
         }
     }
     

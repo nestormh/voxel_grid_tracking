@@ -101,7 +101,7 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
                 case KARLSRUHE_V2:
                 {
                     point.x = (((m_leftCameraParams.u0 - j) / m_leftCameraParams.ku) / norm);
-                    point.y = -(((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm)/* + 1.65*/;
+                    point.y = (((m_leftCameraParams.v0 - i)/ m_leftCameraParams.kv) / norm)/* + 1.65*/;
                     point.z = 1.0 / norm;
                     
                     pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];

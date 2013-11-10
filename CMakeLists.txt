@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(PolarGridTracking)
 
+## Find catkin macros and libraries
+## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
+## is used, also find other catkin packages
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+)
+
+set(ROS_BUILD_TYPE Debug)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math -unroll-loops -march=native -std=c++0x -fopenmp -msse3")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -25,14 +35,6 @@ find_package(PCL 1.6 REQUIRED)
 # find_package(CGAL REQUIRED)
 # find_package(GMP REQUIRED)
 # find_package(MPFR REQUIRED)
-
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
-)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)

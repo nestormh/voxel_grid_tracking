@@ -43,15 +43,16 @@ public:
     
 protected:   
     
-    void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, BinaryMap & map);
-    void initialization(const BinaryMap & map);
-    void getMeasurementModel(const BinaryMap & map);
+    void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
+    void initialization();
+    void getMeasurementModel();
     void measurementBasedUpdate();
     void prediction();
-    void drawGrid(const uint32_t & pixelsPerCell, const BinaryMap & binaryMap);
-    void drawBinaryMap(const BinaryMap & map);
+    void drawGrid(const uint32_t & pixelsPerCell);
+    void drawBinaryMap();
     void drawTopDownMap(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
     
+    BinaryMap m_map;
     CellGrid m_grid;
     
     bool m_initialized;

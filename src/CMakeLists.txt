@@ -1,4 +1,4 @@
-set(VISO_FILES
+set(VISO_FILES polargridtrackingros.cpp
     libviso2/filter.cpp
     libviso2/matcher.cpp
     libviso2/matrix.cpp
@@ -28,6 +28,7 @@ include_directories(PolarGridTracking
     ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
+    /opt/ros/hydro/include
 #     emon.a
 #     ${CUDA_INCLUDE_DIRS}
 #     /usr/local/dislin

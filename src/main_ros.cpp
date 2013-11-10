@@ -16,6 +16,7 @@
 
 #include "ObstaclesFromStereo.h"
 #include "polargridtracking.h"
+#include "polargridtrackingros.h"
 #include "utils.h"
 #include "libvisohelper.h"
 #include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
@@ -155,7 +156,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 22;
+            initialIdx = 50;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
             leftImagePattern = "image_02/data/%010d.png";
@@ -194,13 +195,13 @@ void testStereoTracking() {
     double cellSizeZ = 0.2; // 0.1
     double maxVelX = 5.0; // 0.1
     double maxVelZ= 5.0; // 0.1 
-    double particlesPerCell = 100; //1000;
-    double threshProbForCreation = 0.2;
+    double particlesPerCell = 1000; //1000;
+    double threshProbForCreation = 0.9999; //0.2;
     
     // TODO Get it from the real measurements
     //     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
-    PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation);
+    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;
@@ -283,11 +284,14 @@ void testStereoTracking() {
         gridTracker.compute(pointCloud);
         
         //         visualizePointCloud(pointCloud);
-        
-        uint8_t keycode = cv::waitKey(0);
-        if (keycode == 27) {
-            break;
-        }
+//         if (i == initialIdx) {
+//             cv::waitKey(20);
+//         } else {
+            uint8_t keycode = cv::waitKey(0);
+            if (keycode == 27) {
+                break;
+            }
+//         }
         
         //         if (i != initialIdx)
         //             break;
@@ -297,9 +301,9 @@ void testStereoTracking() {
 int main(int argC, char **argV) {
     ros::init(argC, argV, "PolarGridTracking");
     
-    if (fork() == 0) {
-        testPointCloud();
-    }
+//     if (fork() == 0) {
+//         testPointCloud();
+//     }
     testStereoTracking();
     
     return 0;

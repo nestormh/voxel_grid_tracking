@@ -51,8 +51,8 @@ public:
     double occupiedPosteriorProb() { return m_occupiedPosteriorProb; }
     double freeProb() { return 1.0 - m_occupiedProb; }
     
-    uint32_t numParticles() { return m_particles.size(); }
-    Particle & getParticle(const uint32_t & idx) { return m_particles.at(idx); }
+    uint32_t numParticles() const { return m_particles.size(); }
+    Particle getParticle(const uint32_t & idx) const { return m_particles.at(idx); }
     vector <Particle> getParticles() { return m_particles; }
     bool empty() { return m_particles.size() == 0; }
     void makeCopy(const Particle & particle);
