@@ -18,6 +18,11 @@
 #ifndef PARAMS_STRUCTS_H
 #define PARAMS_STRUCTS_H
 
+#define PCL_NO_PRECOMPILE
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/io/pcd_io.h>
+
 #include <stdint.h>
 #include <Eigen/Core>
 
@@ -49,6 +54,7 @@ typedef struct {
     bool fullDP;
 } t_SGBM_params;
 
+
 typedef struct {
     double deltaYaw;
     double deltaPos;
@@ -56,6 +62,52 @@ typedef struct {
     double speed;
 } t_ego_value;
 
+typedef struct {
+    double r, c;
+} t_gridCoordinate;
+
+// using namespace pcl;
+// 
+struct PointXYZRGBDirected
+{
+    PCL_ADD_POINT4D;                  // preferred way of adding a XYZ+padding
+//     union
+//     {
+//         struct
+//         {
+//             float rgb;
+//         };
+//         float data_c[4];
+//     };
+    PCL_ADD_RGB;
+    union
+    {
+        float vData[4];
+        struct
+        {
+            float vx;
+//             float vy;
+            float vz;
+            float yaw;
+            float magnitude;
+        };
+    };
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW   // make sure our new allocators are aligned
+} EIGEN_ALIGN16;                    // enforce SSE padding for correct memory alignment
+
 }
+
+POINT_CLOUD_REGISTER_POINT_STRUCT (polar_grid_tracking::PointXYZRGBDirected,          
+                                   (float, x, x)
+                                   (float, y, y)
+                                   (float, z, z)
+                                   (float, r, r)
+                                   (float, g, g)
+                                   (float, b, b)
+                                   (float, vx, vx)
+                                   (float, vz, vz)
+                                   (float, yaw, yaw)
+                                   (float, magnitude, magnitude)
+)
 
 #endif // PARAMS_STRUCTS_H

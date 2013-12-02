@@ -19,7 +19,9 @@
 #define POLARGRIDTRACKING_H
 
 #include "cell.h"
+#include "polarcell.h"
 #include "params_structs.h"
+
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -36,12 +38,21 @@ public:
     
     PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                       const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
-                      const double & particlesPerCell, const double & threshProbForCreation);
+                      const double & particlesPerCell, const double & threshProbForCreation, 
+                      const double & gridDepthFactor, const uint32_t & gridColumnFactor, const double & yawInterval);
     
     void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     
 protected:   
+    void reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
+    void generateObstacles();
+    void extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud,
+                          pcl::PointCloud< PointXYZRGBDirected >::Ptr & extendedPointCloud);
+    void getPolarPositionFromCartesian(const double & z, const double & x, 
+                                       uint32_t& row, uint32_t& column);
+    void resetPolarGrid();
+    void updatePolarGridWithPoint(const PointXYZRGBDirected & point);
     
     void getBinaryMapFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
     void initialization();
@@ -54,6 +65,7 @@ protected:
     
     BinaryMap m_map;
     CellGrid m_grid;
+    PolarCellGrid m_polarGrid;
     
     bool m_initialized;
     
@@ -64,6 +76,13 @@ protected:
     double m_cellSizeX, m_cellSizeZ;
     double m_maxVelX, m_maxVelZ;
     double m_particlesPerCell, m_threshProbForCreation;
+    
+    double m_gridDepthFactor;
+    uint32_t m_gridColumnFactor;
+    double m_yawInterval;
+    
+    typedef vector<t_gridCoordinate> t_obstacle;
+    vector <t_obstacle> m_obstacles;
     
 };
 }

@@ -100,16 +100,18 @@ void Cell::transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d &
     m_particles.clear();
 }
 
-double Cell::getAvgDir(double & vx, double & vz) {
-    vx = 0.0;
-    vz = 0.0;
-    BOOST_FOREACH(Particle particle, m_particles) {
-        vx += particle.vx();
-        vz += particle.vz();
-    }
+void Cell::setMainVectors() {
+    m_vx = 0.0;
+    m_vz = 0.0;
+    if (m_particles.size() != 0) {
+        BOOST_FOREACH(Particle particle, m_particles) {
+            m_vx += particle.vx();
+            m_vz += particle.vz();
+        }
     
-    vx /= m_particles.size();
-    vz /= m_particles.size();
+        m_vx /= m_particles.size();
+        m_vz /= m_particles.size();
+    }
 }
 
 void Cell::draw(cv::Mat& img, const uint32_t & pixelsPerCell)
@@ -126,7 +128,7 @@ void Cell::drawParticles(cv::Mat& img, const uint32_t & pixelsPerCell)
     
     if (m_particles.size() > 0) {
         double vx, vz;
-        getAvgDir(vx, vz);
+        getMainVectors(vx, vz);
         const double factorX = pixelsPerCell / m_sizeX;
         const double factorZ = pixelsPerCell / m_sizeZ;
         cv::Point2i center(m_x * pixelsPerCell + pixelsPerCell / 2.0, m_z * pixelsPerCell + pixelsPerCell / 2.0);

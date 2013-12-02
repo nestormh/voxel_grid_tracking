@@ -21,8 +21,11 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "nav_msgs/GridCells.h"
 #include "nav_msgs/OccupancyGrid.h"
+#include <visualization_msgs/Marker.h>
 #include "geometry_msgs/PoseArray.h"
 #include <tf/transform_datatypes.h>
+
+#include "utils.h"
 
 #include <boost/foreach.hpp>
 
@@ -31,16 +34,21 @@ namespace polar_grid_tracking {
 PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t& cols, const double& cellSizeX, 
                                            const double& cellSizeZ, const double& maxVelX, const double& maxVelZ, 
                                            const t_Camera_params& cameraParams, const double& particlesPerCell, 
-                                           const double& threshProbForCreation): 
+                                           const double& threshProbForCreation, 
+                                           const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval): 
                                             PolarGridTracking(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams, 
-                                                              particlesPerCell, threshProbForCreation)
+                                                              particlesPerCell, threshProbForCreation, gridDepthFactor, gridColumnFactor, yawInterval)
 {
     ros::NodeHandle nh("~");
     m_pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloud", 1);
+    m_extendedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("extendedPointCloud", 1);
+    m_extendedPointCloudOrientationPub = nh.advertise<geometry_msgs::PoseArray> ("pointCloudOrientation", 1);
     m_binaryMapPub = nh.advertise<nav_msgs::GridCells> ("binaryMap", 1);
     m_particlesPub = nh.advertise<geometry_msgs::PoseArray> ("particles", 1);
     m_oldParticlesPub = nh.advertise<geometry_msgs::PoseArray> ("oldParticles", 1);
     m_colAvgPub = nh.advertise<geometry_msgs::PoseArray> ("colAvg", 1);
+    m_polarGridPub = nh.advertise<visualization_msgs::Marker>("polarGrid", 10);
+    m_polarCellYawPub = nh.advertise<geometry_msgs::PoseArray> ("polarCellYaw", 1);
     
 //     ros::spin();
 }
@@ -58,6 +66,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
+        reconstructObjects(pointCloud);
     } 
     publishParticles(m_oldParticlesPub, 2.0);
     initialization();
@@ -74,7 +83,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
 
 void PolarGridTrackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
-        publishPointCloud(pointCloud);
+//         publishPointCloud(pointCloud);
         publishBinaryMap();
         publishParticles(m_particlesPub, 1.0);
         publishColumnAverage(0.5);
@@ -82,20 +91,21 @@ void PolarGridTrackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >:
 
 void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
-    pcl::PointCloud< pcl::PointXYZRGB >::Ptr tmpPointCloud(new pcl::PointCloud< pcl::PointXYZRGB >);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    
     for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
         it != pointCloud->end(); it++) {
         
         const pcl::PointXYZRGB & point = *it;
         pcl::PointXYZRGB newPoint;
     
-        newPoint.x = point.x;
-        newPoint.y = point.z;
+        newPoint.x = point.x - m_cellSizeX / 2.0;
+        newPoint.y = point.z - m_cellSizeZ / 2.0;
         newPoint.z = point.y;
         newPoint.r = point.r;
         newPoint.g = point.g;
         newPoint.b = point.b;
-        
+    
         tmpPointCloud->push_back(newPoint);
     }
 
@@ -108,6 +118,72 @@ void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXY
     
     ros::spinOnce();
 }
+
+
+void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    for (pcl::PointCloud<PointXYZRGBDirected>::const_iterator it = pointCloud->begin();
+            it != pointCloud->end(); it++) {
+
+        const PointXYZRGBDirected & point = *it;
+        pcl::PointXYZRGB newPoint;
+
+        newPoint.x = point.x - m_cellSizeX / 2.0;
+        newPoint.y = point.z - m_cellSizeZ / 2.0;
+        newPoint.z = point.y;
+        newPoint.r = point.r;
+        newPoint.g = point.g;
+        newPoint.b = point.b;
+
+        tmpPointCloud->push_back(newPoint);
+    }
+
+
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*tmpPointCloud, cloudMsg);
+    cloudMsg.header.frame_id="left_cam";
+
+    m_extendedPointCloudPub.publish(cloudMsg);
+
+    ros::spinOnce();
+}
+
+void PolarGridTrackingROS::publishPointCloudOrientation(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
+{
+//     ros::Publisher & particlesPub, const double & zPlane
+    geometry_msgs::PoseArray poses;
+    
+    poses.header.frame_id = "left_cam";
+    poses.header.stamp = ros::Time();
+    
+    const double offsetX = ((m_grid.cols() + 1) * m_cellSizeX) / 2.0;
+    const double offsetZ = m_cellSizeZ / 2.0;
+    
+    for (pcl::PointCloud<PointXYZRGBDirected>::const_iterator it = pointCloud->begin();
+         it != pointCloud->end(); it++) {
+        
+        const PointXYZRGBDirected & point = *it;
+        geometry_msgs::Pose pose;
+        
+        pose.position.x = point.x - m_cellSizeX / 2.0;
+        pose.position.y = point.z - m_cellSizeZ / 2.0;
+        pose.position.z = point.y;
+    
+        const tf::Quaternion & quat = tf::createQuaternionFromRPY(0.0, 0.0, point.yaw);
+        pose.orientation.w = quat.w();
+        pose.orientation.x = quat.x();
+        pose.orientation.y = quat.y();
+        pose.orientation.z = quat.z();
+        
+        poses.poses.push_back(pose);
+    }
+    
+    m_extendedPointCloudOrientationPub.publish(poses);
+}
+
+
 
 void PolarGridTrackingROS::publishBinaryMap()
 {
@@ -206,16 +282,13 @@ void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
                 pose.position.z = zPlane;
                 
                 double vx, vz;
+                m_grid(z, x).getMainVectors(vx, vz);
                 const vector<Particle> & particles = m_grid(z, x).getParticles();
                 if (particles.size() != 0) {
-                    BOOST_FOREACH(const Particle & particle, particles) {
-                        vx += particle.vx();
-                        vz += particle.vz();
-                    }
-                    vx /= particles.size();
-                    vz /= particles.size();
                     
                     const double & norm = sqrt(vx * vx + vz * vz);
+                    
+                    if (norm == 0.0) continue;
                     
                     double yaw = acos(vx / norm);
                     if (vz < 0)
@@ -226,7 +299,7 @@ void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
                     pose.orientation.x = quat.x();
                     pose.orientation.y = quat.y();
                     pose.orientation.z = quat.z();
-                    
+                                        
                     colAverages.poses.push_back(pose);
                 }
                 
@@ -238,5 +311,118 @@ void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
     m_colAvgPub.publish(colAverages);
 }
 
+void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+{   
+    pcl::PointCloud< PointXYZRGBDirected >::Ptr extendedPointCloud;
+    resetPolarGrid();
+    extendPointCloud(pointCloud, extendedPointCloud);
+    
+    generateObstacles();
+        
+    publishPolarGrid();
+    publishPointCloud(extendedPointCloud);
+    publishPointCloudOrientation(extendedPointCloud);
+    publishPolarCellYaw(1.0);
+}
+
+void PolarGridTrackingROS::publishPolarGrid()
+{
+    visualization_msgs::Marker line_list;
+    line_list.header.frame_id = "left_cam";
+    line_list.header.stamp = ros::Time::now();
+//     line_list.ns = "points_and_lines";
+    line_list.action = visualization_msgs::Marker::ADD;
+    line_list.pose.orientation.w = 1.0;
+    
+    line_list.id = 0;
+    line_list.type = visualization_msgs::Marker::LINE_LIST;
+    
+    line_list.scale.x = 0.01;
+    
+    // Line list is red
+    line_list.color.r = 1.0;
+    line_list.color.a = 1.0;
+    
+    // Create the vertices for the points and lines
+    double z = (double)(m_cameraParams.ku * m_cameraParams.baseline) / m_cameraParams.width;
+    
+    const double maxDepth = m_grid.rows() * m_cellSizeZ * (m_gridDepthFactor + 1.0);
+    const double fb = m_cameraParams.ku * m_cameraParams.baseline;
+    const double maxCol = m_cameraParams.u0 - m_cameraParams.width - 1;
+    while (z <= maxDepth) {
+        const double d = fb / z;
+        const double xMin = m_cameraParams.baseline * m_cameraParams.u0 / d;
+        const double xMax = m_cameraParams.baseline * maxCol / d;
+        
+        geometry_msgs::Point p1, p2;
+        p1.x = xMin;
+        p2.x = xMax;
+        p1.y = p2.y = z;
+        p1.z = p2.z = 0;
+        
+        line_list.points.push_back(p1);
+        line_list.points.push_back(p2);
+        
+        z *= 1.0 + m_gridDepthFactor;
+    }
+    
+    z /= 1.0 + m_gridDepthFactor;
+    
+    const double dMin = fb / z;
+    for (uint32_t i = 0; i < m_cameraParams.width - 1; i += m_gridColumnFactor) {
+        const double x = m_cameraParams.baseline * (m_cameraParams.u0 - i) / dMin;
+        
+        geometry_msgs::Point p1, p2;
+        p1.x = x;
+        p1.y = z;
+        p1.z = 0;
+        
+        p2.x = p2.y = p2.z = 0;
+        
+        line_list.points.push_back(p1);
+        line_list.points.push_back(p2);
+    }
+    
+    m_polarGridPub.publish(line_list);
+    
+}
+
+void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
+{
+    geometry_msgs::PoseArray polarCellYaw;
+    
+    polarCellYaw.header.frame_id = "left_cam";
+    polarCellYaw.header.stamp = ros::Time();
+    
+    const double z0 = (double)(m_cameraParams.ku * m_cameraParams.baseline) / m_cameraParams.width;
+    const double fb = m_cameraParams.ku * m_cameraParams.baseline;
+    
+    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            if (m_polarGrid(r, c).getNumVectors() != 0) {
+                
+                geometry_msgs::Pose pose;
+                
+                pose.position.y = z0 * pow(1.0 + m_gridDepthFactor, r + 0.5);
+                const double dMin = fb / pose.position.y;
+                const double u = m_gridColumnFactor * (c + 2.5);
+                pose.position.x = pose.position.y * (m_cameraParams.u0 - u) / m_cameraParams.ku;
+                pose.position.z = zPlane;
+                
+                const double yaw = m_polarGrid(r, c).getYaw();
+                    
+                const tf::Quaternion & quat = tf::createQuaternionFromRPY(0.0, 0.0, yaw);
+                pose.orientation.w = quat.w();
+                pose.orientation.x = quat.x();
+                pose.orientation.y = quat.y();
+                pose.orientation.z = quat.z();
+                
+                polarCellYaw.poses.push_back(pose);
+            }
+        }
+    }
+    
+    m_polarCellYawPub.publish(polarCellYaw);
+}
 
 }

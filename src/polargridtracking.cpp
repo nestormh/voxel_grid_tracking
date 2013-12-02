@@ -20,6 +20,7 @@
 #include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 #include <boost/foreach.hpp>
+#include <pcl/point_cloud.h>
 
 using namespace std;
 
@@ -27,15 +28,32 @@ namespace polar_grid_tracking {
 
 PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                                      const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
-                                     const double & particlesPerCell, const double & threshProbForCreation) : 
+                                     const double & particlesPerCell, const double & threshProbForCreation, 
+                                     const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval) : 
                                             m_cameraParams(cameraParams), m_grid(CellGrid(rows, cols)), 
                                             m_cellSizeX(cellSizeX), m_cellSizeZ(cellSizeZ),
                                             m_maxVelX(maxVelX), m_maxVelZ(maxVelZ),
-                                            m_particlesPerCell(particlesPerCell), m_threshProbForCreation(threshProbForCreation)
+                                            m_particlesPerCell(particlesPerCell), m_threshProbForCreation(threshProbForCreation),
+                                            m_gridDepthFactor (gridDepthFactor), m_gridColumnFactor(gridColumnFactor), 
+                                            m_yawInterval(yawInterval)
 {
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
             m_grid(z, x) = Cell(x, z, m_cellSizeX, m_cellSizeZ, m_maxVelX, m_maxVelZ, m_cameraParams);
+        }
+    }
+    
+    const double maxDepth = rows * m_cellSizeZ;
+//     const double maxWide = cols * m_cellSizeX / 2.0;
+    uint32_t numRows, numCols;
+    getPolarPositionFromCartesian(maxDepth, 0, 
+                                  numRows, numCols);
+    numCols = m_cameraParams.width / (double)m_gridColumnFactor + 1;
+
+    m_polarGrid = PolarCellGrid(numRows + 1, numCols);
+    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            m_polarGrid(r, c) = PolarCell(m_yawInterval, r, c);
         }
     }
     
@@ -61,29 +79,11 @@ void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr &
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
-    } 
+        reconstructObjects(pointCloud);
+    }
     initialization();
 
     drawGrid(10);
-    
-    
-    
-/*    BinaryMap map = BinaryMap::Zero(m_grid.rows(), m_grid.cols());
-    for (uint32_t i = 0; i < map.rows(); i++) {
-        for (uint32_t j = 0; j < map.cols(); j++) {
-            map(i, j) = true;
-        }
-    }
-
-    if (m_initialized) {
-        cout << "Predicting " << endl;
-        prediction();
-    }
-    m_initialized = true;
-    
-    m_grid(10, 20).addParticle(Particle(2.05, 1.05, 0.5, 0.5, false));
-
-    drawGrid(20, map);*/    
 }
     
 void PolarGridTracking::getMeasurementModel()
@@ -186,6 +186,8 @@ void PolarGridTracking::measurementBasedUpdate()
                     }
                 }
             }
+            
+            cell.setMainVectors();
         }
     }
 }
@@ -213,31 +215,23 @@ void PolarGridTracking::prediction()
     CellGrid newGrid(m_grid.rows(), m_grid.cols());
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
-//             if (m_map(z, x)) {
-                Cell & cell = m_grid(z, x);
-                cell.transformParticles(R, t, stateTransition, newGrid);
-                cell.clearParticles();
-//             }
+            Cell & cell = m_grid(z, x);
+            cell.transformParticles(R, t, stateTransition, newGrid);
+            cell.clearParticles();
         }
     }
     
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
-            if (m_map(z, x)) {
-                Cell & cellOrig = newGrid(z, x);
-//                 Cell & cellDest = m_grid(z, x);
+            Cell & cellOrig = newGrid(z, x);
+            
+            const vector<Particle> & particles = cellOrig.getParticles();
+            
+            BOOST_FOREACH(const Particle & particle, particles) {
+                const uint32_t & zPos = particle.z() / m_cellSizeZ;
+                const uint32_t & xPos = particle.x() / m_cellSizeX;
                 
-                const vector<Particle> & particles = cellOrig.getParticles();
-                
-                BOOST_FOREACH(const Particle & particle, particles) {
-                    const uint32_t & zPos = particle.z() / m_cellSizeZ;
-                    const uint32_t & xPos = particle.x() / m_cellSizeX;
-//                     if (m_map(zPos, xPos)) {
-                        m_grid(zPos, xPos).addParticle(particle);
-//                     }
-                
-//                 cellDest.setParticles(particles);
-                }
+                m_grid(zPos, xPos).addParticle(particle);
             }
         }
     }
@@ -331,6 +325,130 @@ void PolarGridTracking::drawTopDownMap(const pcl::PointCloud< pcl::PointXYZRGB >
     
     cv::imshow("TopDownMap", resizedMap);
 }
+
+void PolarGridTracking::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+{
+    pcl::PointCloud< PointXYZRGBDirected >::Ptr extendedPointCloud;
+    resetPolarGrid();
+    extendPointCloud(pointCloud, extendedPointCloud);
+    
+    generateObstacles();
+}
+
+void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
+                                         pcl::PointCloud< PointXYZRGBDirected >::Ptr& extendedPointCloud)
+{
+    extendedPointCloud.reset(new pcl::PointCloud< PointXYZRGBDirected >);
+    extendedPointCloud->reserve(pointCloud->size());
+    
+    const double maxX = ((double)m_grid.cols() / 2.0) * (double)m_cellSizeX;
+    const double minX = -maxX;
+    const double maxZ = m_grid.rows() * m_cellSizeZ;
+    
+    const double factorX = m_grid.cols() / (maxX - minX);
+    const double factorZ = m_grid.rows() / maxZ;
+    
+    BOOST_FOREACH(const pcl::PointXYZRGB & point, pointCloud->points) {
+        if ((point.x >= minX) && (point.x <= maxX) && (point.z <= maxZ)) {
+            // TODO: Check the cell each particle belongs to and assign the corresponding vectors
+            PointXYZRGBDirected destPoint;
+            destPoint.x = point.x;
+            destPoint.y = point.y;
+            destPoint.z = point.z;
+            
+            destPoint.r = point.r;
+            destPoint.g = point.g;
+            destPoint.b = point.b;
+            
+            const uint32_t xPos = (point.x - minX) * factorX;
+            const uint32_t zPos = point.z * factorZ;
+            
+            const Cell & cell = m_grid(zPos, xPos);
+            double vx, vz;
+            cell.getMainVectors(vx, vz);
+            destPoint.vx = vx;
+//             destPoint.vy = 0.0;
+            destPoint.vz = vz;
+            // TODO: Get orientation and magnitude
+            
+            destPoint.yaw = 0.0;
+            destPoint.magnitude = 0.0;
+            if ((vx != 0) || (vz != 0)) {
+                destPoint.magnitude = sqrt(vx * vx + vz * vz);
+                
+                destPoint.yaw = acos(destPoint.vx / destPoint.magnitude);
+                if (destPoint.vz < 0)
+                    destPoint.yaw = -destPoint.yaw;
+            }
+                        
+            updatePolarGridWithPoint(destPoint);
+            
+            extendedPointCloud->push_back(destPoint);
+            
+        }
+    }
+}
+
+void PolarGridTracking::generateObstacles()
+{
+    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            m_polarGrid(r, c).updateYawAndMagnitude();
+        }
+    }
+    
+    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            const PolarCell & cell = m_polarGrid(r, c);
+            if (cell.getNumVectors() != 0) {
+                uint32_t obstIdx;
+                if (cell.obstIdx() == -1) {
+                    obstIdx = m_obstacles.size();
+                    cell.setObstacleIdx(obstIdx);
+                    t_obstacle obst;
+                    obst.push_back({r, c});
+                    m_obstacles.push_back(obst);
+                } else obstIdx = cell.obstIdx();
+                
+                
+                for (uint32_t r1 = max(r - 1, 0); r1 < min(r + 1, m_polarGrid.rows() - 1); r1++) {
+                    for (uint32_t c1 = max(c - 1, 0); c1 < min(c + 1, m_polarGrid.cols() - 1); c1++) {
+                        const PolarCell & cell2 = m_polarGrid(r1, c1);
+                        if (cell2.getNumVectors() != 0) {
+                            
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void PolarGridTracking::getPolarPositionFromCartesian(const double & z, const double & x, 
+                                                         uint32_t& row, uint32_t& column)
+{
+    const double z0 = (double)(m_cameraParams.ku * m_cameraParams.baseline) / m_cameraParams.width;
+    
+    row = LOG_BASE(1.0 + m_gridDepthFactor, z / z0);
+    const double u = m_cameraParams.u0 - ((x * m_cameraParams.ku) / z);
+    column = u / m_gridColumnFactor - 1;
+}
+
+void PolarGridTracking::resetPolarGrid()
+{for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            m_polarGrid(r, c).reset();
+        }
+    }
+}
+
+void PolarGridTracking::updatePolarGridWithPoint(const PointXYZRGBDirected& point)
+{
+    uint32_t row, column;
+    getPolarPositionFromCartesian(point.z, point.x, row, column);
+    m_polarGrid(row, column).addPointToHistogram(point);
+}
+
 
     
 }

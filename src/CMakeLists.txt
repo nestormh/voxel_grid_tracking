@@ -1,4 +1,4 @@
-set(VISO_FILES polargridtrackingros.cpp
+set(VISO_FILES obstacle.cpp polarcell.cpp polargridtrackingros.cpp
     libviso2/filter.cpp
     libviso2/matcher.cpp
     libviso2/matrix.cpp
@@ -25,7 +25,7 @@ add_executable(PolarGridTracking
 include_directories(PolarGridTracking
 #     GPULibSVM
 #     ${EIGEN3_INCLUDE_DIR}
-    ${PCL_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}/pcl-1.7
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     /opt/ros/hydro/include

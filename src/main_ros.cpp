@@ -156,7 +156,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 50;
+            initialIdx = 55;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
             leftImagePattern = "image_02/data/%010d.png";
@@ -198,10 +198,14 @@ void testStereoTracking() {
     double particlesPerCell = 1000; //1000;
     double threshProbForCreation = 0.9999; //0.2;
     
+    double gridDepthFactor = 0.05;
+    uint32_t gridColumnFactor = 12;
+    double yawInterval = 5.0 * M_PI / 180.0;
+    
     // TODO Get it from the real measurements
     //     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
-    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation);
+    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation, gridDepthFactor, gridColumnFactor, yawInterval);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;
@@ -295,6 +299,7 @@ void testStereoTracking() {
         
         //         if (i != initialIdx)
         //             break;
+        ros::spinOnce();
 }
 }
 

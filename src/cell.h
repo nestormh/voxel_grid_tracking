@@ -65,8 +65,11 @@ public:
     void draw(cv::Mat & img, const uint32_t & pixelsPerCell);
     void drawParticles(cv::Mat& img, const uint32_t & pixelsPerCell);
     
+    void setMainVectors();
+    void getMainVectors(double & vx, double & vz) const { vx = m_vx; vz = m_vz; }
+    
 protected:
-    double getAvgDir(double & vx, double & vz);
+//     double getAvgDir(double & vx, double & vz);
     
     double m_x, m_z;
     double m_sigmaX, m_sigmaZ;
@@ -75,6 +78,8 @@ protected:
     
     double m_occupiedProb;
     double m_occupiedPosteriorProb;
+    
+    double m_vx, m_vz;
     
     vector <Particle> m_particles;
 };

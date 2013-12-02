@@ -6,7 +6,8 @@
 <!-- <node pkg="tf" type="static_transform_publisher" name="binarymap_tf" args="0 0 0 0 0 1.57079632679489661923 left_cam binary_map 100" /> -->
 
 <group ns="$(arg namespace)">
-    <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" required="true" >
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+    <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
     </node>
 </group>
         
