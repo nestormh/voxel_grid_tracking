@@ -47,6 +47,12 @@ public:
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     
 protected:   
+    typedef struct {
+        uint32_t row, col;
+    } t_visitInfo;
+    typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic > t_visitMatrix;
+    
+    void growFromList(Obstacle & obstacle, deque<t_visitInfo> &candidates, t_visitMatrix & assigned, t_visitMatrix & addedToList);
     void reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     void generateObstacles();
     void extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud,

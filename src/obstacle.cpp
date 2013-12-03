@@ -39,7 +39,7 @@ Obstacle::Obstacle(const uint32_t& obstIdx, const double & threshYaw,
 
 }
 
-void Obstacle::addCellToObstacle(PolarCell& cell)
+bool Obstacle::addCellToObstacle(PolarCell& cell)
 {
     if (m_cells.size() != 0) {    // If holds motion info
         const double & diffMagnitude = fabs(m_magnitude - cell.getMagnitude());
@@ -49,13 +49,19 @@ void Obstacle::addCellToObstacle(PolarCell& cell)
             m_cells.push_back(cell);
             cell.setObstacleIdx(m_idx);
             updateMotionInformation();
+            
+            return true;
         }
     } else {
         m_cells.push_back(cell);
         m_magnitude = cell.getMagnitude();
         m_yaw = cell.getYaw();
         cell.setObstacleIdx(m_idx);
+        
+        return true;
     }
+    
+    return false;
 }
 
 void Obstacle::updateMotionInformation()

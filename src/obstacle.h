@@ -32,7 +32,7 @@ class Obstacle
 public:
     Obstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshMagnitude, PolarCell & cell);
     Obstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshMagnitude);
-    void addCellToObstacle(PolarCell & cell);
+    bool addCellToObstacle(PolarCell & cell);
     
     vector<PolarCell> cells() const { return m_cells; }
 protected:

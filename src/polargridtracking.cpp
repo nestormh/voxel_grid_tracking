@@ -409,6 +409,36 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
     }
 }
 
+void PolarGridTracking::growFromList(Obstacle & obstacle, deque<t_visitInfo> &candidates, 
+                                     t_visitMatrix & assigned, t_visitMatrix & addedToList) 
+{
+    while (candidates.size() != 0) {
+        t_visitInfo vi = candidates.front();
+        candidates.pop_front();
+        PolarCell & cell = m_polarGrid(vi.row, vi.col);
+        
+        const bool & added = obstacle.addCellToObstacle(cell);
+        if (added) {
+            assigned(cell.row(), cell.col()) = true;
+        
+            for (uint32_t r1 = max(cell.row() - 1, (uint32_t)0); r1 <= min(cell.row() + 1, (uint32_t)m_polarGrid.rows() - 1); r1++) {
+                for (uint32_t c1 = max(cell.col() - 1, (uint32_t)0); c1 <= min(cell.col() + 1, (uint32_t)m_polarGrid.cols() - 1); c1++) {
+                    if ((r1 != cell.row()) || (cell.col() != c1)) {
+                        if ((! addedToList(r1, c1)) && (! assigned(r1, c1))) {
+                            if (m_polarGrid(r1, c1).getNumVectors() != 0) {
+                                if (m_polarGrid(r1, c1).obstIdx() == -1) {
+                                    candidates.push_back({r1, c1});
+                                    addedToList(r1, c1) = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void PolarGridTracking::generateObstacles()
 {
     for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
@@ -419,106 +449,32 @@ void PolarGridTracking::generateObstacles()
     
     m_obstacles.clear();
     
-    Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic > visited(m_polarGrid.rows(), m_polarGrid.cols());
-    visited.setConstant(false);
-    typedef struct {
-        uint32_t row, col;
-//         bool visited;
-    } t_visitInfo;
+    t_visitMatrix assigned(m_polarGrid.rows(), m_polarGrid.cols());
+    t_visitMatrix addedToList(m_polarGrid.rows(), m_polarGrid.cols());
+    assigned.setConstant(false);
     
-    /*for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            
+            addedToList = assigned;
+            
             PolarCell & cell = m_polarGrid(r, c);
             
             deque<t_visitInfo> candidates;
             
-            if (cell.getNumVectors() != 0) {
-                if (! visited(r, c)) {
-            
-//                 if (cell.obstIdx() == -1) {
-//                     uint32_t obstIdx = m_obstacles.size();
-//                     Obstacle obst(obstIdx, m_threshYaw, m_threshMagnitude, cell);
-//                     m_obstacles.push_back(obst);
-//                     cell.setObstacleIdx(obstIdx);
-//                     
-//                     candidates.push_back(cell);
-//                 }
-                    uint32_t obstIdx = m_obstacles.size();
-                    Obstacle obstacle(obstIdx, m_threshYaw, m_threshMagnitude);
-                    m_obstacles.push_back(obstacle);
-                    
-                    candidates.push_back({cell.row(), cell.col()});
-                
-//                     uint32_t count = 0;
-                    while (candidates.size() != 0) {
+            if (! assigned(r, c)) {
+                if (cell.getNumVectors() != 0) {
+                    if (cell.obstIdx() == -1) {
                         
-                        Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic > tmpVisited = visited;
-//                         cout << count << ": [ ";
-//                         for (uint32_t i = 0; i < candidates.size(); i++)
-//                             cout << "(" << candidates[i]->row() << ", " << candidates[i]->col() << ") " << "[" << candidates[i] << "], ";
-//                         cout << endl;
-                
-                        const t_visitInfo & vi = candidates.front();
-                        candidates.pop_front();
+                        uint32_t obstIdx = m_obstacles.size();
+                        Obstacle obstacle(obstIdx, m_threshYaw, m_threshMagnitude);
                         
-                        if (! tmpVisited(vi.row, vi.col)) {
-                            
-                            PolarCell & currCell = m_polarGrid(vi.row, vi.col);
-                            tmpVisited(vi.row, vi.col) = true;
-                            
-                            if (currCell.obstIdx() == -1) {
-                                if (currCell.getNumVectors() != 0) {
-                                    visited(vi.row, vi.col) = true;
-                                
-                                    obstacle.addCellToObstacle(currCell);
-                                    
-                                    for (uint32_t r1 = max(currCell.row() - 1, (uint32_t)0); r1 <= min(currCell.row() + 1, (uint32_t)m_polarGrid.rows() - 1); r1++) {
-                                        for (uint32_t c1 = max(currCell.col() - 1, (uint32_t)0); c1 <= min(currCell.col() + 1, (uint32_t)m_polarGrid.cols() - 1); c1++) {
-                                            if ((r1 != currCell.row()) || (c1 != currCell.col())) {
-                                                if (m_polarGrid(r1, c1).obstIdx() == -1) {
-                                                    if (m_polarGrid(r1, c1).getNumVectors() != 0) {
-                                                        candidates.push_back({r1, c1});
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-//                         count++;
+                        candidates.push_back({r, c});
+                        addedToList(r, c) = true;
                         
-//                         if (count == 100) exit(0);
-                    }
-                    
-                    m_obstacles.push_back(obstacle);
-                }*/
-                
-    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
-        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
-            PolarCell & cell = m_polarGrid(r, c);
-            
-            deque<PolarCell> candidates;
-            
-            if (cell.obstIdx() == -1) {
-                uint32_t obstIdx = m_obstacles.size();
-                Obstacle obst(obstIdx, m_threshYaw, m_threshMagnitude, cell);
-                m_obstacles.push_back(obst);
-                cell.setObstacleIdx(obstIdx);
-                
-                candidates.push_back(cell);
-            }
-            Obstacle & obstacle = m_obstacles[cell.obstIdx()];
-            
-            for (uint32_t r1 = max(r - 1, (uint32_t)0); r1 <= min(r + 1, (uint32_t)m_polarGrid.rows() - 1); r1++) {
-                for (uint32_t c1 = max(c - 1, (uint32_t)0); c1 <= min(c + 1, (uint32_t)m_polarGrid.cols() - 1); c1++) {
-                    if ((r1 != r) || (c != c1)) {
-                        PolarCell & cell2 = m_polarGrid(r1, c1);
-                        if (cell2.getNumVectors() != 0) {
-                            if (cell2.obstIdx() == -1) {
-                                obstacle.addCellToObstacle(cell2);
-                            }
-                        }
+                        growFromList(obstacle, candidates, assigned, addedToList);
+                        
+                        m_obstacles.push_back(obstacle);
                     }
                 }
             }
