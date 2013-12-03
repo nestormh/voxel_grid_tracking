@@ -62,10 +62,6 @@ typedef struct {
     double speed;
 } t_ego_value;
 
-typedef struct {
-    double r, c;
-} t_gridCoordinate;
-
 // using namespace pcl;
 // 
 struct PointXYZRGBDirected

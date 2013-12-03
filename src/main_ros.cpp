@@ -202,10 +202,16 @@ void testStereoTracking() {
     uint32_t gridColumnFactor = 12;
     double yawInterval = 5.0 * M_PI / 180.0;
     
+    double threshYaw = 45.0 / 180.0 * M_PI;
+    double threshMagnitude = 999999999999.0;
+    
     // TODO Get it from the real measurements
     //     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
-    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation, gridDepthFactor, gridColumnFactor, yawInterval);
+    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
+                                     cameraParams[0], particlesPerCell, threshProbForCreation, 
+                                     gridDepthFactor, gridColumnFactor, yawInterval,
+                                     threshYaw, threshMagnitude);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;

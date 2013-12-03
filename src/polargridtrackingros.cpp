@@ -23,6 +23,7 @@
 #include "nav_msgs/OccupancyGrid.h"
 #include <visualization_msgs/Marker.h>
 #include "geometry_msgs/PoseArray.h"
+#include <visualization_msgs/MarkerArray.h>
 #include <tf/transform_datatypes.h>
 
 #include "utils.h"
@@ -35,9 +36,12 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
                                            const double& cellSizeZ, const double& maxVelX, const double& maxVelZ, 
                                            const t_Camera_params& cameraParams, const double& particlesPerCell, 
                                            const double& threshProbForCreation, 
-                                           const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval): 
+                                           const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval,
+                                           const double & threshYaw, const double & threshMagnitude): 
                                             PolarGridTracking(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams, 
-                                                              particlesPerCell, threshProbForCreation, gridDepthFactor, gridColumnFactor, yawInterval)
+                                                              particlesPerCell, threshProbForCreation, 
+                                                              gridDepthFactor, gridColumnFactor, yawInterval,
+                                                              threshYaw, threshMagnitude)
 {
     ros::NodeHandle nh("~");
     m_pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloud", 1);
@@ -49,6 +53,7 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
     m_colAvgPub = nh.advertise<geometry_msgs::PoseArray> ("colAvg", 1);
     m_polarGridPub = nh.advertise<visualization_msgs::Marker>("polarGrid", 10);
     m_polarCellYawPub = nh.advertise<geometry_msgs::PoseArray> ("polarCellYaw", 1);
+    m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 10);
     
 //     ros::spin();
 }
@@ -323,6 +328,7 @@ void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointX
     publishPointCloud(extendedPointCloud);
     publishPointCloudOrientation(extendedPointCloud);
     publishPolarCellYaw(1.0);
+    publishObstacles();
 }
 
 void PolarGridTrackingROS::publishPolarGrid()
@@ -423,6 +429,82 @@ void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
     }
     
     m_polarCellYawPub.publish(polarCellYaw);
+}
+
+void PolarGridTrackingROS::publishObstacles()
+{
+    visualization_msgs::MarkerArray obstacles;
+    
+    const double z0 = (double)(m_cameraParams.ku * m_cameraParams.baseline) / m_cameraParams.width;
+    const double fb = m_cameraParams.ku * m_cameraParams.baseline;
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const vector<PolarCell> & cells = m_obstacles[i].cells();
+        if (cells.size() <= 1)
+            continue;
+        
+        visualization_msgs::Marker triangles;
+        
+        triangles.header.frame_id = "left_cam";
+        triangles.header.stamp = ros::Time::now();
+        triangles.action = visualization_msgs::Marker::ADD;
+        triangles.pose.orientation.w = 1.0;
+        
+        triangles.id = i;
+        triangles.type = visualization_msgs::Marker::TRIANGLE_LIST;
+        
+        triangles.scale.x = 1.0;
+        triangles.scale.y = 1.0;
+        triangles.scale.z = 1.0;
+        
+        triangles.color.r = (double)rand() / RAND_MAX;
+        triangles.color.g = (double)rand() / RAND_MAX;
+        triangles.color.b = (double)rand() / RAND_MAX;
+        if (cells.size() > 1)
+            triangles.color.a = 1.0;
+        else
+            triangles.color.a = 0.5;
+                
+        BOOST_FOREACH(const PolarCell & cell, cells) {
+        
+            geometry_msgs::Point p1, p2, p3, p4;
+            
+            const double row = cell.row() - 0.5;
+            const double col = cell.col() + 2.0;
+
+            p1.y = z0 * pow(1.0 + m_gridDepthFactor, row);
+            const double u1 = m_gridColumnFactor * col;
+            p1.x = p1.y * (m_cameraParams.u0 - u1) / m_cameraParams.ku;
+            p1.z = 0.0;
+
+            p2.y = z0 * pow(1.0 + m_gridDepthFactor, row + 1.0);
+            const double u2 = m_gridColumnFactor * col;
+            p2.x = p2.y * (m_cameraParams.u0 - u2) / m_cameraParams.ku;
+            p2.z = 0.0;
+            
+            p3.y = z0 * pow(1.0 + m_gridDepthFactor, row);
+            const double u3 = m_gridColumnFactor * (col + 1.0);
+            p3.x = p3.y * (m_cameraParams.u0 - u3) / m_cameraParams.ku;
+            p3.z = 0.0;
+            
+            p4.y = z0 * pow(1.0 + m_gridDepthFactor, row + 1.0);
+            const double u4 = m_gridColumnFactor * (col + 1.0);
+            p4.x = p4.y * (m_cameraParams.u0 - u4) / m_cameraParams.ku;
+            p4.z = 0.0;
+            
+            triangles.points.push_back(p1);
+            triangles.points.push_back(p2);
+            triangles.points.push_back(p3);
+            
+            triangles.points.push_back(p4);
+            triangles.points.push_back(p2);
+            triangles.points.push_back(p3);
+        }
+        
+        obstacles.markers.push_back(triangles);
+    }
+    
+    m_obstaclesPub.publish(obstacles);
 }
 
 }

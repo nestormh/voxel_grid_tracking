@@ -16,6 +16,20 @@
 
 #include "utils.h"
 
+double calculateDifferenceBetweenAngles(const double & ang1, const double & ang2)
+{
+    const double vx1 = cos(ang1);
+    const double vy1 = sin(ang1);
+    
+    const double vx2 = cos(ang2);
+    const double vy2 = sin(ang2);
+    
+    const Eigen::Vector3f vGlobal(cos(ang1), sin(ang1), 0.0f);
+    const Eigen::Vector3f vCurr(cos(ang2), sin(ang2), 0.0f);
+    
+    double theta = fabs(acos(vCurr.dot(vGlobal)));
+}
+
 cv::Mat getCvMatFromEigenBinary(const polar_grid_tracking::BinaryMap & map) {
     
     cv::Mat img(cv::Size(map.cols(), map.rows()), CV_8UC1);

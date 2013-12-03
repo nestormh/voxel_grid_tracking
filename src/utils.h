@@ -33,6 +33,7 @@ using namespace std;
 
 cv::Mat getCvMatFromEigenBinary(const polar_grid_tracking::BinaryMap & map);
 cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map);
+double calculateDifferenceBetweenAngles(const double & ang1, const double & ang2);
 
 // From http://stackoverflow.com/questions/16451111/cvmat-conversion-to-eigen-matrix-and-back
 template<typename _Tp, int _rows, int _cols, int _options, int _maxRows, int _maxCols>

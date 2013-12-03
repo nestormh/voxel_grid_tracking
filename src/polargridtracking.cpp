@@ -17,10 +17,13 @@
 
 #include "polargridtracking.h"
 #include "utils.h"
-#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
+#include "obstacle.h"
 
 #include <boost/foreach.hpp>
+#include <boost/graph/graph_concepts.hpp>
 #include <pcl/point_cloud.h>
+
+#include <opencv2/opencv.hpp>
 
 using namespace std;
 
@@ -29,13 +32,14 @@ namespace polar_grid_tracking {
 PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                                      const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                                      const double & particlesPerCell, const double & threshProbForCreation, 
-                                     const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval) : 
+                                     const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval,
+                                     const double & threshYaw, const double & threshMagnitude) : 
                                             m_cameraParams(cameraParams), m_grid(CellGrid(rows, cols)), 
                                             m_cellSizeX(cellSizeX), m_cellSizeZ(cellSizeZ),
                                             m_maxVelX(maxVelX), m_maxVelZ(maxVelZ),
                                             m_particlesPerCell(particlesPerCell), m_threshProbForCreation(threshProbForCreation),
                                             m_gridDepthFactor (gridDepthFactor), m_gridColumnFactor(gridColumnFactor), 
-                                            m_yawInterval(yawInterval)
+                                            m_yawInterval(yawInterval), m_threshYaw(threshYaw), m_threshMagnitude(threshMagnitude)
 {
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
@@ -84,6 +88,7 @@ void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr &
     initialization();
 
     drawGrid(10);
+    drawObstaclesMap();
 }
     
 void PolarGridTracking::getMeasurementModel()
@@ -326,6 +331,21 @@ void PolarGridTracking::drawTopDownMap(const pcl::PointCloud< pcl::PointXYZRGB >
     cv::imshow("TopDownMap", resizedMap);
 }
 
+void PolarGridTracking::drawObstaclesMap()
+{
+    cv::Mat obstacleMap = cv::Mat::zeros(cv::Size(m_polarGrid.cols(), m_polarGrid.rows()), CV_8UC3);
+    BOOST_FOREACH(const Obstacle & obst, m_obstacles) {
+        cv::Vec3b color(rand() & 0xFF, rand() & 0xFF, rand() & 0xFF);
+        const vector<PolarCell> & cells = obst.cells();
+        BOOST_FOREACH(const PolarCell & cell, cells) {
+            obstacleMap.at<cv::Vec3b>(cell.row(), cell.col()) = color;
+        }
+    }
+    cv::resize(obstacleMap, obstacleMap, cv::Size(), 4.0, 4.0, cv::INTER_NEAREST);
+    
+    cv::imshow("obstacleMap", obstacleMap);
+}
+
 void PolarGridTracking::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
     pcl::PointCloud< PointXYZRGBDirected >::Ptr extendedPointCloud;
@@ -397,25 +417,107 @@ void PolarGridTracking::generateObstacles()
         }
     }
     
+    m_obstacles.clear();
+    
+    Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic > visited(m_polarGrid.rows(), m_polarGrid.cols());
+    visited.setConstant(false);
+    typedef struct {
+        uint32_t row, col;
+//         bool visited;
+    } t_visitInfo;
+    
+    /*for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+        for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
+            PolarCell & cell = m_polarGrid(r, c);
+            
+            deque<t_visitInfo> candidates;
+            
+            if (cell.getNumVectors() != 0) {
+                if (! visited(r, c)) {
+            
+//                 if (cell.obstIdx() == -1) {
+//                     uint32_t obstIdx = m_obstacles.size();
+//                     Obstacle obst(obstIdx, m_threshYaw, m_threshMagnitude, cell);
+//                     m_obstacles.push_back(obst);
+//                     cell.setObstacleIdx(obstIdx);
+//                     
+//                     candidates.push_back(cell);
+//                 }
+                    uint32_t obstIdx = m_obstacles.size();
+                    Obstacle obstacle(obstIdx, m_threshYaw, m_threshMagnitude);
+                    m_obstacles.push_back(obstacle);
+                    
+                    candidates.push_back({cell.row(), cell.col()});
+                
+//                     uint32_t count = 0;
+                    while (candidates.size() != 0) {
+                        
+                        Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic > tmpVisited = visited;
+//                         cout << count << ": [ ";
+//                         for (uint32_t i = 0; i < candidates.size(); i++)
+//                             cout << "(" << candidates[i]->row() << ", " << candidates[i]->col() << ") " << "[" << candidates[i] << "], ";
+//                         cout << endl;
+                
+                        const t_visitInfo & vi = candidates.front();
+                        candidates.pop_front();
+                        
+                        if (! tmpVisited(vi.row, vi.col)) {
+                            
+                            PolarCell & currCell = m_polarGrid(vi.row, vi.col);
+                            tmpVisited(vi.row, vi.col) = true;
+                            
+                            if (currCell.obstIdx() == -1) {
+                                if (currCell.getNumVectors() != 0) {
+                                    visited(vi.row, vi.col) = true;
+                                
+                                    obstacle.addCellToObstacle(currCell);
+                                    
+                                    for (uint32_t r1 = max(currCell.row() - 1, (uint32_t)0); r1 <= min(currCell.row() + 1, (uint32_t)m_polarGrid.rows() - 1); r1++) {
+                                        for (uint32_t c1 = max(currCell.col() - 1, (uint32_t)0); c1 <= min(currCell.col() + 1, (uint32_t)m_polarGrid.cols() - 1); c1++) {
+                                            if ((r1 != currCell.row()) || (c1 != currCell.col())) {
+                                                if (m_polarGrid(r1, c1).obstIdx() == -1) {
+                                                    if (m_polarGrid(r1, c1).getNumVectors() != 0) {
+                                                        candidates.push_back({r1, c1});
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+//                         count++;
+                        
+//                         if (count == 100) exit(0);
+                    }
+                    
+                    m_obstacles.push_back(obstacle);
+                }*/
+                
     for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
-            const PolarCell & cell = m_polarGrid(r, c);
-            if (cell.getNumVectors() != 0) {
-                uint32_t obstIdx;
-                if (cell.obstIdx() == -1) {
-                    obstIdx = m_obstacles.size();
-                    cell.setObstacleIdx(obstIdx);
-                    t_obstacle obst;
-                    obst.push_back({r, c});
-                    m_obstacles.push_back(obst);
-                } else obstIdx = cell.obstIdx();
+            PolarCell & cell = m_polarGrid(r, c);
+            
+            deque<PolarCell> candidates;
+            
+            if (cell.obstIdx() == -1) {
+                uint32_t obstIdx = m_obstacles.size();
+                Obstacle obst(obstIdx, m_threshYaw, m_threshMagnitude, cell);
+                m_obstacles.push_back(obst);
+                cell.setObstacleIdx(obstIdx);
                 
-                
-                for (uint32_t r1 = max(r - 1, 0); r1 < min(r + 1, m_polarGrid.rows() - 1); r1++) {
-                    for (uint32_t c1 = max(c - 1, 0); c1 < min(c + 1, m_polarGrid.cols() - 1); c1++) {
-                        const PolarCell & cell2 = m_polarGrid(r1, c1);
+                candidates.push_back(cell);
+            }
+            Obstacle & obstacle = m_obstacles[cell.obstIdx()];
+            
+            for (uint32_t r1 = max(r - 1, (uint32_t)0); r1 <= min(r + 1, (uint32_t)m_polarGrid.rows() - 1); r1++) {
+                for (uint32_t c1 = max(c - 1, (uint32_t)0); c1 <= min(c + 1, (uint32_t)m_polarGrid.cols() - 1); c1++) {
+                    if ((r1 != r) || (c != c1)) {
+                        PolarCell & cell2 = m_polarGrid(r1, c1);
                         if (cell2.getNumVectors() != 0) {
-                            
+                            if (cell2.obstIdx() == -1) {
+                                obstacle.addCellToObstacle(cell2);
+                            }
                         }
                     }
                 }
@@ -448,7 +550,5 @@ void PolarGridTracking::updatePolarGridWithPoint(const PointXYZRGBDirected& poin
     getPolarPositionFromCartesian(point.z, point.x, row, column);
     m_polarGrid(row, column).addPointToHistogram(point);
 }
-
-
     
 }

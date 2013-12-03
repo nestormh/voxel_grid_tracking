@@ -21,6 +21,7 @@
 #include "cell.h"
 #include "polarcell.h"
 #include "params_structs.h"
+#include "obstacle.h"
 
 
 #include <pcl/point_cloud.h>
@@ -39,7 +40,8 @@ public:
     PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                       const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                       const double & particlesPerCell, const double & threshProbForCreation, 
-                      const double & gridDepthFactor, const uint32_t & gridColumnFactor, const double & yawInterval);
+                      const double & gridDepthFactor, const uint32_t & gridColumnFactor, const double & yawInterval,
+                      const double & threshYaw, const double & threshMagnitude);
     
     void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
@@ -62,6 +64,7 @@ protected:
     void drawGrid(const uint32_t & pixelsPerCell);
     void drawBinaryMap();
     void drawTopDownMap(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
+    void drawObstaclesMap();
     
     BinaryMap m_map;
     CellGrid m_grid;
@@ -81,8 +84,10 @@ protected:
     uint32_t m_gridColumnFactor;
     double m_yawInterval;
     
-    typedef vector<t_gridCoordinate> t_obstacle;
-    vector <t_obstacle> m_obstacles;
+    double m_threshYaw;
+    double m_threshMagnitude;
+    
+    vector <Obstacle> m_obstacles;
     
 };
 }
