@@ -52,6 +52,10 @@ void PolarCell::reset()
         item.numPoints = 0;
     }
     m_obstIdx = -1;
+    m_maxHeight = std::numeric_limits< double >::min();
+    m_magnitude = 0.0;
+    m_yaw = 0.0;
+    m_numVectors = 0;
 }
 
 void PolarCell::addPointToHistogram(const PointXYZRGBDirected& point)
@@ -62,6 +66,9 @@ void PolarCell::addPointToHistogram(const PointXYZRGBDirected& point)
     t_histogram & item = m_histogram[idx];
     item.numPoints++;
     item.magnitudeSum += point.magnitude;
+    
+    if (point.y > m_maxHeight) 
+        m_maxHeight = point.y;
 }
 
 void PolarCell::updateYawAndMagnitude()

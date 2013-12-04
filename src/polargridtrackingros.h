@@ -48,6 +48,7 @@ protected:
     void publishPolarGrid();
     void publishPolarCellYaw(const double & zPlane);
     void publishObstacles();
+    void publishROIs();
     
     ros::Publisher m_pointCloudPub;
     ros::Publisher m_extendedPointCloudPub;
@@ -59,6 +60,7 @@ protected:
     ros::Publisher m_polarGridPub;
     ros::Publisher m_polarCellYawPub;
     ros::Publisher m_obstaclesPub;
+    ros::Publisher m_roiPub;
 };
 
 }

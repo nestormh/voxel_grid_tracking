@@ -7,6 +7,7 @@ project(PolarGridTracking)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  tf
 )
 
 set(ROS_BUILD_TYPE Debug)

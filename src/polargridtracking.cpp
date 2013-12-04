@@ -417,19 +417,19 @@ void PolarGridTracking::growFromList(Obstacle & obstacle, deque<t_visitInfo> &ca
         candidates.pop_front();
         PolarCell & cell = m_polarGrid(vi.row, vi.col);
         
-        const bool & added = obstacle.addCellToObstacle(cell);
+        const bool added = obstacle.addCellToObstacle(cell);
         if (added) {
             assigned(cell.row(), cell.col()) = true;
         
             for (uint32_t r1 = max(cell.row() - 1, (uint32_t)0); r1 <= min(cell.row() + 1, (uint32_t)m_polarGrid.rows() - 1); r1++) {
                 for (uint32_t c1 = max(cell.col() - 1, (uint32_t)0); c1 <= min(cell.col() + 1, (uint32_t)m_polarGrid.cols() - 1); c1++) {
-                    if ((r1 != cell.row()) || (cell.col() != c1)) {
-                        if ((! addedToList(r1, c1)) && (! assigned(r1, c1))) {
-                            if (m_polarGrid(r1, c1).getNumVectors() != 0) {
-                                if (m_polarGrid(r1, c1).obstIdx() == -1) {
+                    if ((r1 != cell.row()) || (c1 != cell.col())) {
+                        if (m_polarGrid(r1, c1).getNumVectors() != 0) {
+                            if ((! addedToList(r1, c1)) && (! assigned(r1, c1))) {
+//                                 if (m_polarGrid(r1, c1).obstIdx() == -1) {
                                     candidates.push_back({r1, c1});
                                     addedToList(r1, c1) = true;
-                                }
+//                                 }
                             }
                         }
                     }
@@ -465,21 +465,25 @@ void PolarGridTracking::generateObstacles()
             if (! assigned(r, c)) {
                 if (cell.getNumVectors() != 0) {
                     if (cell.obstIdx() == -1) {
-                        
-                        uint32_t obstIdx = m_obstacles.size();
-                        Obstacle obstacle(obstIdx, m_threshYaw, m_threshMagnitude);
-                        
-                        candidates.push_back({r, c});
-                        addedToList(r, c) = true;
-                        
-                        growFromList(obstacle, candidates, assigned, addedToList);
-                        
-                        m_obstacles.push_back(obstacle);
+                        if (! addedToList(r, c)) {
+                            uint32_t obstIdx = m_obstacles.size();
+                            Obstacle obstacle(obstIdx, m_threshYaw, m_threshMagnitude);
+                            
+                            candidates.push_back({r, c});
+                            addedToList(r, c) = true;
+                            
+                            growFromList(obstacle, candidates, assigned, addedToList);
+                            
+                            obstacle.setROIAndMotion(m_cameraParams, m_gridDepthFactor, m_gridColumnFactor, m_yawInterval);
+                            
+                            m_obstacles.push_back(obstacle);
+                        }
                     }
                 }
             }
         }
     }
+    
 }
 
 void PolarGridTracking::getPolarPositionFromCartesian(const double & z, const double & x, 

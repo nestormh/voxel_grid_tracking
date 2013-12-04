@@ -22,6 +22,9 @@
 #include "polarcell.h"
 
 #include <vector>
+#include <pcl-1.7/pcl/point_cloud.h>
+
+#include <pcl-1.7/pcl/point_types.h>
 
 using namespace std;
 
@@ -34,7 +37,14 @@ public:
     Obstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshMagnitude);
     bool addCellToObstacle(PolarCell & cell);
     
+    void setROIAndMotion(const t_Camera_params & cameraParams, const double & gridDepthFactor, 
+                         const double & gridColumnFactor, const double & yawInterval);
+    
     vector<PolarCell> cells() const { return m_cells; }
+    double yaw() const { return m_yaw; }
+    double magnitude() const { return m_magnitude; }
+    
+    pcl::PointCloud<pcl::PointXYZ>::Ptr roi() const { return m_roi; }
 protected:
     void updateMotionInformation();
     
@@ -42,6 +52,7 @@ protected:
     double m_magnitude;
     double m_yaw;
     vector<PolarCell> m_cells;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr m_roi;
     
     // Params
     double m_threshYaw, m_threshMagnitude;

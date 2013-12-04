@@ -32,11 +32,6 @@ typedef Eigen::Matrix<PolarCell, Eigen::Dynamic, Eigen::Dynamic> PolarCellGrid;
 class PolarCell
 {
 public:
-    typedef struct {
-        uint32_t numPoints;
-        double magnitudeSum;
-    } t_histogram;
-
     PolarCell();
     PolarCell(const double & yawInterval, const uint32_t & row, const uint32_t & col);
     
@@ -52,6 +47,8 @@ public:
     int32_t obstIdx() const { return m_obstIdx; }
     uint32_t row() const { return m_row; }
     uint32_t col() const { return m_col; }
+    double maxHeight() const { return m_maxHeight; }
+    
 protected:
     
     vector<t_histogram> m_histogram;
@@ -63,6 +60,8 @@ protected:
     
     uint32_t m_row;
     uint32_t m_col;
+    
+    double m_maxHeight;
 };
     
 }

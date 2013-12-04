@@ -62,6 +62,11 @@ typedef struct {
     double speed;
 } t_ego_value;
 
+typedef struct {
+    uint32_t numPoints;
+    double magnitudeSum;
+} t_histogram;
+
 // using namespace pcl;
 // 
 struct PointXYZRGBDirected

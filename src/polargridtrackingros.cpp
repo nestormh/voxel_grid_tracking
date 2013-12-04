@@ -54,6 +54,7 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
     m_polarGridPub = nh.advertise<visualization_msgs::Marker>("polarGrid", 10);
     m_polarCellYawPub = nh.advertise<geometry_msgs::PoseArray> ("polarCellYaw", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 10);
+    m_roiPub = nh.advertise<visualization_msgs::MarkerArray>("obstaclesROI", 10);
     
 //     ros::spin();
 }
@@ -329,6 +330,7 @@ void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointX
     publishPointCloudOrientation(extendedPointCloud);
     publishPolarCellYaw(1.0);
     publishObstacles();
+    publishROIs();
 }
 
 void PolarGridTrackingROS::publishPolarGrid()
@@ -460,6 +462,9 @@ void PolarGridTrackingROS::publishObstacles()
         triangles.color.r = (double)rand() / RAND_MAX;
         triangles.color.g = (double)rand() / RAND_MAX;
         triangles.color.b = (double)rand() / RAND_MAX;
+        
+        triangles.lifetime = ros::Duration(5.0);
+        
         if (cells.size() > 1)
             triangles.color.a = 1.0;
         else
@@ -505,6 +510,163 @@ void PolarGridTrackingROS::publishObstacles()
     }
     
     m_obstaclesPub.publish(obstacles);
+}
+
+void PolarGridTrackingROS::publishROIs()
+{
+     visualization_msgs::MarkerArray obstaclesROI;
+     
+     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+         if ((m_obstacles[i].cells().size() <= 1) ||
+             (m_obstacles[i].magnitude() == 0.0))
+             continue;
+         
+        visualization_msgs::Marker line_list;
+        line_list.header.frame_id = "left_cam";
+        line_list.header.stamp = ros::Time();
+        line_list.id = i;
+        line_list.type = visualization_msgs::Marker::LINE_LIST;
+        line_list.action = visualization_msgs::Marker::ADD;
+
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr & roi = m_obstacles[i].roi();
+
+        line_list.pose.orientation.x = 0.0;
+        line_list.pose.orientation.y = 0.0;
+        line_list.pose.orientation.z = 0.0;
+        line_list.pose.orientation.w = 1.0;
+        line_list.scale.x = 0.01;
+        line_list.scale.y = 0.01;
+        line_list.scale.z = 0.01;
+        line_list.color.a = 1.0;
+        line_list.color.r = (double)rand() / RAND_MAX;
+        line_list.color.g = (double)rand() / RAND_MAX;
+        line_list.color.b = (double)rand() / RAND_MAX;
+        line_list.lifetime = ros::Duration(5.0);
+        
+        vector<geometry_msgs::Point> points(8);
+        geometry_msgs::Point centroid;
+        for (uint32_t i = 0; i < 8; i++) {
+            points[i].x = roi->at(i).x;
+            points[i].y = roi->at(i).y;
+            points[i].z = roi->at(i).z;
+            
+            centroid.x += roi->at(i).x;
+            centroid.y += roi->at(i).y;
+            centroid.z += roi->at(i).z;
+        }
+        
+        centroid.x /= roi->size();
+        centroid.y /= roi->size();
+        centroid.z /= roi->size();
+            
+        line_list.points.push_back(points[0]);
+        line_list.points.push_back(points[1]);
+
+        line_list.points.push_back(points[0]);
+        line_list.points.push_back(points[3]);
+
+        line_list.points.push_back(points[0]);
+        line_list.points.push_back(points[6]);
+
+        line_list.points.push_back(points[1]);
+        line_list.points.push_back(points[2]);
+
+        line_list.points.push_back(points[1]);
+        line_list.points.push_back(points[7]);
+
+        line_list.points.push_back(points[2]);
+        line_list.points.push_back(points[3]);
+
+        line_list.points.push_back(points[2]);
+        line_list.points.push_back(points[4]);
+
+        line_list.points.push_back(points[3]);
+        line_list.points.push_back(points[5]);
+
+        line_list.points.push_back(points[4]);
+        line_list.points.push_back(points[5]);
+
+        line_list.points.push_back(points[4]);
+        line_list.points.push_back(points[7]);
+
+        line_list.points.push_back(points[5]);
+        line_list.points.push_back(points[6]);
+
+        line_list.points.push_back(points[6]);
+        line_list.points.push_back(points[7]);
+        
+//         line_list.points.push_back(points[0]);
+//         line_list.points.push_back(points[4]);
+
+
+        obstaclesROI.markers.push_back(line_list);
+     
+        // Orientation
+        visualization_msgs::Marker orientation;
+        orientation.header.frame_id = "left_cam";
+        orientation.header.stamp = ros::Time();
+        orientation.id = m_obstacles.size() + i - 1;
+        orientation.type = visualization_msgs::Marker::ARROW;
+        orientation.action = visualization_msgs::Marker::ADD;
+        
+        orientation.pose.orientation.x = 0.0;
+        orientation.pose.orientation.y = 0.0;
+        orientation.pose.orientation.z = 0.0;
+        orientation.pose.orientation.w = 1.0;
+        orientation.scale.x = 0.01;
+        orientation.scale.y = 0.03;
+        orientation.scale.z = 0.1;
+        orientation.color.a = 1.0;
+        orientation.color.r = line_list.color.r;
+        orientation.color.g = line_list.color.g;
+        orientation.color.b = line_list.color.b;
+        
+        orientation.lifetime = ros::Duration(5.0);
+
+        orientation.points.push_back(centroid);
+        centroid.x += cos(m_obstacles[i].yaw()) * m_obstacles[i].magnitude();
+        centroid.y += sin(m_obstacles[i].yaw()) * m_obstacles[i].magnitude();
+        orientation.points.push_back(centroid);
+
+        obstaclesROI.markers.push_back(orientation);
+
+        // Speed visualization
+        visualization_msgs::Marker speedText;
+        speedText.header.frame_id = "left_cam";
+        speedText.header.stamp = ros::Time();
+        speedText.id = 2 * (m_obstacles.size() - 1) + i;
+        speedText.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        speedText.action = visualization_msgs::Marker::ADD;
+        
+        speedText.pose.orientation.x = 0.0;
+        speedText.pose.orientation.y = 0.0;
+        speedText.pose.orientation.z = 0.0;
+        speedText.pose.orientation.w = 1.0;
+        
+        speedText.scale.x = 0.2;
+        speedText.scale.y = 0.2;
+        speedText.scale.z = 0.2;
+        
+        speedText.color.r = 0.0;
+        speedText.color.g = 1.0;
+        speedText.color.b = 0.0;
+        speedText.color.a = 1.0;
+        
+        speedText.lifetime = ros::Duration(5.0);
+        
+        speedText.pose.position.x = centroid.x;
+        speedText.pose.position.y = centroid.y;
+        speedText.pose.position.z = centroid.z;
+        
+        stringstream ss;
+        ss << m_obstacles[i].magnitude() << " m/s";
+        speedText.text = ss.str();
+        
+        obstaclesROI.markers.push_back(speedText);
+     
+     }
+     
+     m_roiPub.publish(obstaclesROI);
 }
 
 }

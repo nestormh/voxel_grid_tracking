@@ -1,4 +1,4 @@
-set(VISO_FILES obstacle.cpp polarcell.cpp polargridtrackingros.cpp
+set(VISO_FILES 
     libviso2/filter.cpp
     libviso2/matcher.cpp
     libviso2/matrix.cpp
@@ -9,9 +9,11 @@ set(VISO_FILES obstacle.cpp polarcell.cpp polargridtrackingros.cpp
     libviso2/viso_stereo.cpp
 )
 
-
 add_executable(PolarGridTracking 
 #     main.cpp
+    obstacle.cpp 
+    polarcell.cpp 
+    polargridtrackingros.cpp
     ObstaclesFromStereo.cpp
     polargridtracking.cpp
     particle.cpp
@@ -21,7 +23,7 @@ add_executable(PolarGridTracking
     ${VISO_FILES}
   main_ros.cpp
 )
-  
+
 include_directories(PolarGridTracking
 #     GPULibSVM
 #     ${EIGEN3_INCLUDE_DIR}
@@ -60,4 +62,40 @@ target_link_libraries(PolarGridTracking
 #     /usr/local/dislin/libdislnc.a
 #     /usr/local/dislin/lib/dislin_d-10.3.so
 #     /usr/local/dislin/lib/discpp-10.3.so
+)
+
+#################################################################
+# stereo_and_odom
+#################################################################
+add_executable(stereo_and_odom
+#     obstacle.cpp 
+#     polarcell.cpp 
+#     polargridtrackingros.cpp
+    ObstaclesFromStereo.cpp
+#     polargridtracking.cpp
+#     particle.cpp
+#     cell.cpp
+#     utils.cpp
+#     libvisohelper.cpp
+#     ${VISO_FILES}
+    mainStereoAndOdom.cpp
+)
+
+include_directories(stereo_and_odom
+    ${PCL_INCLUDE_DIRS}/pcl-1.7
+    ${OpenCV_INCLUDE_DIR}
+    ${Boost_INCLUDE_DIR}
+    /opt/ros/hydro/include
+)
+
+# link_directories(PolarGridTracking
+#     /usr/local/dislin/lib
+# )
+
+target_link_libraries(stereo_and_odom
+  ${EIGEN3_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
 )

@@ -2,13 +2,18 @@
   <arg name="namespace" default="testGridTracking"/>
 <!--   <param name="use_sim_time" value="true" /> -->
 
-<node pkg="tf" type="static_transform_publisher" name="camera_tf" args="0 0 0 0 0 0 left_cam_parent left_cam 100" />
+<!-- <node pkg="tf" type="static_transform_publisher" name="camera_tf" args="0 0 0 0 0 0 left_cam_parent left_cam 100" /> -->
+<node pkg="tf" type="static_transform_publisher" name="odom2baselink" args="0 0 0 0 0 0 odom base_link 100" />
+<node pkg="tf" type="static_transform_publisher" name="baselink2leftcam" args="0 0 0 0 0 0 base_link left_cam 100" />
 <!-- <node pkg="tf" type="static_transform_publisher" name="binarymap_tf" args="0 0 0 0 0 1.57079632679489661923 left_cam binary_map 100" /> -->
 
 <group ns="$(arg namespace)">
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
-    <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
+    <node name="PolarGridTracking" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
     </node>
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+<!--     <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+<!--     </node> -->
 </group>
         
 <node pkg="rviz" type="rviz" name="rviz" required="true"  args="&#45;&#45;display-config 

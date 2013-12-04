@@ -17,6 +17,8 @@
 #include "obstacle.h"
 #include "utils.h"
 
+#include <pcl-1.7/pcl/common/transforms.h>
+
 #include <boost/foreach.hpp>
 
 #include <limits>
@@ -30,13 +32,16 @@ Obstacle::Obstacle(const uint32_t& obstIdx, const double & threshYaw,
                 m_idx(obstIdx), m_threshMagnitude(threshMagnitude), m_threshYaw(threshYaw)
 {
         addCellToObstacle(cell);
+        m_roi.reset(new pcl::PointCloud<pcl::PointXYZ>);
+        m_roi->points.resize(8);
 }
 
 Obstacle::Obstacle(const uint32_t& obstIdx, const double & threshYaw, 
                    const double & threshMagnitude) :
                    m_idx(obstIdx), m_threshMagnitude(threshMagnitude), m_threshYaw(threshYaw)
 {
-
+    m_roi.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    m_roi->points.resize(8);
 }
 
 bool Obstacle::addCellToObstacle(PolarCell& cell)
@@ -82,6 +87,71 @@ void Obstacle::updateMotionInformation()
     if (vy < 0.0)
         m_yaw = 2 * M_PI - m_yaw;
 }
+
+void Obstacle::setROIAndMotion(const t_Camera_params & cameraParams, 
+                                const double & gridDepthFactor, const double & gridColumnFactor,
+                                const double & yawInterval)
+{
+    uint32_t minR = std::numeric_limits< int >::max(), maxR = 0;
+    uint32_t minC = std::numeric_limits< int >::max(), maxC = 0;
+    double maxH = std::numeric_limits< double >::min();
+    const double minH = 0.0;
+    
+    BOOST_FOREACH(const PolarCell & cell, m_cells) {
+        if (cell.row() > maxR) maxR = cell.row();
+        if (cell.row() < minR) minR = cell.row();
+        if (cell.col() > maxC) maxC = cell.col();
+        if (cell.col() < minC) minC = cell.col();
+        if (cell.maxHeight() > maxH) maxH = cell.maxHeight();
+    }
+
+    const double z0 = (double)(cameraParams.ku * cameraParams.baseline) / cameraParams.width;
+    
+    const double minY = z0 * pow(1.0 + gridDepthFactor, minR - 0.5);
+    const double maxY = z0 * pow(1.0 + gridDepthFactor, maxR + 0.5);
+    
+    const double minU = gridColumnFactor * (minC + 2.0);
+    const double minXminY = minY * (cameraParams.u0 - minU) / cameraParams.ku;
+    const double minXmaxY = maxY * (cameraParams.u0 - minU) / cameraParams.ku;
+    const double maxU = gridColumnFactor * (maxC + 3.0);
+    const double maxXminY = minY * (cameraParams.u0 - maxU) / cameraParams.ku;
+    const double maxXmaxY = maxY * (cameraParams.u0 - maxU) / cameraParams.ku;
+    
+    
+    m_roi->at(0).x = minXminY;
+    m_roi->at(0).y = minY;
+    m_roi->at(0).z = minH;
+            
+    m_roi->at(1).x = maxXminY;
+    m_roi->at(1).y = minY;
+    m_roi->at(1).z = minH;
+        
+    m_roi->at(2).x = maxXminY;
+    m_roi->at(2).y = minY;
+    m_roi->at(2).z = maxH;
+    
+    m_roi->at(3).x = minXminY;
+    m_roi->at(3).y = minY;
+    m_roi->at(3).z = maxH;
+
+    m_roi->at(4).x = maxXmaxY;
+    m_roi->at(4).y = maxY;
+    m_roi->at(4).z = maxH;
+    
+    m_roi->at(5).x = minXmaxY;
+    m_roi->at(5).y = maxY;
+    m_roi->at(5).z = maxH;
+    
+    m_roi->at(6).x = minXmaxY;
+    m_roi->at(6).y = maxY;
+    m_roi->at(6).z = minH;
+    
+    m_roi->at(7).x = maxXmaxY;
+    m_roi->at(7).y = maxY;
+    m_roi->at(7).z = minH;
+    
+}
+
 
     
 }

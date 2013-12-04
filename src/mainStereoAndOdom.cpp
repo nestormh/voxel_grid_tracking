@@ -15,25 +15,28 @@
  */
 
 #include "ObstaclesFromStereo.h"
-#include "polargridtracking.h"
-#include "polargridtrackingros.h"
-#include "utils.h"
-#include "libvisohelper.h"
-#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
-
+// #include "utils.h"
+// #include "libvisohelper.h"
 
 #include <iostream>
 #include <iomanip>
 #include <boost/filesystem.hpp>
+#include <boost/concept_check.hpp>
+
+#include<pcl_conversions/pcl_conversions.h>
+#include "sensor_msgs/PointCloud2.h"
 
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include "ros/ros.h"
+#include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
 #include "std_msgs/String.h"
 
 #include <sstream>
 
 #include <opencv2/opencv.hpp>
+
+#define CAMERA_FRAME_ID "left_cam"
 
 using namespace std;
 
@@ -41,6 +44,7 @@ using namespace std;
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
 void testStereoTracking();
 void testPointCloud();
+void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
 
 // Definitions
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
@@ -118,8 +122,42 @@ void testPointCloud() {
     visualizePointCloud(pointCloud);
 }
 
+void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
+    cout << "publishing point cloud" << endl;   
+    
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    
+    for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
+         it != pointCloud->end(); it++) {
+        
+        const pcl::PointXYZRGB & point = *it;
+        pcl::PointXYZRGB newPoint;
+        
+        newPoint.x = point.x;
+        newPoint.y = point.z;
+        newPoint.z = point.y;
+        newPoint.r = point.r;
+        newPoint.g = point.g;
+        newPoint.b = point.b;
+        
+        tmpPointCloud->push_back(newPoint);
+    }
+         
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*tmpPointCloud, cloudMsg);
+    cloudMsg.header.frame_id = CAMERA_FRAME_ID;
+    
+    pointCloudPub.publish(cloudMsg);
+    
+    ros::spinOnce();
+}
+
 void testStereoTracking() {
     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+    
+    ros::NodeHandle nh("~");
+    ros::Publisher pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStereo", 1);
+    tf::TransformBroadcaster map2odomTfBroadcaster;
     
     uint32_t initialIdx;
     boost::filesystem::path correspondencesPath;
@@ -128,6 +166,8 @@ void testStereoTracking() {
     string rightImagePattern;
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
     vector< t_ego_value > egoValues;
+    
+    double posX = 0.0, posY = 0.0, posTheta = 0.0;
     
     switch (calibrationType) {
         case ObstaclesFromStereo::DUBLIN:
@@ -172,7 +212,7 @@ void testStereoTracking() {
             exit(0);
     }
     
-    LibvisoHelper visualOdom(cameraParams[0]);
+//     LibvisoHelper visualOdom(cameraParams[0]);
     
     boost::shared_ptr<ObstaclesFromStereo> pointCloudMaker;
     polar_grid_tracking::t_SGBM_params sgbmParams;
@@ -187,31 +227,6 @@ void testStereoTracking() {
     sgbmParams.speckleWindowSize = 100;
     sgbmParams.speckleRange = 32;    
     sgbmParams.fullDP = true;
-    
-    // TODO: Read from a parameters file
-    uint32_t rows = 60; // 400
-    uint32_t cols = 60; // 128
-    double cellSizeX = 0.2; // 0.1
-    double cellSizeZ = 0.2; // 0.1
-    double maxVelX = 5.0; // 0.1
-    double maxVelZ= 5.0; // 0.1 
-    double particlesPerCell = 1000; //1000;
-    double threshProbForCreation = 0.9999; //0.2;
-    
-    double gridDepthFactor = 0.1;
-    uint32_t gridColumnFactor = 12;
-    double yawInterval = 5.0 * M_PI / 180.0;
-    
-    double threshYaw = 20.0 / 180.0 * M_PI;
-    double threshMagnitude = 1.0;
-    
-    // TODO Get it from the real measurements
-    //     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
-    
-    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
-                                     cameraParams[0], particlesPerCell, threshProbForCreation, 
-                                     gridDepthFactor, gridColumnFactor, yawInterval,
-                                     threshYaw, threshMagnitude);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;
@@ -249,7 +264,8 @@ void testStereoTracking() {
         //         
         pointCloudMaker->generatePointClouds(left, right, leftMask);
         
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
+//         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
+        publishPointCloud(pointCloudPub, pointCloudMaker->getPointCloud());
         
         // TODO: Think in the right strategy in case yaw couldn't be obtained
         double yaw, speed, deltaTime;
@@ -279,43 +295,40 @@ void testStereoTracking() {
                 break;
             }
         }
-        //         if (calibrationType != ObstaclesFromStereo::KARLSRUHE_V2) {
-        //             visualOdom.compute(left, right, deltaTime, yaw, speed);
-        //             cout << "Yaw = " << yaw * 180 / 3.14 << endl;
-        //             cout << "speed = " << speed << endl;
-        //         } else {
-//         yaw = 0.0;
-//         speed = 0.0;
+        
+        // TODO: Publish current position
+        yaw = M_PI / 8.0;
+        posX += speed * deltaTime * sin(yaw);
+        posY += speed * deltaTime * -cos(yaw);
+        posTheta += yaw;
+        
+        cout << cv::Point3d(speed, yaw, deltaTime) << endl;
+        cout << cv::Point3d(posX, posY, posTheta) << endl;
+        
+        map2odomTfBroadcaster.sendTransform(
+            tf::StampedTransform(
+                tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(posX, posY, 0.0)),
+                                 ros::Time::now(),"map", "odom"));
+        
+        // Publish point cloud
+        
+        uint8_t keycode = cv::waitKey(0);
+        if (keycode == 27) {
+            break;
+        }
         //         }
-        
-        //         gridTracker.setDeltaYawSpeedAndTime(0.0 / 180.0 * 3.14, 0.0, 1.0);
-        gridTracker.setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
-        //         gridTracker.setDeltaYawSpeedAndTime(45.0 / 180.0 * 3.14, 0.0, deltaTime);
-        gridTracker.compute(pointCloud);
-        
-        //         visualizePointCloud(pointCloud);
-//         if (i == initialIdx) {
-//             cv::waitKey(20);
-//         } else {
-            uint8_t keycode = cv::waitKey(0);
-            if (keycode == 27) {
-                break;
-            }
-//         }
         
         //         if (i != initialIdx)
         //             break;
         ros::spinOnce();
-}
+    }
 }
 
 int main(int argC, char **argV) {
     ros::init(argC, argV, "PolarGridTracking");
     
-//     if (fork() == 0) {
-//         testPointCloud();
-//     }
+    //     if (fork() == 0) {
+    //         testPointCloud();
+    //     }
     testStereoTracking();
-    
-    return 0;
 }
