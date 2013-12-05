@@ -313,7 +313,7 @@ void testStereoTracking() {
 }
 
 void polarTracking() {
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::BAHNHOFSTRASSE;
     
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
     
@@ -333,6 +333,12 @@ void polarTracking() {
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
             ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2011_09_28/calib_cam_to_cam.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE_V2);
+            
+            break;
+        }
+        case ObstaclesFromStereo::BAHNHOFSTRASSE:
+        {
+            ObstaclesFromStereo::getParams("/local/imaged/stixels/bahnhof", cameraParams, ObstaclesFromStereo::BAHNHOFSTRASSE);
             
             break;
         }

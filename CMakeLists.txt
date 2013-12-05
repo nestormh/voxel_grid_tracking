@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(PolarGridTracking)
 
+INCLUDE("PolarGridTrackingConfig.cmake")
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -14,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
 set(ROS_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math -unroll-loops -march=native -std=c++0x -fopenmp -msse3")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math -unroll-loops -march=native -std=c++0x -fopenmp")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -ffast-math -march=native -std=c++0x")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 
 # find_package(OMPL    REQUIRED )
@@ -37,6 +41,8 @@ find_package(PCL 1.6 REQUIRED)
 # find_package(CGAL REQUIRED)
 # find_package(GMP REQUIRED)
 # find_package(MPFR REQUIRED)
+
+INCLUDE("${STIXEL_WORLD_PATH}/StixelWorld.cmake")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)

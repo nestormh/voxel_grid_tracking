@@ -265,6 +265,11 @@ void testStereoTracking() {
             pointCloudMaker->setGroundThresh(0.3);
             pointCloudMaker->setBackGroundThresh(20);
             pointCloudMaker->setLeafSize(0.05);
+            
+            cout << "Params1" << endl;
+            pointCloudMaker->showCameraParams(cameraParams.at(0));
+            cout << "Params2" << endl;
+            pointCloudMaker->showCameraParams(cameraParams.at(1));
         }
         
         cv::imshow("imgL", left);
@@ -355,7 +360,7 @@ void testStereoTracking() {
 }
 
 int main(int argC, char **argV) {
-    ros::init(argC, argV, "PolarGridTracking");
+    ros::init(argC, argV, "stereo_and_odom");
     
     //     if (fork() == 0) {
     //         testPointCloud();

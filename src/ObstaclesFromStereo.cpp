@@ -32,6 +32,8 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include <boost/filesystem.hpp>
+
 using namespace std;
 
 ObstaclesFromStereo::ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType) : m_method(SGBM), m_size(size), 
@@ -301,6 +303,7 @@ void ObstaclesFromStereo::getParams(const std::string& fileName, std::vector< t_
         case DUBLIN: return getParamsFromDublinDataset(fileName, params);
         case KARLSRUHE: return getParamsFromKarlsruhe(fileName, params);
         case KARLSRUHE_V2: return getParamsFromKarlsruhe_v2(fileName, params);
+        case BAHNHOFSTRASSE: return getParamsFromBahnhofstrasse(fileName, params);
     }
 }
 
@@ -496,6 +499,56 @@ void ObstaclesFromStereo::getParamsFromKarlsruhe_v2(const string& fileName, vect
     params.push_back(tmpParams[2]);
     params.push_back(tmpParams[3]);
     
+}
+
+void ObstaclesFromStereo::getParamsFromBahnhofstrasseSingleFile(const string& fileName, t_Camera_params& params)
+{
+    params.width = 640;
+    params.height = 480;
+    
+    double dummy;
+    ifstream fin(fileName.c_str());
+    
+    fin >> params.ku;
+    fin >> dummy;
+    fin >> params.u0;
+    
+    fin >> dummy;
+    fin >> params.kv;
+    fin >> params.v0;
+    
+    fin >> dummy;
+    fin >> dummy;
+    fin >> dummy;
+    
+    fin >> params.distortion;
+    fin >> dummy;
+    fin >> dummy;
+    fin >> dummy;
+    
+    params.R = Eigen::MatrixXd(3, 3);
+    for (uint32_t i = 0; i < 3; i++)
+        for (uint32_t j = 0; j < 3; j++)
+            fin >> params.R(i, j);
+        
+    params.t = Eigen::MatrixXd(3, 1);
+    for (uint32_t i = 0; i < 3; i++) {
+        fin >> params.t(i);
+        params.t(i) /= 100.0;
+    }
+        
+    fin.close();
+}
+
+void ObstaclesFromStereo::getParamsFromBahnhofstrasse(const string& fileName, vector< t_Camera_params >& params)
+{
+    boost::filesystem3::path path(fileName);
+    params.resize(2);
+    getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem3::path("cam1.cal")).string(), params[0]);
+    getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem3::path("cam2.cal")).string(), params[1]);
+    
+    params[0].baseline = -params[1].t(0);
+    params[1].baseline = -params[1].t(0);
 }
 
 // FIXME: This test will not work properly with the new version of ObstaclesFromStereo class

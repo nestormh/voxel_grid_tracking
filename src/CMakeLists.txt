@@ -18,7 +18,7 @@ add_executable(PolarGridTracking
     polargridtracking.cpp
     particle.cpp
     cell.cpp
-    utils.cpp
+    utilspolargridtracking.cpp
     libvisohelper.cpp
     ${VISO_FILES}
     main_ros.cpp
@@ -97,5 +97,31 @@ target_link_libraries(stereo_and_odom
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
   ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
+
+#################################################################
+# stixels_publisher
+#################################################################
+add_executable(stixels_publisher
+    ${STIXEL_WORLD_SRC}
+    stixelsapplicationros.cpp
+    mainStixels.cpp
+)
+
+include_directories(stixels_publisher
+    ${PCL_INCLUDE_DIRS}/pcl-1.7
+    ${OpenCV_INCLUDE_DIR}
+    ${Boost_INCLUDE_DIR}
+    ${STIXEL_WORLD_INCLUDE_DIRS}
+    /opt/ros/hydro/include
+)
+
+target_link_libraries(stixels_publisher
+  ${EIGEN3_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${Boost_LIBRARIES}
+  ${STIXEL_WORLD_LIBRARIES}
   ${catkin_LIBRARIES}
 )

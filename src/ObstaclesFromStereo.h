@@ -36,7 +36,7 @@ using namespace polar_grid_tracking;
 class ObstaclesFromStereo {
 public:
     typedef enum t_Method { SGBM = 0, STEREOVAR = 1};
-    typedef enum t_CalibrationFileType { DUBLIN = 0, KARLSRUHE = 1, KARLSRUHE_V2 = 2 };
+    typedef enum t_CalibrationFileType { DUBLIN = 0, KARLSRUHE = 1, KARLSRUHE_V2 = 2, BAHNHOFSTRASSE = 3 };
     
     ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType);
     ~ObstaclesFromStereo();
@@ -57,6 +57,8 @@ public:
                                            double baseline = 0.0995964, double focalLength = 519.546875, cv::Size sz = cv::Size(640, 480));
     static void getParamsFromKarlsruhe(const std::string & fileName, std::vector<t_Camera_params> & params);
     static void getParamsFromKarlsruhe_v2(const std::string & fileName, std::vector<t_Camera_params> & params);
+    static void getParamsFromBahnhofstrasse(const std::string & fileName, std::vector<t_Camera_params> & params);
+    static void getParamsFromBahnhofstrasseSingleFile(const std::string & fileName, t_Camera_params & params);
     static void getParams(const std::string & fileName, std::vector<t_Camera_params> & params, const t_CalibrationFileType & calibrationFileType);
     static void getFGMask(const std::string & fileName, cv::Mat & fgMask, const cv::Size & sz);
     

@@ -16,7 +16,7 @@
 
 
 #include "polargridtracking.h"
-#include "utils.h"
+#include "utilspolargridtracking.h"
 #include "obstacle.h"
 
 #include <boost/foreach.hpp>
@@ -49,11 +49,13 @@ PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & col
     
     const double maxDepth = rows * m_cellSizeZ;
 //     const double maxWide = cols * m_cellSizeX / 2.0;
-    uint32_t numRows, numCols;
+    int32_t numRows, numCols;
     getPolarPositionFromCartesian(maxDepth, 0, 
                                   numRows, numCols);
     numCols = m_cameraParams.width / (double)m_gridColumnFactor + 1;
 
+    assert((numRows != -1) && (numCols != -1));
+    
     m_polarGrid = PolarCellGrid(numRows + 1, numCols);
     for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
@@ -487,17 +489,24 @@ void PolarGridTracking::generateObstacles()
 }
 
 void PolarGridTracking::getPolarPositionFromCartesian(const double & z, const double & x, 
-                                                         uint32_t& row, uint32_t& column)
+                                                         int32_t& row, int32_t& column)
 {
     const double z0 = (double)(m_cameraParams.ku * m_cameraParams.baseline) / m_cameraParams.width;
+
+    if (z < z0) {
+        row = column = -1;
+        return;
+    }
     
+    double rowf = LOG_BASE(1.0 + m_gridDepthFactor, z / z0);
     row = LOG_BASE(1.0 + m_gridDepthFactor, z / z0);
     const double u = m_cameraParams.u0 - ((x * m_cameraParams.ku) / z);
     column = u / m_gridColumnFactor - 1;
 }
 
 void PolarGridTracking::resetPolarGrid()
-{for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
+{
+    for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
             m_polarGrid(r, c).reset();
         }
@@ -506,9 +515,10 @@ void PolarGridTracking::resetPolarGrid()
 
 void PolarGridTracking::updatePolarGridWithPoint(const PointXYZRGBDirected& point)
 {
-    uint32_t row, column;
+    int32_t row, column;
     getPolarPositionFromCartesian(point.z, point.x, row, column);
-    m_polarGrid(row, column).addPointToHistogram(point);
+    if ((row != -1) && (column != -1))
+        m_polarGrid(row, column).addPointToHistogram(point);
 }
     
 }

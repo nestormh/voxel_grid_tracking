@@ -58,7 +58,7 @@ protected:
     void extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud,
                           pcl::PointCloud< PointXYZRGBDirected >::Ptr & extendedPointCloud);
     void getPolarPositionFromCartesian(const double & z, const double & x, 
-                                       uint32_t& row, uint32_t& column);
+                                       int32_t& row, int32_t& column);
     void resetPolarGrid();
     void updatePolarGridWithPoint(const PointXYZRGBDirected & point);
     
