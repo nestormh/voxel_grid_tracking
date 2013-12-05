@@ -19,6 +19,9 @@
 #define POLARGRIDTRACKINGROS_H
 
 #include "polargridtracking.h"
+#include "sensor_msgs/PointCloud2.h"
+
+#include <tf/transform_datatypes.h>
 
 #include "ros/ros.h"
 
@@ -33,9 +36,11 @@ public:
                          const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval,
                          const double & threshYaw, const double & threshMagnitude);
     
+    void start();
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
 protected:
     void reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) ;
     
     void publishAll(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
     
@@ -47,6 +52,7 @@ protected:
     void publishColumnAverage(const double & zPlane);
     void publishPolarGrid();
     void publishPolarCellYaw(const double & zPlane);
+    void clearObstaclesAndROIs();
     void publishObstacles();
     void publishROIs();
     
@@ -61,6 +67,10 @@ protected:
     ros::Publisher m_polarCellYawPub;
     ros::Publisher m_obstaclesPub;
     ros::Publisher m_roiPub;
+    
+    ros::Subscriber m_pointCloudSub;
+    
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
 };
 
 }

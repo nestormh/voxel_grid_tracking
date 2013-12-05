@@ -20,6 +20,7 @@
 #include <pcl-1.7/pcl/common/transforms.h>
 
 #include <boost/foreach.hpp>
+#include <boost/graph/graph_concepts.hpp>
 
 #include <limits>
 

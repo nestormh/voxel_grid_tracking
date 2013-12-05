@@ -30,11 +30,17 @@
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
 #include "std_msgs/String.h"
+
+#include <boost/foreach.hpp>
 
 #include <sstream>
 
 #include <opencv2/opencv.hpp>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #define CAMERA_FRAME_ID "left_cam"
 
@@ -123,6 +129,7 @@ void testPointCloud() {
 }
 
 void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
+    
     cout << "publishing point cloud" << endl;   
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -146,6 +153,7 @@ void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl
     sensor_msgs::PointCloud2 cloudMsg;
     pcl::toROSMsg (*tmpPointCloud, cloudMsg);
     cloudMsg.header.frame_id = CAMERA_FRAME_ID;
+    cloudMsg.header.stamp = ros::Time();
     
     pointCloudPub.publish(cloudMsg);
     
@@ -167,7 +175,7 @@ void testStereoTracking() {
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
     vector< t_ego_value > egoValues;
     
-    double posX = 0.0, posY = 0.0, posTheta = 0.0;
+    double posX = 0.0, posY = 0.0, posTheta = 0.0, accTime = 0.0;
     
     switch (calibrationType) {
         case ObstaclesFromStereo::DUBLIN:
@@ -261,11 +269,8 @@ void testStereoTracking() {
         
         cv::imshow("imgL", left);
         //         cv::imshow("imgR", right);
-        //         
+
         pointCloudMaker->generatePointClouds(left, right, leftMask);
-        
-//         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
-        publishPointCloud(pointCloudPub, pointCloudMaker->getPointCloud());
         
         // TODO: Think in the right strategy in case yaw couldn't be obtained
         double yaw, speed, deltaTime;
@@ -296,19 +301,44 @@ void testStereoTracking() {
             }
         }
         
-        // TODO: Publish current position
-        yaw = M_PI / 8.0;
         posX += speed * deltaTime * sin(yaw);
         posY += speed * deltaTime * -cos(yaw);
-        posTheta += yaw;
+        posTheta += yaw; 
+        accTime += deltaTime;
         
-        cout << cv::Point3d(speed, yaw, deltaTime) << endl;
-        cout << cv::Point3d(posX, posY, posTheta) << endl;
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
+             it != pointCloud->end(); it++) {
+            
+            const pcl::PointXYZRGB & point = *it;
+            pcl::PointXYZRGB newPoint;
+            
+            newPoint.x = point.x;
+            newPoint.y = point.z;
+            newPoint.z = point.y;
+            newPoint.r = point.r;
+            newPoint.g = point.g;
+            newPoint.b = point.b;
+            
+            tmpPointCloud->push_back(newPoint);
+        }
         
-        map2odomTfBroadcaster.sendTransform(
-            tf::StampedTransform(
-                tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(posX, posY, 0.0)),
-                                 ros::Time::now(),"map", "odom"));
+        
+        static tf::TransformBroadcaster broadcaster;
+        tf::StampedTransform transform;
+        // TODO: In a real application, time should be taken from the system
+        transform.stamp_ = ros::Time();
+        transform.setOrigin(tf::Vector3(posX, posY, accTime));
+        transform.setRotation( tf::createQuaternionFromRPY(0.0, 0.0, posTheta) );
+        
+        publishPointCloud(pointCloudPub, tmpPointCloud);
+        broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
+        
+//         map2odomTfBroadcaster.sendTransform(
+//             tf::StampedTransform(
+//                 tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(posX, posY, 0.0)),
+//                                  ros::Time::now(), "map", "odom"));
         
         // Publish point cloud
         
@@ -320,7 +350,7 @@ void testStereoTracking() {
         
         //         if (i != initialIdx)
         //             break;
-        ros::spinOnce();
+//         ros::spinOnce();
     }
 }
 

@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   tf
+  tf2_ros
 )
 
 set(ROS_BUILD_TYPE Debug)

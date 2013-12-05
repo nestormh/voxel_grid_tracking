@@ -17,6 +17,7 @@
 
 #include "polargridtrackingros.h"
 
+#include <pcl-1.7/pcl/point_cloud.h>
 #include<pcl_conversions/pcl_conversions.h>
 #include "sensor_msgs/PointCloud2.h"
 #include "nav_msgs/GridCells.h"
@@ -25,6 +26,8 @@
 #include "geometry_msgs/PoseArray.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <tf/transform_datatypes.h>
+#include "tf/transform_listener.h"
+// #include "tf2_ros/buffer.h"
 
 #include "utils.h"
 
@@ -55,8 +58,64 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
     m_polarCellYawPub = nh.advertise<geometry_msgs::PoseArray> ("polarCellYaw", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 10);
     m_roiPub = nh.advertise<visualization_msgs::MarkerArray>("obstaclesROI", 10);
+}
+
+void PolarGridTrackingROS::start()
+{
+
+    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    tf::StampedTransform lastMapOdomTransform;
+    lastMapOdomTransform.stamp_ = ros::Time(-1);
     
-//     ros::spin();
+    ros::NodeHandle nh("~");
+    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloudStereo", 1, boost::bind(&PolarGridTrackingROS::pointCloudCallback, this, _1));
+        
+    tf::TransformListener listener;
+    tf::StampedTransform transform;
+    ros::Rate rate(10.0);
+    while (ros::ok()) {
+        try{
+            while (! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01)));
+            
+            listener.lookupTransform("/map", "/odom", ros::Time(0), transform);
+            if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
+                if (lastMapOdomTransform.stamp_ != transform.stamp_) {
+                    // FIXME: Get the time increment from the timestamp, not from the Z
+                    const double deltaTime = transform.getOrigin().getZ() - lastMapOdomTransform.getOrigin().getZ();
+                    
+                    double yaw, yaw1, yaw2, pitch, roll;
+                    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw2);
+                    tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch, yaw1);
+                    yaw = yaw2 - yaw1;
+                    
+                    double deltaX = transform.getOrigin().getX() - lastMapOdomTransform.getOrigin().getX();
+                    
+                    double speed = deltaX / (deltaTime * sin(yaw));
+                    
+                    setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
+                    
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+                    pcl::copyPointCloud(*m_pointCloud, *pointCloud);
+                    
+                    compute(pointCloud);
+                }
+            }
+            lastMapOdomTransform = transform;
+        } catch (tf::TransformException ex){
+            ROS_ERROR("%s",ex.what());
+        }
+        
+        
+        
+        rate.sleep();
+    }
+    
+    ros::spin();
+}
+
+void PolarGridTrackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
+{
+    pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
 }
 
 void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
@@ -75,6 +134,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
         reconstructObjects(pointCloud);
     } 
     publishParticles(m_oldParticlesPub, 2.0);
+
     initialization();
     
     
@@ -83,7 +143,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
 //         publishParticles(m_oldParticlesPub);
 //         prediction();
 //     }
-    
+
     publishAll(pointCloud);
 }
 
@@ -119,6 +179,7 @@ void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXY
     sensor_msgs::PointCloud2 cloudMsg;
     pcl::toROSMsg (*tmpPointCloud, cloudMsg);
     cloudMsg.header.frame_id="left_cam";
+    cloudMsg.header.stamp = ros::Time();
     
     m_pointCloudPub.publish(cloudMsg);
     
@@ -150,9 +211,10 @@ void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< PointXYZRGBD
     sensor_msgs::PointCloud2 cloudMsg;
     pcl::toROSMsg (*tmpPointCloud, cloudMsg);
     cloudMsg.header.frame_id="left_cam";
+    cloudMsg.header.stamp = ros::Time();
 
     m_extendedPointCloudPub.publish(cloudMsg);
-
+    
     ros::spinOnce();
 }
 
@@ -187,6 +249,8 @@ void PolarGridTrackingROS::publishPointCloudOrientation(const pcl::PointCloud< P
     }
     
     m_extendedPointCloudOrientationPub.publish(poses);
+    
+    ros::spinOnce();
 }
 
 
@@ -222,6 +286,8 @@ void PolarGridTrackingROS::publishBinaryMap()
     }
     
     m_binaryMapPub.publish(gridCells);
+    
+    ros::spinOnce();
 }
 
 void PolarGridTrackingROS::publishParticles(ros::Publisher & particlesPub, const double & zPlane)
@@ -266,6 +332,8 @@ void PolarGridTrackingROS::publishParticles(ros::Publisher & particlesPub, const
     }
     
     particlesPub.publish(particles);
+    
+    ros::spinOnce();
 }
 
 void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
@@ -315,6 +383,8 @@ void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
     }
     
     m_colAvgPub.publish(colAverages);
+    
+    ros::spinOnce();
 }
 
 void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
@@ -329,6 +399,7 @@ void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointX
     publishPointCloud(extendedPointCloud);
     publishPointCloudOrientation(extendedPointCloud);
     publishPolarCellYaw(1.0);
+    clearObstaclesAndROIs();
     publishObstacles();
     publishROIs();
 }
@@ -337,7 +408,7 @@ void PolarGridTrackingROS::publishPolarGrid()
 {
     visualization_msgs::Marker line_list;
     line_list.header.frame_id = "left_cam";
-    line_list.header.stamp = ros::Time::now();
+    line_list.header.stamp = ros::Time();
 //     line_list.ns = "points_and_lines";
     line_list.action = visualization_msgs::Marker::ADD;
     line_list.pose.orientation.w = 1.0;
@@ -393,6 +464,8 @@ void PolarGridTrackingROS::publishPolarGrid()
     
     m_polarGridPub.publish(line_list);
     
+    ros::spinOnce();
+    
 }
 
 void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
@@ -431,6 +504,8 @@ void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
     }
     
     m_polarCellYawPub.publish(polarCellYaw);
+    
+    ros::spinOnce();
 }
 
 void PolarGridTrackingROS::publishObstacles()
@@ -442,13 +517,13 @@ void PolarGridTrackingROS::publishObstacles()
     
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
         const vector<PolarCell> & cells = m_obstacles[i].cells();
-        if (cells.size() <= 1)
-            continue;
+//         if (cells.size() <= 1)
+//             continue;
         
         visualization_msgs::Marker triangles;
         
         triangles.header.frame_id = "left_cam";
-        triangles.header.stamp = ros::Time::now();
+        triangles.header.stamp = ros::Time();
         triangles.action = visualization_msgs::Marker::ADD;
         triangles.pose.orientation.w = 1.0;
         
@@ -463,7 +538,7 @@ void PolarGridTrackingROS::publishObstacles()
         triangles.color.g = (double)rand() / RAND_MAX;
         triangles.color.b = (double)rand() / RAND_MAX;
         
-        triangles.lifetime = ros::Duration(5.0);
+//         triangles.lifetime = ros::Duration(10.0);
         
         if (cells.size() > 1)
             triangles.color.a = 1.0;
@@ -510,6 +585,8 @@ void PolarGridTrackingROS::publishObstacles()
     }
     
     m_obstaclesPub.publish(obstacles);
+    
+    ros::spinOnce();
 }
 
 void PolarGridTrackingROS::publishROIs()
@@ -524,6 +601,7 @@ void PolarGridTrackingROS::publishROIs()
         visualization_msgs::Marker line_list;
         line_list.header.frame_id = "left_cam";
         line_list.header.stamp = ros::Time();
+        line_list.ns = "rois";
         line_list.id = i;
         line_list.type = visualization_msgs::Marker::LINE_LIST;
         line_list.action = visualization_msgs::Marker::ADD;
@@ -541,7 +619,8 @@ void PolarGridTrackingROS::publishROIs()
         line_list.color.r = (double)rand() / RAND_MAX;
         line_list.color.g = (double)rand() / RAND_MAX;
         line_list.color.b = (double)rand() / RAND_MAX;
-        line_list.lifetime = ros::Duration(5.0);
+        
+//         line_list.lifetime = ros::Duration(5.0);
         
         vector<geometry_msgs::Point> points(8);
         geometry_msgs::Point centroid;
@@ -621,7 +700,7 @@ void PolarGridTrackingROS::publishROIs()
         orientation.color.g = line_list.color.g;
         orientation.color.b = line_list.color.b;
         
-        orientation.lifetime = ros::Duration(5.0);
+//         orientation.lifetime = ros::Duration(5.0);
 
         orientation.points.push_back(centroid);
         centroid.x += cos(m_obstacles[i].yaw()) * m_obstacles[i].magnitude();
@@ -652,7 +731,7 @@ void PolarGridTrackingROS::publishROIs()
         speedText.color.b = 0.0;
         speedText.color.a = 1.0;
         
-        speedText.lifetime = ros::Duration(5.0);
+//         speedText.lifetime = ros::Duration(5.0);
         
         speedText.pose.position.x = centroid.x;
         speedText.pose.position.y = centroid.y;
@@ -667,6 +746,60 @@ void PolarGridTrackingROS::publishROIs()
      }
      
      m_roiPub.publish(obstaclesROI);
+     
+     ros::spinOnce();
 }
+
+void PolarGridTrackingROS::clearObstaclesAndROIs()
+{
+    visualization_msgs::MarkerArray obstacles;
+    visualization_msgs::MarkerArray obstaclesROI;
+    
+    for (uint32_t i = 0; i < 100; i++) {
+        visualization_msgs::Marker dummy;
+        
+        dummy.header.frame_id = "left_cam";
+        dummy.header.stamp = ros::Time();
+        dummy.action = visualization_msgs::Marker::DELETE;
+        dummy.id = i;
+        
+        obstacles.markers.push_back(dummy);
+
+        visualization_msgs::Marker dummy2;
+        dummy2.header.frame_id = "left_cam";
+        dummy2.header.stamp = ros::Time();
+        dummy2.ns = "rois";
+        dummy2.id = i;
+        dummy2.type = visualization_msgs::Marker::LINE_LIST;
+        dummy2.action = visualization_msgs::Marker::DELETE;
+        
+        obstaclesROI.markers.push_back(dummy2);
+        
+        // Orientation
+        visualization_msgs::Marker dummy3;
+        dummy3.header.frame_id = "left_cam";
+        dummy3.header.stamp = ros::Time();
+        dummy3.id = m_obstacles.size() + i - 1;
+        dummy3.type = visualization_msgs::Marker::ARROW;
+        dummy3.action = visualization_msgs::Marker::DELETE;
+        
+        obstaclesROI.markers.push_back(dummy3);
+        
+        // Speed visualization
+        visualization_msgs::Marker dummy4;
+        dummy4.header.frame_id = "left_cam";
+        dummy4.header.stamp = ros::Time();
+        dummy4.id = 2 * (m_obstacles.size() - 1) + i;
+        dummy4.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        dummy4.action = visualization_msgs::Marker::DELETE;
+        
+        obstaclesROI.markers.push_back(dummy4);
+        
+    }
+    
+    m_roiPub.publish(obstaclesROI);
+    m_obstaclesPub.publish(obstacles);
+}
+
 
 }

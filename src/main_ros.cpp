@@ -25,6 +25,7 @@
 #include <iostream>
 #include <iomanip>
 #include <boost/filesystem.hpp>
+#include <boost/concept_check.hpp>
 
 #include <pcl/visualization/pcl_visualizer.h>
 
@@ -41,6 +42,7 @@ using namespace std;
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
 void testStereoTracking();
 void testPointCloud();
+void polarTracking();
 
 // Definitions
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
@@ -289,6 +291,7 @@ void testStereoTracking() {
         //         }
         
         //         gridTracker.setDeltaYawSpeedAndTime(0.0 / 180.0 * 3.14, 0.0, 1.0);
+        
         gridTracker.setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
         //         gridTracker.setDeltaYawSpeedAndTime(45.0 / 180.0 * 3.14, 0.0, deltaTime);
         gridTracker.compute(pointCloud);
@@ -306,16 +309,70 @@ void testStereoTracking() {
         //         if (i != initialIdx)
         //             break;
         ros::spinOnce();
+    }
 }
+
+void polarTracking() {
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+    
+    vector<polar_grid_tracking::t_Camera_params> cameraParams;
+    
+    switch (calibrationType) {
+        case ObstaclesFromStereo::DUBLIN:
+        {
+            ObstaclesFromStereo::getParams("/local/imaged/calibrated/cdvp_3d_pedestrian_detection_dataset_vicon_1/Groundtruth3d/GroundtruthPlane.txt", cameraParams, ObstaclesFromStereo::DUBLIN);
+            
+            break;
+        }
+        case ObstaclesFromStereo::KARLSRUHE:
+        {
+            ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2009_09_08_drive_0010/2009_09_08_calib.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE);
+            
+            break;
+        }
+        case ObstaclesFromStereo::KARLSRUHE_V2:
+        {
+            ObstaclesFromStereo::getParams("/local/imaged/Karlsruhe/2011_09_28/calib_cam_to_cam.txt", cameraParams, ObstaclesFromStereo::KARLSRUHE_V2);
+            
+            break;
+        }
+        default:
+            exit(0);
+    }
+    
+    // TODO: Read from a parameters file
+    uint32_t rows = 60; // 400
+    uint32_t cols = 60; // 128
+    double cellSizeX = 0.2; // 0.1
+    double cellSizeZ = 0.2; // 0.1
+    double maxVelX = 5.0; // 0.1
+    double maxVelZ= 5.0; // 0.1 
+    double particlesPerCell = 1000; //1000;
+    double threshProbForCreation = 0.9999; //0.2;
+    
+    double gridDepthFactor = 0.1;
+    uint32_t gridColumnFactor = 12;
+    double yawInterval = 5.0 * M_PI / 180.0;
+    
+    double threshYaw = 20.0 / 180.0 * M_PI;
+    double threshMagnitude = 1.0;
+    
+    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
+                                     cameraParams[0], particlesPerCell, threshProbForCreation, 
+                                     gridDepthFactor, gridColumnFactor, yawInterval,
+                                     threshYaw, threshMagnitude);
+    gridTracker.start();
 }
 
 int main(int argC, char **argV) {
     ros::init(argC, argV, "PolarGridTracking");
     
+    polarTracking();
 //     if (fork() == 0) {
 //         testPointCloud();
 //     }
-    testStereoTracking();
+//     testStereoTracking();
+    
     
     return 0;
 }

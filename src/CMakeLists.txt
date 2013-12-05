@@ -21,7 +21,7 @@ add_executable(PolarGridTracking
     utils.cpp
     libvisohelper.cpp
     ${VISO_FILES}
-  main_ros.cpp
+    main_ros.cpp
 )
 
 include_directories(PolarGridTracking

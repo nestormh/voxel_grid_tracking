@@ -400,7 +400,7 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
                 if (destPoint.vz < 0)
                     destPoint.yaw = -destPoint.yaw;
             }
-                        
+            
             updatePolarGridWithPoint(destPoint);
             
             extendedPointCloud->push_back(destPoint);
