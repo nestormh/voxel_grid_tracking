@@ -58,6 +58,7 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
     m_polarCellYawPub = nh.advertise<geometry_msgs::PoseArray> ("polarCellYaw", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 10);
     m_roiPub = nh.advertise<visualization_msgs::MarkerArray>("obstaclesROI", 10);
+    m_pointCloudInObstaclePub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudInObstacle", 1);
 }
 
 void PolarGridTrackingROS::start()
@@ -425,6 +426,7 @@ void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointX
     clearObstaclesAndROIs();
     publishObstacles();
     publishROIs();
+    publishPointCloudInObstacles(extendedPointCloud);
 }
 
 void PolarGridTrackingROS::publishPolarGrid()
@@ -505,11 +507,15 @@ void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
             if (m_polarGrid(r, c).getNumVectors() != 0) {
                 
+                const int32_t & obstIdx = m_polarGrid(r, c).obstIdx();
+                if (obstIdx == -1) continue;
+                if (! m_obstacles[obstIdx].isValid()) continue;
+                
                 geometry_msgs::Pose pose;
                 
                 pose.position.y = z0 * pow(1.0 + m_gridDepthFactor, r + 0.5);
                 const double dMin = fb / pose.position.y;
-                const double u = m_gridColumnFactor * (c + 2.5);
+                const double u = m_gridColumnFactor * (c + 1.5);
                 pose.position.x = pose.position.y * (u - m_cameraParams.u0) / m_cameraParams.ku;
                 pose.position.z = zPlane;
                 
@@ -539,6 +545,9 @@ void PolarGridTrackingROS::publishObstacles()
     const double fb = m_cameraParams.ku * m_cameraParams.baseline;
     
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        if (! m_obstacles[i].isValid())
+            continue;
+        
         const vector<PolarCell> & cells = m_obstacles[i].cells();
 //         if (cells.size() <= 1)
 //             continue;
@@ -572,8 +581,8 @@ void PolarGridTrackingROS::publishObstacles()
         
             geometry_msgs::Point p1, p2, p3, p4;
             
-            const double row = cell.row() - 0.5;
-            const double col = cell.col() + 2.0;
+            const double row = cell.row();
+            const double col = cell.col() + 1.0;
 
             p1.y = z0 * pow(1.0 + m_gridDepthFactor, row);
             const double u1 = m_gridColumnFactor * col;
@@ -619,6 +628,9 @@ void PolarGridTrackingROS::publishROIs()
      for (uint32_t i = 0; i < m_obstacles.size(); i++) {
          if ((m_obstacles[i].cells().size() <= 1) ||
              (m_obstacles[i].magnitude() == 0.0))
+             continue;
+         
+         if (! m_obstacles[i].isValid())
              continue;
          
         visualization_msgs::Marker line_list;
@@ -822,6 +834,52 @@ void PolarGridTrackingROS::clearObstaclesAndROIs()
     
     m_roiPub.publish(obstaclesROI);
     m_obstaclesPub.publish(obstacles);
+}
+
+void PolarGridTrackingROS::publishPointCloudInObstacles(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    for (pcl::PointCloud<PointXYZRGBDirected>::const_iterator it = pointCloud->begin();
+            it != pointCloud->end(); it++) {
+
+        int32_t row, column;
+        const double z = it->z, x = it->x;
+        getPolarPositionFromCartesian(z, x, row, column);
+        if ((row == -1) || (column == -1))
+            continue;
+        
+        const int32_t & obstIdx = m_polarGrid(row, column).obstIdx();
+        if (obstIdx == -1)
+            continue;
+        
+        const Obstacle obstacle = m_obstacles[obstIdx];
+    
+        if (! obstacle.isValid())
+            continue;
+        
+        const PointXYZRGBDirected & point = *it;
+        pcl::PointXYZRGB newPoint;
+
+        newPoint.x = point.x/* - m_cellSizeX / 2.0*/;
+        newPoint.y = point.z/* - m_cellSizeZ / 2.0*/;
+        newPoint.z = point.y;
+        newPoint.r = point.r;
+        newPoint.g = point.g;
+        newPoint.b = point.b;
+
+        tmpPointCloud->push_back(newPoint);
+    }
+
+
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*tmpPointCloud, cloudMsg);
+    cloudMsg.header.frame_id="left_cam";
+    cloudMsg.header.stamp = ros::Time();
+
+    m_pointCloudInObstaclePub.publish(cloudMsg);
+
+    ros::spinOnce();
 }
 
 

@@ -664,7 +664,9 @@ void StixelsApplicationROS::publishStixels()
             pointCloud->push_back(point);
         }
         
-        cv::line(imgLeft, p1, p2, cv::Scalar(0, 255, 0));
+//         cv::line(imgLeft, p1, p2, cv::Scalar(0, 255, 0));
+        imgLeft.at<cv::Vec3b>(p1.y, p1.x) = cv::Vec3b(0, 255, 0);
+        imgLeft.at<cv::Vec3b>(p2.y, p2.x) = cv::Vec3b(0, 255, 0);
     }
     
     

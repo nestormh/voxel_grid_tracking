@@ -35,6 +35,9 @@ Obstacle::Obstacle(const uint32_t& obstIdx, const double & threshYaw,
         addCellToObstacle(cell);
         m_roi.reset(new pcl::PointCloud<pcl::PointXYZ>);
         m_roi->points.resize(8);
+        
+        m_maxCol = 0;
+        m_minCol = std::numeric_limits<int>::max();
 }
 
 Obstacle::Obstacle(const uint32_t& obstIdx, const double & threshYaw, 
@@ -43,10 +46,16 @@ Obstacle::Obstacle(const uint32_t& obstIdx, const double & threshYaw,
 {
     m_roi.reset(new pcl::PointCloud<pcl::PointXYZ>);
     m_roi->points.resize(8);
+
+    m_maxCol = 0;
+    m_minCol = std::numeric_limits<int>::max();    
 }
 
 bool Obstacle::addCellToObstacle(PolarCell& cell)
 {
+    if (cell.col() > m_maxCol) m_maxCol = cell.col();
+    if (cell.col() < m_minCol) m_minCol = cell.col();
+    
     if (m_cells.size() != 0) {    // If holds motion info
         const double & diffMagnitude = fabs(m_magnitude - cell.getMagnitude());
         const double & diffAng = calculateDifferenceBetweenAngles(m_yaw, cell.getYaw());
@@ -108,8 +117,8 @@ void Obstacle::setROIAndMotion(const t_Camera_params & cameraParams,
 
     const double z0 = (double)(cameraParams.ku * cameraParams.baseline) / cameraParams.width;
     
-    const double minY = z0 * pow(1.0 + gridDepthFactor, minR - 0.5);
-    const double maxY = z0 * pow(1.0 + gridDepthFactor, maxR + 0.5);
+    const double minY = z0 * pow(1.0 + gridDepthFactor, minR);
+    const double maxY = z0 * pow(1.0 + gridDepthFactor, maxR + 1.0);
     
 //     const double minU = gridColumnFactor * (minC + 2.0);
 //     const double minXminY = minY * (cameraParams.u0 - minU) / cameraParams.ku;
@@ -118,10 +127,10 @@ void Obstacle::setROIAndMotion(const t_Camera_params & cameraParams,
 //     const double maxXminY = minY * (cameraParams.u0 - maxU) / cameraParams.ku;
 //     const double maxXmaxY = maxY * (cameraParams.u0 - maxU) / cameraParams.ku;
     
-    const double minU = gridColumnFactor * (minC + 2.0);
+    const double minU = gridColumnFactor * (minC + 1.0);
     const double minXminY = minY * (minU - cameraParams.u0) / cameraParams.ku;
     const double minXmaxY = maxY * (minU - cameraParams.u0) / cameraParams.ku;
-    const double maxU = gridColumnFactor * (maxC + 3.0);
+    const double maxU = gridColumnFactor * (maxC + 2.0);
     const double maxXminY = minY * (maxU - cameraParams.u0) / cameraParams.ku;
     const double maxXmaxY = maxY * (maxU - cameraParams.u0) / cameraParams.ku;
     

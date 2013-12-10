@@ -55,6 +55,7 @@ protected:
     void clearObstaclesAndROIs();
     void publishObstacles();
     void publishROIs();
+    void publishPointCloudInObstacles(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud);
     
     ros::Publisher m_pointCloudPub;
     ros::Publisher m_extendedPointCloudPub;
@@ -67,6 +68,7 @@ protected:
     ros::Publisher m_polarCellYawPub;
     ros::Publisher m_obstaclesPub;
     ros::Publisher m_roiPub;
+    ros::Publisher m_pointCloudInObstaclePub;
     
     ros::Subscriber m_pointCloudSub;
     

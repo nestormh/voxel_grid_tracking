@@ -44,6 +44,8 @@ public:
     double yaw() const { return m_yaw; }
     double magnitude() const { return m_magnitude; }
     
+    bool isValid() const { return m_maxCol - m_minCol > 1; }
+    
     pcl::PointCloud<pcl::PointXYZ>::Ptr roi() const { return m_roi; }
 protected:
     void updateMotionInformation();
@@ -53,6 +55,9 @@ protected:
     double m_yaw;
     vector<PolarCell> m_cells;
     pcl::PointCloud<pcl::PointXYZ>::Ptr m_roi;
+    
+    int32_t m_minCol;
+    int32_t m_maxCol;
     
     // Params
     double m_threshYaw, m_threshMagnitude;
