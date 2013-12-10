@@ -111,13 +111,19 @@ void Obstacle::setROIAndMotion(const t_Camera_params & cameraParams,
     const double minY = z0 * pow(1.0 + gridDepthFactor, minR - 0.5);
     const double maxY = z0 * pow(1.0 + gridDepthFactor, maxR + 0.5);
     
-    const double minU = gridColumnFactor * (minC + 2.0);
-    const double minXminY = minY * (cameraParams.u0 - minU) / cameraParams.ku;
-    const double minXmaxY = maxY * (cameraParams.u0 - minU) / cameraParams.ku;
-    const double maxU = gridColumnFactor * (maxC + 3.0);
-    const double maxXminY = minY * (cameraParams.u0 - maxU) / cameraParams.ku;
-    const double maxXmaxY = maxY * (cameraParams.u0 - maxU) / cameraParams.ku;
+//     const double minU = gridColumnFactor * (minC + 2.0);
+//     const double minXminY = minY * (cameraParams.u0 - minU) / cameraParams.ku;
+//     const double minXmaxY = maxY * (cameraParams.u0 - minU) / cameraParams.ku;
+//     const double maxU = gridColumnFactor * (maxC + 3.0);
+//     const double maxXminY = minY * (cameraParams.u0 - maxU) / cameraParams.ku;
+//     const double maxXmaxY = maxY * (cameraParams.u0 - maxU) / cameraParams.ku;
     
+    const double minU = gridColumnFactor * (minC + 2.0);
+    const double minXminY = minY * (minU - cameraParams.u0) / cameraParams.ku;
+    const double minXmaxY = maxY * (minU - cameraParams.u0) / cameraParams.ku;
+    const double maxU = gridColumnFactor * (maxC + 3.0);
+    const double maxXminY = minY * (maxU - cameraParams.u0) / cameraParams.ku;
+    const double maxXmaxY = maxY * (maxU - cameraParams.u0) / cameraParams.ku;
     
     m_roi->at(0).x = minXminY;
     m_roi->at(0).y = minY;

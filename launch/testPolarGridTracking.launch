@@ -14,11 +14,11 @@
         <remap from="~/pointCloudStixels" 
             to="/$(arg namespace)/PolarGridTracking/pointCloudStereo" />
     </node>
-    <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
-<!--      <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > --> -->
-<!--             <remap from="~/pointCloudStereo"  -->
-<!--                 to="/$(arg namespace)/PolarGridTracking/pointCloud" /> -->
-<!--     </node>  -->
+<!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
+<!--     <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > --> --> -->
+<!--         <remap from="~/pointCloudStereo" -->
+<!--                     to="/$(arg namespace)/PolarGridTracking/pointCloudStereo" /> -->
+<!--     </node>   -->
 <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
     <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
     </node>

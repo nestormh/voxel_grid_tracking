@@ -349,6 +349,8 @@ void polarTracking() {
     // TODO: Read from a parameters file
     uint32_t rows = 60; // 400
     uint32_t cols = 60; // 128
+//     double cellSizeX = 0.2; // 0.1
+//     double cellSizeZ = 0.2; // 0.1
     double cellSizeX = 0.2; // 0.1
     double cellSizeZ = 0.2; // 0.1
     double maxVelX = 5.0; // 0.1
@@ -360,7 +362,7 @@ void polarTracking() {
     uint32_t gridColumnFactor = 12;
     double yawInterval = 5.0 * M_PI / 180.0;
     
-    double threshYaw = 20.0 / 180.0 * M_PI;
+    double threshYaw = 30.0 / 180.0 * M_PI;
     double threshMagnitude = 1.0;
     
     PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 

@@ -20,6 +20,8 @@
 #include <string>
 #include <limits>
 
+#include <boost/foreach.hpp>
+
 #include <opencv2/core/core.hpp>
 
 #include <pcl/filters/extract_indices.h>
@@ -103,7 +105,8 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
                 case KARLSRUHE_V2:
                 {
                     point.x = (((m_leftCameraParams.u0 - j) / m_leftCameraParams.ku) / norm);
-                    point.y = (((m_leftCameraParams.v0 - i)/ m_leftCameraParams.kv) / norm)/* + 1.65*/;
+//                     point.y = (((m_leftCameraParams.v0 - i)/ m_leftCameraParams.kv) / norm)/* + 1.65*/;
+                    point.y = -(((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm)/* + 1.65*/;
                     point.z = 1.0 / norm;
                     
                     pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];
@@ -112,7 +115,7 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
                     point.x = pointMat.data()[0];
                     point.y = pointMat.data()[1];
                     point.z = pointMat.data()[2];
-                    
+                                        
                     break;
                 }
                 case DUBLIN: 
@@ -146,6 +149,13 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
     removeGround(unmaskedPointCloud);
     
     filterMasked(unmaskedPointCloud, m_pointCloud);
+    
+    BOOST_FOREACH(pcl::PointXYZRGB & point, m_pointCloud->points) {
+        const double z = point.z;
+        point.x = -point.x;
+        point.z = point.y;
+        point.y = z;
+    }
     
 //     downsample(m_pointCloud);
     

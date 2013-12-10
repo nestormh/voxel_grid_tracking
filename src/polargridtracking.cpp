@@ -53,7 +53,7 @@ PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & col
     getPolarPositionFromCartesian(maxDepth, 0, 
                                   numRows, numCols);
     numCols = m_cameraParams.width / (double)m_gridColumnFactor + 1;
-
+    
     assert((numRows != -1) && (numCols != -1));
     
     m_polarGrid = PolarCellGrid(numRows + 1, numCols);
@@ -372,10 +372,9 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
     
     BOOST_FOREACH(const pcl::PointXYZRGB & point, pointCloud->points) {
         if ((point.x >= minX) && (point.x <= maxX) && (point.z <= maxZ)) {
-            // TODO: Check the cell each particle belongs to and assign the corresponding vectors
             PointXYZRGBDirected destPoint;
             destPoint.x = point.x;
-            destPoint.y = point.y;
+            destPoint.y = -point.y;
             destPoint.z = point.z;
             
             destPoint.r = point.r;
@@ -391,7 +390,6 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
             destPoint.vx = vx;
 //             destPoint.vy = 0.0;
             destPoint.vz = vz;
-            // TODO: Get orientation and magnitude
             
             destPoint.yaw = 0.0;
             destPoint.magnitude = 0.0;
@@ -406,7 +404,6 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
             updatePolarGridWithPoint(destPoint);
             
             extendedPointCloud->push_back(destPoint);
-            
         }
     }
 }
@@ -498,9 +495,9 @@ void PolarGridTracking::getPolarPositionFromCartesian(const double & z, const do
         return;
     }
     
-    double rowf = LOG_BASE(1.0 + m_gridDepthFactor, z / z0);
     row = LOG_BASE(1.0 + m_gridDepthFactor, z / z0);
-    const double u = m_cameraParams.u0 - ((x * m_cameraParams.ku) / z);
+    const double u = ((x * m_cameraParams.ku) / z) + m_cameraParams.u0;
+    
     column = u / m_gridColumnFactor - 1;
 }
 

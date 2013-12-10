@@ -93,6 +93,7 @@ private:
     
     ros::Publisher m_pointCloudPub;
     tf::TransformBroadcaster m_map2odomTfBroadcaster;
+    double m_accTime;
 // protected:
 //     void waitForKey(&m_waitTime arg1);
 };

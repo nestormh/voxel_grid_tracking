@@ -89,8 +89,13 @@ void PolarGridTrackingROS::start()
                     yaw = yaw2 - yaw1;
                     
                     double deltaX = transform.getOrigin().getX() - lastMapOdomTransform.getOrigin().getX();
+                    double deltaY = transform.getOrigin().getY() - lastMapOdomTransform.getOrigin().getY();
                     
-                    double speed = deltaX / (deltaTime * sin(yaw));
+                    double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY);
+                    double speed = 0.0;
+                    if (deltaS != 0.0) {
+                        speed = deltaS / deltaTime;
+                    }
                     
                     setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
                     
@@ -115,7 +120,26 @@ void PolarGridTrackingROS::start()
 
 void PolarGridTrackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 {
-    pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *tmpPointCloud);
+    
+    m_pointCloud->clear();
+    
+    for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = tmpPointCloud->begin(); 
+         it != tmpPointCloud->end(); it++) {
+        
+        const pcl::PointXYZRGB & point = *it;
+        pcl::PointXYZRGB newPoint;
+        
+        newPoint.x = point.x - m_cellSizeX / 2.0;
+        newPoint.y = -(point.z - m_cellSizeZ / 2.0);
+        newPoint.z = point.y;
+        newPoint.r = point.r;
+        newPoint.g = point.g;
+        newPoint.b = point.b;
+        
+        m_pointCloud->push_back(newPoint);
+    }
 }
 
 void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
@@ -127,7 +151,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
 //     drawTopDownMap(pointCloud);
     
     getMeasurementModel();
-    
+
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
@@ -136,7 +160,6 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
     publishParticles(m_oldParticlesPub, 2.0);
 
     initialization();
-    
     
 //     if (! m_initialized) {
 //     } else {
@@ -149,7 +172,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
 
 void PolarGridTrackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
-//         publishPointCloud(pointCloud);
+        publishPointCloud(pointCloud);
         publishBinaryMap();
         publishParticles(m_particlesPub, 1.0);
         publishColumnAverage(0.5);
@@ -167,7 +190,7 @@ void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXY
     
         newPoint.x = point.x - m_cellSizeX / 2.0;
         newPoint.y = point.z - m_cellSizeZ / 2.0;
-        newPoint.z = point.y;
+        newPoint.z = -point.y;
         newPoint.r = point.r;
         newPoint.g = point.g;
         newPoint.b = point.b;
@@ -449,7 +472,7 @@ void PolarGridTrackingROS::publishPolarGrid()
     
     const double dMin = fb / z;
     for (uint32_t i = 0; i < m_cameraParams.width - 1; i += m_gridColumnFactor) {
-        const double x = m_cameraParams.baseline * (m_cameraParams.u0 - i) / dMin;
+        const double x = m_cameraParams.baseline * (i - m_cameraParams.u0) / dMin;
         
         geometry_msgs::Point p1, p2;
         p1.x = x;
@@ -487,7 +510,7 @@ void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
                 pose.position.y = z0 * pow(1.0 + m_gridDepthFactor, r + 0.5);
                 const double dMin = fb / pose.position.y;
                 const double u = m_gridColumnFactor * (c + 2.5);
-                pose.position.x = pose.position.y * (m_cameraParams.u0 - u) / m_cameraParams.ku;
+                pose.position.x = pose.position.y * (u - m_cameraParams.u0) / m_cameraParams.ku;
                 pose.position.z = zPlane;
                 
                 const double yaw = m_polarGrid(r, c).getYaw();
@@ -554,22 +577,22 @@ void PolarGridTrackingROS::publishObstacles()
 
             p1.y = z0 * pow(1.0 + m_gridDepthFactor, row);
             const double u1 = m_gridColumnFactor * col;
-            p1.x = p1.y * (m_cameraParams.u0 - u1) / m_cameraParams.ku;
+            p1.x = p1.y * (u1 - m_cameraParams.u0) / m_cameraParams.ku;
             p1.z = 0.0;
 
             p2.y = z0 * pow(1.0 + m_gridDepthFactor, row + 1.0);
             const double u2 = m_gridColumnFactor * col;
-            p2.x = p2.y * (m_cameraParams.u0 - u2) / m_cameraParams.ku;
+            p2.x = p2.y * (u2 - m_cameraParams.u0) / m_cameraParams.ku;
             p2.z = 0.0;
             
             p3.y = z0 * pow(1.0 + m_gridDepthFactor, row);
             const double u3 = m_gridColumnFactor * (col + 1.0);
-            p3.x = p3.y * (m_cameraParams.u0 - u3) / m_cameraParams.ku;
+            p3.x = p3.y * (u3 - m_cameraParams.u0) / m_cameraParams.ku;
             p3.z = 0.0;
             
             p4.y = z0 * pow(1.0 + m_gridDepthFactor, row + 1.0);
             const double u4 = m_gridColumnFactor * (col + 1.0);
-            p4.x = p4.y * (m_cameraParams.u0 - u4) / m_cameraParams.ku;
+            p4.x = p4.y * (u4 - m_cameraParams.u0) / m_cameraParams.ku;
             p4.z = 0.0;
             
             triangles.points.push_back(p1);
@@ -755,7 +778,7 @@ void PolarGridTrackingROS::clearObstaclesAndROIs()
     visualization_msgs::MarkerArray obstacles;
     visualization_msgs::MarkerArray obstaclesROI;
     
-    for (uint32_t i = 0; i < 100; i++) {
+    for (uint32_t i = 0; i < 1000; i++) {
         visualization_msgs::Marker dummy;
         
         dummy.header.frame_id = "left_cam";
@@ -779,7 +802,7 @@ void PolarGridTrackingROS::clearObstaclesAndROIs()
         visualization_msgs::Marker dummy3;
         dummy3.header.frame_id = "left_cam";
         dummy3.header.stamp = ros::Time();
-        dummy3.id = m_obstacles.size() + i - 1;
+        dummy3.id = /*m_obstacles.size() + i - 1*/i;
         dummy3.type = visualization_msgs::Marker::ARROW;
         dummy3.action = visualization_msgs::Marker::DELETE;
         

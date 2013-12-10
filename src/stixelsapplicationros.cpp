@@ -24,6 +24,7 @@
 #include "fundamentalmatrixestimator.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/concept_check.hpp>
 
 #include <fstream>
 #include <eigen3/Eigen/src/Core/Matrix.h>
@@ -96,6 +97,7 @@ StixelsApplicationROS::StixelsApplicationROS(const string& optionsFile)
     
     ros::NodeHandle nh("~");
     m_pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStixels", 1);
+    m_accTime = 0.0;
     
     return;
 }
@@ -167,16 +169,16 @@ boost::program_options::variables_map StixelsApplicationROS::parseOptionsFile(co
 
 void StixelsApplicationROS::runStixelsApplication()
 {
-    cv::namedWindow("output");
-    cv::moveWindow("output", 1366, 0);
+//     cv::namedWindow("output");
+//     cv::moveWindow("output", 1366, 0);
     
     
-    cv::namedWindow("polar");
-    if (mp_stixels_tests.size() == 0)
-        cv::moveWindow("polar", 2646, 0);
+//     cv::namedWindow("polar");
+//     if (mp_stixels_tests.size() == 0)
+//         cv::moveWindow("polar", 2646, 0);
     
-    cv::namedWindow("denseTrack");
-    cv::moveWindow("denseTrack", 1366, 480);
+//     cv::namedWindow("denseTrack");
+//     cv::moveWindow("denseTrack", 1366, 480);
     
 //     cv::namedWindow("polarTrack");
 //     cv::moveWindow("polarTrack", 1366, 0);
@@ -630,7 +632,6 @@ void StixelsApplicationROS::publishStixels()
     
     const stixels_t & stixels = mp_stixel_world_estimator->get_stixels();
     
-    
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for (vector<Stixel>::const_iterator it = stixels.begin(); it != stixels.end(); it++) {
         cv::Point2i p1(it->x, it->bottom_y);
@@ -655,8 +656,8 @@ void StixelsApplicationROS::publishStixels()
             
             pcl::PointXYZRGB point;
             point.x = point3d(0);
-            point.z = camera_height - point3d(1);
             point.y = point3d(2);
+            point.z = camera_height - point3d(1);
             point.r = pixel[2];
             point.g = pixel[1];
             point.b = pixel[0];
@@ -670,22 +671,25 @@ void StixelsApplicationROS::publishStixels()
     // TODO: Get these values from somewhere
     double deltaTime = 0.1;
     
-    double accTime = 0.0;
-    
     double posX = 0.0;
     double posY = 0.0;
     double posTheta = 0.0; 
-    accTime += deltaTime;
+    m_accTime += deltaTime;
+    
+    cout << "accTime " << m_accTime << endl;
 
     static tf::TransformBroadcaster broadcaster;
     tf::StampedTransform transform;
     // TODO: In a real application, time should be taken from the system
     transform.stamp_ = ros::Time();
-    transform.setOrigin(tf::Vector3(posX, posY, accTime));
+    transform.setOrigin(tf::Vector3(posX, posY, m_accTime));
     transform.setRotation( tf::createQuaternionFromRPY(0.0, 0.0, posTheta) );
 
     publishPointCloud(pointCloud);
-    broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
+    const tf::StampedTransform stamped = tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom");
+    cout << "stamped " << stamped.stamp_ << endl;
+    broadcaster.sendTransform(stamped);
+    
     
     cv::imshow("imgLeft", imgLeft);
     
