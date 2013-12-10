@@ -16,6 +16,7 @@
 
 
 #include "stixelsapplicationros.h"
+#include </home/nestor/Dropbox/KULeuven/projects/StixelWorld/src/doppia/stixel3d.h>
 #include <doppia/stixel3d.h>
 
 #include "doppia/extendedstixelworldestimatorfactory.h"
@@ -210,7 +211,7 @@ void StixelsApplicationROS::update()
     boost::gil::copy_pixels(currRight, boost::gil::view(m_prevRightRectified));
     
     // TODO: Use again when speed information is needed
-//     mp_stixel_motion_estimator->set_estimated_stixels(mp_stixel_world_estimator->get_stixels());
+    mp_stixel_motion_estimator->set_estimated_stixels(mp_stixel_world_estimator->get_stixels());
     
 //     for (uint32_t i = 0; i < mp_stixels_tests.size(); i++)
 //         mp_stixels_tests[i]->set_estimated_stixels(mp_stixel_world_estimator->get_stixels());
@@ -246,12 +247,12 @@ bool StixelsApplicationROS::iterate()
     }
 
     // TODO: Use again when speed information is needed
-//     mp_stixel_motion_estimator->set_new_rectified_image(left_view);
-//     mp_stixel_motion_estimator->updateDenseTracker(m_currLeft);
-//     mp_stixel_motion_estimator->set_estimated_stixels(mp_stixel_world_estimator->get_stixels());
+    mp_stixel_motion_estimator->set_new_rectified_image(left_view);
+    mp_stixel_motion_estimator->updateDenseTracker(m_currLeft);
+    mp_stixel_motion_estimator->set_estimated_stixels(mp_stixel_world_estimator->get_stixels());
     
-//     if(mp_video_input->get_current_frame_number() > m_initialFrame)
-//         mp_stixel_motion_estimator->compute();
+    if(mp_video_input->get_current_frame_number() > m_initialFrame)
+        mp_stixel_motion_estimator->compute();
     
 //     for (uint32_t i = 0; i < mp_stixels_tests.size(); i++) {
 //         mp_stixels_tests[i]->set_new_rectified_image(left_view);
@@ -607,7 +608,7 @@ void StixelsApplicationROS::visualize()
     
     cout << "Time for " << __FUNCTION__ << ": " << omp_get_wtime() - startWallTime << endl;
     
-    waitForKey(&m_waitTime);
+//     waitForKey(&m_waitTime);
         
 }
 
@@ -630,13 +631,14 @@ void StixelsApplicationROS::publishStixels()
     cv::Mat imgLeft;
     gil2opencv(stixel_world::input_image_const_view_t(mp_video_input->get_left_image()), imgLeft);
     
-    const stixels_t & stixels = mp_stixel_world_estimator->get_stixels();
+//     const stixels_t & stixels = mp_stixel_world_estimator->get_stixels();
+    const stixels3d_t & stixels = mp_stixel_motion_estimator->getLastStixelsAfterTracking();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    for (vector<Stixel>::const_iterator it = stixels.begin(); it != stixels.end(); it++) {
+    for (vector<Stixel3d>::const_iterator it = stixels.begin(); it != stixels.end(); it++) {
         cv::Point2i p1(it->x, it->bottom_y);
         cv::Point2i p2(it->x, it->top_y);
-        
+
         const doppia::MetricStereoCamera& camera = mp_video_input->get_metric_camera();
         const double & camera_height = mp_video_input->camera_height;
         
