@@ -62,7 +62,7 @@ Visualization Manager:
         Z: 0
       Plane: XY
       Plane Cell Count: 60
-      Reference Frame: left_cam
+      Reference Frame: base_link
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -76,7 +76,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -89,10 +89,10 @@ Visualization Manager:
       Size (Pixels): 2
       Size (m): 0.01
       Style: Points
-      Topic: /testGridTracking/PolarGridTracking/pointCloud
+      Topic: /testGridTracking/PolarGridTracking/pointCloudStereo
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -201,7 +201,7 @@ Visualization Manager:
       Marker Topic: /testGridTracking/PolarGridTracking/obstacles
       Name: MarkerArray
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -209,8 +209,7 @@ Visualization Manager:
       Marker Topic: /testGridTracking/PolarGridTracking/obstaclesROI
       Name: MarkerArray
       Namespaces:
-        "": true
-        rois: true
+        {}
       Queue Size: 1
       Value: true
     - Alpha: 1
@@ -245,7 +244,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 220; 220; 220
-    Fixed Frame: odom
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -265,18 +264,18 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 12.235
+      Class: rviz/XYOrbit
+      Distance: 38.3699
       Focal Point:
-        X: 0.519506
-        Y: 2.49599
-        Z: 2.15432
+        X: 0
+        Y: 0
+        Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.720398
+      Pitch: -0.139797
       Target Frame: left_cam
-      Value: Orbit (rviz)
-      Yaw: -1.97962
+      Value: XYOrbit (rviz)
+      Yaw: 3.0854
     Saved: ~
 Window Geometry:
   Displays:

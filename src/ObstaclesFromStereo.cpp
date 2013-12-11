@@ -98,20 +98,21 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
             double norm = (double)d / (double)(m_leftCameraParams.ku * m_rightCameraParams.baseline);
 
             // Get 3D coordinates
-            pcl::PointXYZRGBL point;
+//             pcl::PointXYZRGBL point;
+            pcl::PointXYZRGB point;
 
             switch(m_calibrationType) {
                 case KARLSRUHE:
                 case KARLSRUHE_V2:
                 {
                     point.x = (((m_leftCameraParams.u0 - j) / m_leftCameraParams.ku) / norm);
-//                     point.y = (((m_leftCameraParams.v0 - i)/ m_leftCameraParams.kv) / norm)/* + 1.65*/;
-                    point.y = -(((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm)/* + 1.65*/;
+                    point.y = (((m_leftCameraParams.v0 - i)/ m_leftCameraParams.kv) / norm)/* + 1.65*/;
+//                     point.y = -(((i - m_leftCameraParams.v0) / m_leftCameraParams.kv) / norm)/* + 1.65*/;
                     point.z = 1.0 / norm;
                     
                     pointMat << point.x - m_leftCameraParams.t.data()[0], point.y - m_leftCameraParams.t.data()[1], point.z - m_leftCameraParams.t.data()[2];
                     pointMat = m_leftCameraParams.R * pointMat;
-                    //             
+                                
                     point.x = pointMat.data()[0];
                     point.y = pointMat.data()[1];
                     point.z = pointMat.data()[2];
@@ -138,18 +139,21 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
             point.g = rgb_ptr[3*j+1];
             point.r = rgb_ptr[3*j+2];
             
-            point.label = ((uint32_t)mask_ptr[j]) & 255;
+//             point.label = ((uint32_t)mask_ptr[j]) & 255;
 
-            unmaskedPointCloud->points.push_back(point);
+//             unmaskedPointCloud->points.push_back(point);
+            m_pointCloud->points.push_back(point);
         }
     }
-    unmaskedPointCloud->width = (int) unmaskedPointCloud->points.size();
-    unmaskedPointCloud->height = 1;
+    m_pointCloud->width = (int) m_pointCloud->points.size();
+    m_pointCloud->height = 1;
+
+//     unmaskedPointCloud->width = (int) unmaskedPointCloud->points.size();
+//     unmaskedPointCloud->height = 1;
     
-    removeGround(unmaskedPointCloud);
-    
-    filterMasked(unmaskedPointCloud, m_pointCloud);
-    
+//     removeGround(unmaskedPointCloud);
+//     filterMasked(unmaskedPointCloud, m_pointCloud);
+        
     BOOST_FOREACH(pcl::PointXYZRGB & point, m_pointCloud->points) {
         const double z = point.z;
         point.x = -point.x;
