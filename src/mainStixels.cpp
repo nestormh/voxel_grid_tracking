@@ -35,7 +35,8 @@ using namespace stixel_world_ros;
 int main(int argC, char * argV[]) {
     ros::init(argC, argV, "stixels_publisher");
     
-    StixelsApplicationROS app("/home/nestor/Dropbox/KULeuven/projects/StixelWorld/conf/test_stixel_world_lib.config.ini");
+//     StixelsApplicationROS app("/home/nestor/Dropbox/KULeuven/projects/StixelWorld/conf/test_stixel_world_lib.config.ini");
+        StixelsApplicationROS app("/home/nestor/Dropbox/KULeuven/projects/StixelWorld/conf/fast_uv.config.ini");
     app.runStixelsApplication();
     
     
