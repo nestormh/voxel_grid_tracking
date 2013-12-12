@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf2_ros
+  octomap
+  octomap_msgs
 )
 
 set(ROS_BUILD_TYPE Debug)
@@ -41,6 +43,7 @@ find_package(PCL 1.6 REQUIRED)
 # find_package(CGAL REQUIRED)
 # find_package(GMP REQUIRED)
 # find_package(MPFR REQUIRED)
+find_package(octomap REQUIRED)
 
 INCLUDE("${STIXEL_WORLD_PATH}/StixelWorld.cmake")
 
@@ -103,6 +106,7 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
+
 
 ## Declare a cpp library
 # add_library(polar_grid_tracking_ros

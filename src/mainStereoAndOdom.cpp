@@ -32,6 +32,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include "std_msgs/String.h"
+#include <std_msgs/Float64.h>
 
 #include <boost/foreach.hpp>
 
@@ -130,7 +131,7 @@ void testPointCloud() {
 
 void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
     
-    cout << "publishing point cloud" << endl;   
+    ROS_INFO("Publishing point cloud");
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     
@@ -165,6 +166,7 @@ void testStereoTracking() {
     
     ros::NodeHandle nh("~");
     ros::Publisher pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStereo", 1);
+    ros::Publisher deltaTimePub = nh.advertise<std_msgs::Float64> ("deltaTime", 1);
     tf::TransformBroadcaster map2odomTfBroadcaster;
     
     uint32_t initialIdx;
@@ -334,8 +336,12 @@ void testStereoTracking() {
         tf::StampedTransform transform;
         // TODO: In a real application, time should be taken from the system
         transform.stamp_ = ros::Time();
-        transform.setOrigin(tf::Vector3(posX, posY, accTime));
+        transform.setOrigin(tf::Vector3(-posX, -posY, 0.0));
         transform.setRotation( tf::createQuaternionFromRPY(0.0, 0.0, posTheta) );
+        
+        std_msgs::Float64 deltaTimeMsg;
+        deltaTimeMsg.data = deltaTime;
+        deltaTimePub.publish(deltaTimeMsg);
         
         publishPointCloud(pointCloudPub, tmpPointCloud);
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
