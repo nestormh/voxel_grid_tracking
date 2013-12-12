@@ -21,21 +21,38 @@
 #include "params_structs.h"
 #include "particle3d.h"
 
+#include <boost/multi_array.hpp>
+
+#include <pcl_ros/point_cloud.h>
+
+#include <opencv2/opencv.hpp>
+
+#include <vector>
+
+using namespace std;
+
 namespace voxel_grid_tracking {
 
+class Voxel;
+typedef boost::multi_array<Voxel, 3> VoxelGrid;
+typedef VoxelGrid::index voxelIdx;
+    
 class Voxel
 {
-
 public:
     Voxel();
-    Voxel(const double& x, const double& z, const double& sizeX, const double& sizeZ, const double& maxVelX, const double& maxVelZ, const polar_grid_tracking::t_Camera_params& params);
+    Voxel(const double & x, const double & y, const double & z, 
+          const double & sizeX, const double & sizeY, const double & sizeZ, 
+          const double & maxVelX, const double & maxVelY, const double & maxVelZ,
+          const polar_grid_tracking::t_Camera_params & params);
     
     void createParticles(const uint32_t & numParticles);
     
     void setOccupiedProb(const double & occupiedProb) { m_occupiedProb = occupiedProb; }
-    void setOccupiedPosteriorProb(const uint32_t & particlesPerCell);
+    void setOccupiedPosteriorProb(const uint32_t & particlesPerVoxel);
     
     double sigmaX() { return m_sigmaX; } 
+    double sigmaY() { return m_sigmaY; } 
     double sigmaZ() { return m_sigmaZ; }
     
     double occupiedProb() { return m_occupiedProb; }
@@ -49,32 +66,31 @@ public:
     void makeCopy(const Particle3d & particle);
     void addParticle(const Particle3d& particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
-    void transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::Matrix4d & stateTransition, CellGrid & newGrid);
+    void transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::MatrixXd & stateTransition, VoxelGrid & newGrid);
     void clearParticles() { m_particles.clear(); }
     void setParticles(const vector <Particle3d> & particles) { m_particles = particles; }
     
-    void draw(cv::Mat & img, const uint32_t & pixelsPerCell);
-    void drawParticles(cv::Mat& img, const uint32_t & pixelsPerCell);
-    
     void setMainVectors();
-    void getMainVectors(double & vx, double & vz) const { vx = m_vx; vz = m_vz; }
+    void getMainVectors(double & vx, double & vy, double & vz) const { vx = m_vx; vy = m_vy; vz = m_vz; }
+    
+    void addPoint(const pcl::PointXYZRGB & point);
+    bool occupied() { return m_pointCloud->size() > 0; }
     
 protected:
-    //     double getAvgDir(double & vx, double & vz);
-    
-    double m_x, m_z;
-    double m_sigmaX, m_sigmaZ;
-    double m_sizeX, m_sizeZ;
-    double m_maxVelX, m_maxVelZ;
+    double m_x, m_y, m_z;
+    double m_sigmaX, m_sigmaY, m_sigmaZ;
+    double m_sizeX, m_sizeY, m_sizeZ;
+    double m_maxVelX, m_maxVelY, m_maxVelZ;
     
     double m_occupiedProb;
     double m_occupiedPosteriorProb;
     
-    double m_vx, m_vz;
+    double m_vx, m_vy, m_vz;
     
-    vector <Particle> m_particles;
+    vector <Particle3d> m_particles;
+    
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
 };
 
 }
-
-#endif // VOXEL_H
+#endif // CELL_H

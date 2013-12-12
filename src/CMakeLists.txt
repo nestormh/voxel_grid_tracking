@@ -130,7 +130,7 @@ target_link_libraries(stixels_publisher
 # VoxelGridTracking
 ###########################################################
 add_executable(VoxelGridTracking 
-#     voxel.cpp 
+    voxel.cpp 
     particle3d.cpp
     voxelgridtracking.cpp
     main_voxel.cpp

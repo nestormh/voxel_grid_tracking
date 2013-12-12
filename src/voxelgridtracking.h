@@ -22,6 +22,10 @@
 
 #include <pcl_ros/point_cloud.h>
 
+#include "polargridtracking.h"
+
+#include "voxel.h"
+
 namespace voxel_grid_tracking {
     
 class VoxelGridTracking
@@ -36,6 +40,7 @@ protected:
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
     
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
+    void getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
     
     ros::Subscriber m_deltaTimeSub;
     ros::Subscriber m_pointCloudSub;
@@ -43,6 +48,16 @@ protected:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
     double m_deltaYaw, m_deltaSpeed, m_deltaTime;
+    
+    VoxelGrid m_grid;
+    
+    // Parameters
+    polar_grid_tracking::t_Camera_params m_cameraParams;
+    double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
+    uint32_t m_dimX, m_dimY, m_dimZ;
+    double m_cellSizeX, m_cellSizeY, m_cellSizeZ;
+    double m_maxVelX, m_maxVelY, m_maxVelZ;
+    double m_particlesPerCell, m_threshProbForCreation;
 };
 
 }
