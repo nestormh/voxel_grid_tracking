@@ -10,13 +10,13 @@
     <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
     </node>   
     
-    <node name="octomap" pkg="octomap_server" type="octomap_server_node" output="screen" required="true" >
+    <!--<node name="octomap" pkg="octomap_server" type="octomap_server_node" output="screen" required="true" >
         <remap from="cloud_in"
             to="/$(arg namespace)/pointCloudFiltered" />
        <remap from="octomap_binary"
             to="/$(arg namespace)/VoxelGridTracking/octomap_binary" />
         <rosparam command="load" file="$(find PolarGridTracking)/config/octomap.yaml" />
-    </node>
+    </node>-->
     <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
     <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
             <remap from="~/deltaTime"

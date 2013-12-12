@@ -14,20 +14,21 @@
  *  limitations under the License.
  */
 
-#include "voxelgridtracking.h"
 
-#include <iostream>
+#include "voxel.h"
 
-#include <ros/ros.h>
-
-using namespace voxel_grid_tracking;
-using namespace std;
-
-int main(int argC, char **argV) {
-    ros::init(argC, argV, "VoxelGridTracking");
+namespace voxel_grid_tracking {
     
-    VoxelGridTracking vgt;
-    vgt.start();
-    
-    return 0;
+Voxel::Voxel()
+{
+
+}
+
+Voxel::Voxel(const double& x, const double& z, const double& sizeX, 
+             const double& sizeZ, const double& maxVelX, 
+             const double& maxVelZ, const polar_grid_tracking::t_Camera_params& params)
+{
+
+}
+
 }

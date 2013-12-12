@@ -20,6 +20,8 @@
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
 
+#include <pcl_ros/point_cloud.h>
+
 namespace voxel_grid_tracking {
     
 class VoxelGridTracking
@@ -28,14 +30,19 @@ public:
     VoxelGridTracking();
     
     void start();
+    void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
 protected:
-    void readOctomap();
-    void deltaTimeCallback(const std_msgs::Float64::ConstPtr& msg) ;
+    void deltaTimeCallback(const std_msgs::Float64::ConstPtr& msg);
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
     
-    ros::ServiceClient m_octomapClient;
+    void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
+    
     ros::Subscriber m_deltaTimeSub;
+    ros::Subscriber m_pointCloudSub;
     
-    double m_deltaTime;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
+    
+    double m_deltaYaw, m_deltaSpeed, m_deltaTime;
 };
 
 }

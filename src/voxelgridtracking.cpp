@@ -20,12 +20,11 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 #include <ros/ros.h>
-#include <octomap/octomap.h>
 #include <std_msgs/Float64.h>
-#include <octomap_msgs/GetOctomap.h>
-#include <octomap_msgs/Octomap.h>
-#include <octomap_msgs/GetOctomap.h>
-#include <octomap_msgs/conversions.h>
+#include <sensor_msgs/PointCloud2.h>
+
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -37,9 +36,12 @@ namespace voxel_grid_tracking {
     
 VoxelGridTracking::VoxelGridTracking()
 {
+    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    
     ros::NodeHandle nh("~");
-    m_octomapClient = nh.serviceClient<octomap_msgs::GetOctomap>("octomap_binary");
     m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
+    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 1, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+    
 }
 
 void VoxelGridTracking::start()
@@ -72,9 +74,13 @@ void VoxelGridTracking::start()
                         speed = deltaS / m_deltaTime;
                     }
                     
-                    readOctomap();
                     cout << "Transformation Received!!!!" << endl;
-//                     setDeltaYawSpeedAndTime(yaw, speed, m_deltaTime);
+                    setDeltaYawSpeedAndTime(yaw, speed, m_deltaTime);
+                    
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+                    pcl::copyPointCloud(*m_pointCloud, *pointCloud);
+                    
+                    compute(pointCloud);
                 }
             }
             lastMapOdomTransform = transform;
@@ -93,34 +99,35 @@ void VoxelGridTracking::deltaTimeCallback(const std_msgs::Float64::ConstPtr& msg
     m_deltaTime = msg.get()->data;
 }
 
-void VoxelGridTracking::readOctomap()
+void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 {
-    octomap_msgs::GetOctomap srvOctomap;
-    if (m_octomapClient.call(srvOctomap))
-    {
-        ROS_INFO("Recibido mapa");
-        octomap::OcTree * octree = (octomap::OcTree *)octomap_msgs::msgToMap(srvOctomap.response.map);
-        
-        cout << "Received octree" << endl;
-        cout << octree->getTreeType() << endl;
-        
-        double x = 3.0;
-        double z = 0.5;
-        for (double y = 0.0; y < 12.0; y += 0.25) {
-            octomap::OcTreeNode* result = octree->search (x, y, z);
-            if (result != NULL)
-                cout << cv::Point3d(x, y, z) << " " << result->getValue() << endl;
-        }
-//         for (double x = -3.0; x < 60; i++)
-//         octomap::OcTree::iterator it;
-//         for (it = octree->begin_tree(); it != octree->end(); it++) {
-//             
-//         }
-    }
-    else
-    {
-        cout << "No se pudo conseguir un mapa " <<  srvOctomap.response.map.header.seq << endl;
-    }
+    pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
+}
+
+void VoxelGridTracking::setDeltaYawSpeedAndTime(const double& deltaYaw, const double& deltaSpeed, const double& deltaTime)
+{
+    m_deltaYaw = deltaYaw;
+    m_deltaSpeed = deltaSpeed;
+    m_deltaTime = deltaTime;
+}
+
+void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+{
+    cout << __FUNCTION__ << endl;
+//     getBinaryMapFromPointCloud(pointCloud);
+//     
+//     getMeasurementModel();
+//     
+//     if (m_initialized) {
+//         prediction();
+//         measurementBasedUpdate();
+//         reconstructObjects(pointCloud);
+//     } 
+//     publishParticles(m_oldParticlesPub, 2.0);
+//     
+//     initialization();
+//     
+//     publishAll(pointCloud);
 }
 
 }
