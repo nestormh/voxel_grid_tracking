@@ -20,8 +20,8 @@
 <!--                     to="/$(arg namespace)/PolarGridTracking/pointCloudStereo" /> -->
 <!--     </node>   -->
 <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
-     <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
-    </node> 
+<!--      <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > --> -->
+<!--     </node>  -->
     
 </group>
         

@@ -26,6 +26,8 @@
 
 #include "voxel.h"
 
+#define DEFAULT_BASE_FRAME "left_cam"
+
 namespace voxel_grid_tracking {
     
 class VoxelGridTracking
@@ -36,14 +38,18 @@ public:
     void start();
     void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
 protected:
+    // Callbacks
     void deltaTimeCallback(const std_msgs::Float64::ConstPtr& msg);
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
     
+    // Method functions
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
+    void reset();
     void getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
     
-    ros::Subscriber m_deltaTimeSub;
-    ros::Subscriber m_pointCloudSub;
+    // Visualization functions
+    void publishVoxels();
+    
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
@@ -51,13 +57,23 @@ protected:
     
     VoxelGrid m_grid;
     
+    uint32_t m_dimX, m_dimY, m_dimZ;
+    
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
     double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
-    uint32_t m_dimX, m_dimY, m_dimZ;
     double m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     double m_particlesPerCell, m_threshProbForCreation;
+    string m_baseFrame;
+
+    // Subscribers
+    ros::Subscriber m_deltaTimeSub;
+    ros::Subscriber m_pointCloudSub;
+    
+    // Publishers
+    ros::Publisher m_voxelsPub;
+    ros::Publisher m_pointsPerVoxelPub;
 };
 
 }

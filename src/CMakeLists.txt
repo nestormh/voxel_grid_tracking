@@ -139,7 +139,7 @@ add_executable(VoxelGridTracking
 include_directories(VoxelGridTracking
 #     GPULibSVM
 #     ${EIGEN3_INCLUDE_DIR}
-    ${PCL_INCLUDE_DIRS}/pcl-1.7
+    ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${OCTOMAP_INCLUDE_DIRS}

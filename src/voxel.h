@@ -74,7 +74,17 @@ public:
     void getMainVectors(double & vx, double & vy, double & vz) const { vx = m_vx; vy = m_vy; vz = m_vz; }
     
     void addPoint(const pcl::PointXYZRGB & point);
-    bool occupied() { return m_pointCloud->size() > 0; }
+    bool occupied() const { return m_pointCloud->size() > 0; }
+    
+    void update();
+    
+    double centroidX() const { return m_centroidX; }
+    double centroidY() const { return m_centroidY; }
+    double centroidZ() const { return m_centroidZ; }
+    
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPoints() const { return m_pointCloud; }
+    
+    void reset();
     
 protected:
     double m_x, m_y, m_z;
@@ -86,6 +96,7 @@ protected:
     double m_occupiedPosteriorProb;
     
     double m_vx, m_vy, m_vz;
+    double m_centroidX, m_centroidY, m_centroidZ;
     
     vector <Particle3d> m_particles;
     

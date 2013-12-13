@@ -236,6 +236,8 @@ void testStereoTracking() {
     sgbmParams.speckleRange = 32;    
     sgbmParams.fullDP = true;
     
+    ros::Rate waitToSendTransform(5.0);
+    
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;
         //         ss << setfill('0') << setw(3) << i;
@@ -342,6 +344,7 @@ void testStereoTracking() {
         deltaTimePub.publish(deltaTimeMsg);
         
         publishPointCloud(pointCloudPub, tmpPointCloud);
+        waitToSendTransform.sleep();
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
         
 //         map2odomTfBroadcaster.sendTransform(

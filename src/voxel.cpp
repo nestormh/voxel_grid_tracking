@@ -18,6 +18,8 @@
 
 #include <iostream>
 #include <boost/foreach.hpp>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/common/impl/centroid.hpp>
 
 
 using namespace std;
@@ -132,6 +134,21 @@ void Voxel::setMainVectors() {
 void Voxel::addPoint(const pcl::PointXYZRGB& point)
 {
     m_pointCloud->push_back(point);
+}
+
+void Voxel::update()
+{
+    Eigen::Vector4f centroid; 
+    pcl::compute3DCentroid(*m_pointCloud,centroid); 
+    
+    m_x = centroid(0);
+    m_y = centroid(1);
+    m_z = centroid(2);
+}
+
+void Voxel::reset()
+{
+    m_pointCloud->clear();
 }
 
 }
