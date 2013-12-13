@@ -24,16 +24,18 @@ using namespace std;
 
 namespace voxel_grid_tracking {
 
-Particle3d::Particle3d(const double& cellX, const double& cellY, const double& cellZ, const double& cellSizeX, const double& cellSizeY, const double& cellSizeZ, 
-                       const double& maxVelX, const double& maxVelY, const double& maxVelZ)
+    Particle3d::Particle3d(const double & centroidX, const double & centroidY, const double & centroidZ, 
+                           const double & voxelSizeX, const double & voxelSizeY, const double & voxelSizeZ, 
+                           const double & maxVelX, const double & maxVelY, const double & maxVelZ)
                             : m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ)
 {
-    m_x = (cellX + (double)rand() / RAND_MAX) * cellSizeX;
-    m_y = (cellY + (double)rand() / RAND_MAX) * cellSizeY;
-    m_z = (cellZ + (double)rand() / RAND_MAX) * cellSizeZ;
-    const double theta = (double)rand() / RAND_MAX * 2.0 * 3.14;
-    m_vx = maxVelX * (double)rand() / RAND_MAX * cos(theta);
-    m_vy = maxVelY * (double)rand() / RAND_MAX * sin(theta);
+    m_x = centroidX + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeX;
+    m_y = centroidY + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeY;
+    m_z = centroidZ + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeZ;
+    
+    const double theta = ((double)rand() / RAND_MAX) * 2.0 * 3.14;
+    m_vx = maxVelX * ((double)rand() / RAND_MAX) * cos(theta);
+    m_vy = maxVelY * ((double)rand() / RAND_MAX) * sin(theta);
     m_vz = 0.0;
 }
 

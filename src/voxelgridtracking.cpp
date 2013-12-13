@@ -22,6 +22,7 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <geometry_msgs/PoseArray.h>
 #include <std_msgs/Float64.h>
 #include <sensor_msgs/PointCloud2.h>
 
@@ -44,14 +45,24 @@ VoxelGridTracking::VoxelGridTracking()
 {
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
-    ros::NodeHandle nh("~");
-    m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
-    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 1, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
-    
-    m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
-    m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
-    
     // TODO: Get from params
+    m_cameraParams.minX = 0.0;
+    m_cameraParams.minY = 0.0;
+    m_cameraParams.width = 1244;
+    m_cameraParams.height = 370;
+    m_cameraParams.u0 = 604.081;
+    m_cameraParams.v0 = 180.507;
+    m_cameraParams.ku = 707.049;
+    m_cameraParams.kv = 707.049;
+    m_cameraParams.distortion = 0;
+    m_cameraParams.baseline = 0.472539;
+    m_cameraParams.R = Eigen::MatrixXd(3, 3);
+    m_cameraParams.R << 0.999984, -0.00501274, -0.00271074,
+                        0.00500201, 0.99998, -0.00395038,
+                        0.00273049, 0.00393676, 0.999988;
+    m_cameraParams.t = Eigen::MatrixXd(3, 1);
+    m_cameraParams.t << 0.0598969, -1.00137, 0.00463762;
+    
     m_minX = -6.0;
     m_maxX = 6.0;
     m_minY = 0.0;
@@ -72,26 +83,47 @@ VoxelGridTracking::VoxelGridTracking()
     }
 
     m_particlesPerCell = 1000;
-    m_threshProbForCreation = 0.9999; //0.2;
+    m_threshProbForCreation = 0.2;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
     // TODO: End of TODO
     
+    m_initialized = false;
     
     m_dimX = (m_maxX - m_minX) / m_cellSizeX;
     m_dimY = (m_maxY - m_minY) / m_cellSizeY;
     m_dimZ = (m_maxZ - m_minZ) / m_cellSizeZ;
     
     m_grid.resize(boost::extents[m_dimX][m_dimY][m_dimZ]);
-
+    m_colors.resize(boost::extents[m_dimX][m_dimY][m_dimZ][3]);
+    
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                m_grid[x][y][z] = Voxel(x, y, z, m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
+                m_grid[x][y][z] = Voxel(x, y, z, 
+                                        (x + 0.5) * m_cellSizeX + m_minX,
+                                        (y + 0.5) * m_cellSizeY + m_minY,
+                                        (z + 0.5) * m_cellSizeZ + m_minZ,
+                                        m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
                                         m_maxVelX, m_maxVelY, m_maxVelZ, m_cameraParams);
+                for (uint32_t c = 0; c < 3; c++) {
+                    m_colors[x][y][z][c] = (double)rand() / RAND_MAX;
+                }
             }
         }
     }
+    
+    m_lastMapOdomTransform.stamp_ = ros::Time(-1);
+    ros::NodeHandle nh("~");
+    //     m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
+    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 1, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+    
+    m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
+    m_particlesPub = nh.advertise<geometry_msgs::PoseArray> ("particles", 1);
+//     m_particlesPub = nh.advertise<visualization_msgs::MarkerArray> ("particles", 1);
+    m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
+    
+//     ros::spin();
 }
 
 void VoxelGridTracking::start()
@@ -102,7 +134,7 @@ void VoxelGridTracking::start()
     
     tf::TransformListener listener;
     tf::StampedTransform transform;
-    ros::Rate rate(10.0);
+    ros::Rate rate(15.0);
     while (ros::ok()) {
         try{
             while (! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01)));
@@ -118,6 +150,8 @@ void VoxelGridTracking::start()
                     double deltaX = lastMapOdomTransform.getOrigin().getX() - transform.getOrigin().getX();
                     double deltaY = lastMapOdomTransform.getOrigin().getY() - transform.getOrigin().getY();
                     
+                    m_deltaTime = transform.stamp_.toSec() - lastMapOdomTransform.stamp_.toSec();
+                    
                     double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY);
                     double speed = 0.0;
                     if (deltaS != 0.0) {
@@ -125,6 +159,9 @@ void VoxelGridTracking::start()
                     }
                     
                     cout << "Transformation Received!!!!" << endl;
+                    cout << "yaw " << yaw << endl;
+                    cout << "speed " << speed << endl;
+                    cout << "m_deltaTime " << m_deltaTime << endl;
                     setDeltaYawSpeedAndTime(yaw, speed, m_deltaTime);
                     rate.sleep();
                     
@@ -140,14 +177,11 @@ void VoxelGridTracking::start()
             ROS_ERROR("%s",ex.what());
         }
         
+        ros::spinOnce();
         rate.sleep();
     }
     
     ros::spin();
-}
-void VoxelGridTracking::deltaTimeCallback(const std_msgs::Float64::ConstPtr& msg)
-{
-    m_deltaTime = msg.get()->data;
 }
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
@@ -169,8 +203,8 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     reset();
     getVoxelGridFromPointCloud(pointCloud);
     
-//     getMeasurementModel();
-//     
+    getMeasurementModel();
+    
 //     if (m_initialized) {
 //         prediction();
 //         measurementBasedUpdate();
@@ -178,12 +212,13 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
-//     initialization();
+    initialization();
 //     
 //     publishAll(pointCloud);
     END_CLOCK(totalCompute, startCompute)
     
     publishVoxels();
+    publishParticles();
     
     ROS_INFO("[%s] Total time: %f seconds", __FUNCTION__, totalCompute);
 }
@@ -228,9 +263,57 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::P
     }
 }
 
+void VoxelGridTracking::getMeasurementModel()
+{
+    
+    // #pragma omp for schedule(dynamic)
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
+                const int sigmaX = voxel.sigmaX();
+                const int sigmaY = voxel.sigmaY();
+                const int sigmaZ = voxel.sigmaZ();
+                
+                uint32_t totalOccupied = 0;
+                for (uint32_t x1 = max(0, (int)(x - sigmaX)); x1 <= min((int)(m_dimX - 1), (int)(x + sigmaX)); x1++) {
+                    for (uint32_t y1 = max(0, (int)(y - sigmaY)); y1 <= min((int)(m_dimY - 1), (int)(y + sigmaY)); y1++) {
+                        for (uint32_t z1 = max(0, (int)(z - sigmaZ)); z1 <= min((int)(m_dimZ - 1), (int)(z + sigmaZ)); z1++) {
+                            totalOccupied += m_grid[x1][y1][z1].occupied()? 1 : 0;
+                        }
+                    }
+                }
+                
+                // p(m(x,z) | occupied)
+                const double occupiedProb = (double)totalOccupied / ((2.0 * (double)sigmaX + 1.0) + (2.0 * (double)sigmaY + 1.0) + (2.0 * (double)sigmaZ + 1.0));
+                voxel.setOccupiedProb(occupiedProb);
+            }
+        }
+    }
+}
+
+void VoxelGridTracking::initialization()
+{
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
+                
+                const double & occupiedProb = voxel.occupiedProb();
+                // FIXME: Is it really important the fact that it is occupied or not?
+                if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
+                    const uint32_t numParticles = m_particlesPerCell * occupiedProb / 2.0;
+                    voxel.createParticles(numParticles);
+                }
+            }
+        }
+    }
+    
+    m_initialized = true;
+}
+
 void VoxelGridTracking::publishVoxels()
 {
-    cout << __FUNCTION__ << endl;
     visualization_msgs::MarkerArray voxelMarkers;
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vizPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -241,7 +324,9 @@ void VoxelGridTracking::publishVoxels()
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 const Voxel & voxel = m_grid[x][y][z];
                 
-                if (voxel.occupied() || ((x == 0) && (y == 0) && (z == 0))) {
+//                 if (voxel.occupied()) {
+                if (voxel.occupiedProb() != 0.0) {
+                    
                     visualization_msgs::Marker voxelMarker;
                     voxelMarker.header.frame_id = m_baseFrame;
                     voxelMarker.header.stamp = ros::Time();
@@ -250,9 +335,9 @@ void VoxelGridTracking::publishVoxels()
                     voxelMarker.type = visualization_msgs::Marker::CUBE;
                     voxelMarker.action = visualization_msgs::Marker::ADD;
 
-                    voxelMarker.pose.position.x = (x + 0.5) * m_cellSizeX + m_minX + voxel.centroidX();
-                    voxelMarker.pose.position.y = (y + 0.5) * m_cellSizeY + m_minY + voxel.centroidY();
-                    voxelMarker.pose.position.z = (z + 0.5) * m_cellSizeZ + m_minZ + voxel.centroidZ();
+                    voxelMarker.pose.position.x = voxel.centroidX();
+                    voxelMarker.pose.position.y = voxel.centroidY();
+                    voxelMarker.pose.position.z = voxel.centroidZ();
                     
                     voxelMarker.pose.orientation.x = 0.0;
                     voxelMarker.pose.orientation.y = 0.0;
@@ -261,10 +346,14 @@ void VoxelGridTracking::publishVoxels()
                     voxelMarker.scale.x = m_cellSizeX;
                     voxelMarker.scale.y = m_cellSizeY;
                     voxelMarker.scale.z = m_cellSizeZ;
-                    voxelMarker.color.a = 0.4;
-                    voxelMarker.color.r = (double)rand() / RAND_MAX;
-                    voxelMarker.color.g = (double)rand() / RAND_MAX;
-                    voxelMarker.color.b = (double)rand() / RAND_MAX;
+                    voxelMarker.color.r = m_colors[x][y][z][0];
+                    voxelMarker.color.g = m_colors[x][y][z][1];
+                    voxelMarker.color.b = m_colors[x][y][z][2];
+//                     voxelMarker.color.a = 0.4;
+//                     voxelMarker.color.r = 255;
+//                     voxelMarker.color.g = 0;
+//                     voxelMarker.color.b = 0;
+                    voxelMarker.color.a = voxel.occupiedProb();
                     
                     BOOST_FOREACH(const pcl::PointXYZRGB & point, voxel.getPoints()->points) {
                         pcl::PointXYZRGB tmpPoint;
@@ -272,9 +361,12 @@ void VoxelGridTracking::publishVoxels()
                         tmpPoint.x = point.x;
                         tmpPoint.y = point.y;
                         tmpPoint.z = point.z;
-                        tmpPoint.r = point.r; //voxelMarker.color.r * 255;
-                        tmpPoint.g = point.g; //voxelMarker.color.g * 255;
-                        tmpPoint.b = point.b; //voxelMarker.color.b * 255;
+                        tmpPoint.r = point.r;
+                        tmpPoint.g = point.g;
+                        tmpPoint.b = point.b;
+//                         tmpPoint.r = voxelMarker.color.r * 255;
+//                         tmpPoint.g = voxelMarker.color.g * 255;
+//                         tmpPoint.b = voxelMarker.color.b * 255;
                         
                         vizPointCloud->push_back(tmpPoint);
                     }
@@ -293,6 +385,111 @@ void VoxelGridTracking::publishVoxels()
     cloudMsg.header.stamp = ros::Time();
     
     m_pointsPerVoxelPub.publish(cloudMsg);
+}
+
+void VoxelGridTracking::publishParticles()
+{
+    geometry_msgs::PoseArray particles;
+    
+    particles.header.frame_id = m_baseFrame;
+    particles.header.stamp = ros::Time();
+    
+    uint32_t idCount = 0;
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                const Voxel & voxel = m_grid[x][y][z];
+                
+                for (uint32_t i = 0; i < voxel.numParticles(); i++) {
+                    const Particle3d & particle = voxel.getParticle(i);
+                    geometry_msgs::Pose pose;
+                    
+                    pose.position.x = particle.x();
+                    pose.position.y = particle.y();
+                    pose.position.z = particle.z();
+                    
+                    const double & vx = particle.vx();
+                    const double & vy = particle.vy();
+                    
+                    const double & norm = sqrt(vx * vx + vy * vy);
+                    
+                    double yaw = acos(vx / norm);
+                    if (vy < 0)
+                        yaw = -yaw;
+                    
+                    const tf::Quaternion & quat = tf::createQuaternionFromRPY(0.0, 0.0, yaw);
+                    pose.orientation.w = quat.w();
+                    pose.orientation.x = quat.x();
+                    pose.orientation.y = quat.y();
+                    pose.orientation.z = quat.z();
+                    
+                    particles.poses.push_back(pose);
+                }
+            }
+        }
+    }
+    
+    m_particlesPub.publish(particles);
+    /*visualization_msgs::MarkerArray particlesMarkers;
+
+    uint32_t idCount = 0;
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                const Voxel & voxel = m_grid[x][y][z];
+                
+                if (! voxel.empty()) {
+                    
+                    for (uint32_t i = 0; i < voxel.numParticles(); i++) {
+                        const Particle3d & particle = voxel.getParticle(i);
+                        
+                        visualization_msgs::Marker particleMarker;
+                        particleMarker.header.frame_id = m_baseFrame;
+                        particleMarker.header.stamp = ros::Time();
+                        particleMarker.id = idCount++;
+                        particleMarker.ns = "particles";
+                        particleMarker.type = visualization_msgs::Marker::ARROW;
+                        particleMarker.action = visualization_msgs::Marker::ADD;
+                        
+                        particleMarker.pose.orientation.x = 0.0;
+                        particleMarker.pose.orientation.y = 0.0;
+                        particleMarker.pose.orientation.z = 0.0;
+                        particleMarker.pose.orientation.w = 1.0;
+                        particleMarker.scale.x = 0.001;
+                        particleMarker.scale.y = 0.003;
+                        particleMarker.scale.z = 0.01;
+                        particleMarker.color.r = m_colors[x][y][z][0];
+                        particleMarker.color.g = m_colors[x][y][z][1];
+                        particleMarker.color.b = m_colors[x][y][z][2];
+                        particleMarker.color.a = 1.0;
+                        
+//                         cout << "Adding particle " << cv::Point3d(particle.x(), particle.y(), particle.z()) << endl;
+//                         if (fabs(particle.z() - z) > m_cellSizeZ) {
+//                             cout << "z " << z << endl;
+//                             cout << "particle.z() " << particle.z() << endl;
+//                             cout << particle.z() - z << endl;
+//                         }
+                        
+                        geometry_msgs::Point origin, dest;
+                        origin.x = particle.x();
+                        origin.y = particle.y();
+                        origin.z = particle.z();
+
+                        dest.x = particle.x() + (particle.vx() / m_maxVelX) * m_cellSizeX;
+                        dest.y = particle.y() + (particle.vy() / m_maxVelY) * m_cellSizeY;
+                        dest.z = particle.z();
+                        
+                        particleMarker.points.push_back(origin);
+                        particleMarker.points.push_back(dest);
+                        
+                        particlesMarkers.markers.push_back(particleMarker);
+                    }
+                }
+            }
+        }
+    }
+
+    m_particlesPub.publish(particlesMarkers);*/
 }
 
 }

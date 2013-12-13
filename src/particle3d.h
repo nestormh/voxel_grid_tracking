@@ -29,8 +29,8 @@ namespace voxel_grid_tracking {
 class Particle3d
 {
 public:
-    Particle3d(const double & cellX, const double & cellY, const double & cellZ, 
-               const double & cellSizeX, const double & cellSizeY, const double & cellSizeZ, 
+    Particle3d(const double & centroidX, const double & centroidY, const double & centroidZ, 
+               const double & voxelSizeX, const double & voxelSizeY, const double & voxelSizeZ, 
                const double & maxVelX, const double & maxVelY, const double & maxVelZ);
     Particle3d(const double & x, const double & y, const double & z, 
                const double & vx, const double & vy, const double & vz);

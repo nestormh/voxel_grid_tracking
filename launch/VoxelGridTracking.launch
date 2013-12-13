@@ -1,5 +1,6 @@
 <launch>
   <arg name="namespace" default="VoxelGridTracking"/>
+  <param name="use_sim_time" value="true"/>
 
 <node pkg="tf" type="static_transform_publisher" name="odom2baselink" args="0 0 0 0 0 0 odom base_link 100" />
 <node pkg="tf" type="static_transform_publisher" name="baselink2basefootprint" args="0 0 0 0 0 0 base_link base_footprint 100" />
@@ -10,8 +11,8 @@
     <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
     </node>   
     
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-    <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+    <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+<!--     <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
             <remap from="~/deltaTime"
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"

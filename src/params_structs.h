@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <Eigen/Core>
 
+using namespace std;
+
 namespace polar_grid_tracking {
     
 typedef struct {        
@@ -60,6 +62,8 @@ typedef struct {
     double deltaPos;
     double deltaTime;
     double speed;
+    string date;
+    string time;
 } t_ego_value;
 
 typedef struct {

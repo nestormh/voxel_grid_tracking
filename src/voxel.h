@@ -42,6 +42,7 @@ class Voxel
 public:
     Voxel();
     Voxel(const double & x, const double & y, const double & z, 
+          const double & centroidX, const double & centroidY, const double & centroidZ, 
           const double & sizeX, const double & sizeY, const double & sizeZ, 
           const double & maxVelX, const double & maxVelY, const double & maxVelZ,
           const polar_grid_tracking::t_Camera_params & params);
@@ -55,14 +56,14 @@ public:
     double sigmaY() { return m_sigmaY; } 
     double sigmaZ() { return m_sigmaZ; }
     
-    double occupiedProb() { return m_occupiedProb; }
-    double occupiedPosteriorProb() { return m_occupiedPosteriorProb; }
+    double occupiedProb() const { return m_occupiedProb; }
+    double occupiedPosteriorProb() const { return m_occupiedPosteriorProb; }
     double freeProb() { return 1.0 - m_occupiedProb; }
     
     uint32_t numParticles() const { return m_particles.size(); }
     Particle3d getParticle(const uint32_t & idx) const { return m_particles.at(idx); }
     vector <Particle3d> getParticles() { return m_particles; }
-    bool empty() { return m_particles.size() == 0; }
+    bool empty() const { return m_particles.size() == 0; }
     void makeCopy(const Particle3d & particle);
     void addParticle(const Particle3d& particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }

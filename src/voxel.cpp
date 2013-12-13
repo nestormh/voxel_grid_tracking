@@ -33,12 +33,13 @@ Voxel::Voxel()
 {
     
 }
-
 Voxel::Voxel(const double & x, const double & y, const double & z, 
+             const double & centroidX, const double & centroidY, const double & centroidZ,
              const double & sizeX, const double & sizeY, const double & sizeZ, 
              const double & maxVelX, const double & maxVelY, const double & maxVelZ,
              const polar_grid_tracking::t_Camera_params & params) : 
                     m_x(x), m_y(y), m_z(z), 
+                    m_centroidX(centroidX), m_centroidY(centroidY), m_centroidZ(centroidZ), 
                     m_sizeX(sizeX), m_sizeY(sizeY), m_sizeZ(sizeZ), 
                     m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ)
 {
@@ -47,13 +48,13 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
         m_sigmaY = 0.0;
         m_sigmaZ = 0.0;
     } else {
-        double xReal = m_x * m_sizeX;
+        double xReal = m_centroidX * m_sizeX;
         double yReal = m_y * m_sizeY;
         double zReal = m_z * m_sizeZ;
         
-        const double sigmaY = (yReal * yReal * DISPARITY_COMPUTATION_ERROR) / (params.baseline * params.ku);
-        const double sigmaX = (xReal * sigmaY) / yReal;
-        const double sigmaZ = (zReal * sigmaY) / yReal;
+        const double sigmaY = (m_centroidY * yReal * DISPARITY_COMPUTATION_ERROR) / (params.baseline * params.ku);
+        const double sigmaX = (m_centroidX * sigmaY) / m_centroidY;
+        const double sigmaZ = (m_centroidZ * sigmaY) / m_centroidY;
         
         m_sigmaX = sigmaX / m_sizeX;
         m_sigmaY = sigmaY / m_sizeY;
@@ -66,8 +67,8 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
 void Voxel::createParticles(const uint32_t & numParticles)
 {
     for (uint32_t i = m_particles.size(); i < numParticles; i++)
-        m_particles.push_back(Particle3d(m_x, m_y, m_z, m_sizeX, 
-                                         m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ));
+        m_particles.push_back(Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
+                                         m_sizeX, m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ));
 }
 
 void Voxel::setOccupiedPosteriorProb(const uint32_t& particlesPerVoxel)
@@ -138,12 +139,7 @@ void Voxel::addPoint(const pcl::PointXYZRGB& point)
 
 void Voxel::update()
 {
-    Eigen::Vector4f centroid; 
-    pcl::compute3DCentroid(*m_pointCloud,centroid); 
-    
-    m_x = centroid(0);
-    m_y = centroid(1);
-    m_z = centroid(2);
+
 }
 
 void Voxel::reset()

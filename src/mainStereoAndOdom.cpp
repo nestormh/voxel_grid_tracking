@@ -36,6 +36,8 @@
 
 #include <boost/foreach.hpp>
 
+#include <rosgraph_msgs/Clock.h>
+
 #include <sstream>
 
 #include <opencv2/opencv.hpp>
@@ -164,7 +166,8 @@ void testStereoTracking() {
     
     ros::NodeHandle nh("~");
     ros::Publisher pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStereo", 1);
-    ros::Publisher deltaTimePub = nh.advertise<std_msgs::Float64> ("deltaTime", 1);
+//     ros::Publisher deltaTimePub = nh.advertise<std_msgs::Float64> ("deltaTime", 1);
+    ros::Publisher clockPub = nh.advertise<rosgraph_msgs::Clock> ("/clock", 1);
     tf::TransformBroadcaster map2odomTfBroadcaster;
     
     uint32_t initialIdx;
@@ -235,8 +238,6 @@ void testStereoTracking() {
     sgbmParams.speckleWindowSize = 100;
     sgbmParams.speckleRange = 32;    
     sgbmParams.fullDP = true;
-    
-    ros::Rate waitToSendTransform(5.0);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;
@@ -313,6 +314,10 @@ void testStereoTracking() {
         posTheta += yaw; 
         accTime += deltaTime;
         
+        rosgraph_msgs::Clock clockMsg;
+        clockMsg.clock = ros::Time(accTime);
+        clockPub.publish(clockMsg);
+        
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
@@ -339,12 +344,11 @@ void testStereoTracking() {
         transform.setOrigin(tf::Vector3(-posX, -posY, 0.0));
         transform.setRotation( tf::createQuaternionFromRPY(0.0, 0.0, posTheta) );
         
-        std_msgs::Float64 deltaTimeMsg;
-        deltaTimeMsg.data = deltaTime;
-        deltaTimePub.publish(deltaTimeMsg);
+//         std_msgs::Float64 deltaTimeMsg;
+//         deltaTimeMsg.data = deltaTime;
+//         deltaTimePub.publish(deltaTimeMsg);
         
         publishPointCloud(pointCloudPub, tmpPointCloud);
-        waitToSendTransform.sleep();
         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
         
 //         map2odomTfBroadcaster.sendTransform(

@@ -19,6 +19,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
+#include <tf/transform_datatypes.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -39,17 +40,18 @@ public:
     void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
 protected:
     // Callbacks
-    void deltaTimeCallback(const std_msgs::Float64::ConstPtr& msg);
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
     
     // Method functions
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     void reset();
     void getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
+    void getMeasurementModel();
+    void initialization();
     
     // Visualization functions
     void publishVoxels();
-    
+    void publishParticles();    
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
@@ -57,7 +59,14 @@ protected:
     
     VoxelGrid m_grid;
     
+    typedef boost::multi_array<double, 4> ColorMatrix;
+    ColorMatrix m_colors;
+    
     uint32_t m_dimX, m_dimY, m_dimZ;
+    
+    bool m_initialized;
+    
+    tf::StampedTransform m_lastMapOdomTransform;
     
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
@@ -68,12 +77,12 @@ protected:
     string m_baseFrame;
 
     // Subscribers
-    ros::Subscriber m_deltaTimeSub;
     ros::Subscriber m_pointCloudSub;
     
     // Publishers
     ros::Publisher m_voxelsPub;
     ros::Publisher m_pointsPerVoxelPub;
+    ros::Publisher m_particlesPub;
 };
 
 }
