@@ -82,7 +82,7 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerCell = 100;
+    m_particlesPerCell = 1000;
     m_threshProbForCreation = 0.2;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
@@ -122,6 +122,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_particlesPub = nh.advertise<geometry_msgs::PoseArray> ("particles", 1);
     m_particlesPositionPub = nh.advertise<sensor_msgs::PointCloud2> ("particlesPosition", 1);
     m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
+    m_mainVectorsPub = nh.advertise<visualization_msgs::MarkerArray>("mainVectors", 1);
     
 //     ros::spin();
 }
@@ -210,23 +211,23 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     if (m_initialized) {
         prediction();
-//         measurementBasedUpdate();
+        measurementBasedUpdate();
 //         reconstructObjects(pointCloud);
-    } else {
+    } 
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
     initialization();
-    }
 //     
 //     publishAll(pointCloud);
     END_CLOCK(totalCompute, startCompute)
     
-    publishVoxels();
-    publishParticles();
-    publishVoxels();
-    publishParticles();
-    
     ROS_INFO("[%s] Total time: %f seconds", __FUNCTION__, totalCompute);
+    
+    publishVoxels();
+    publishParticles();
+    publishVoxels();
+    publishParticles();
+    publishMainVectors();
 }
 
 void VoxelGridTracking::reset()
@@ -370,7 +371,6 @@ void VoxelGridTracking::prediction()
         int32_t xPos, yPos, zPos;
         particleToVoxel(particle, xPos, yPos, zPos);
         
-        
         if ((xPos >= 0) && (xPos < m_dimX) &&
             (yPos >= 0) && (yPos < m_dimY) &&
             (zPos >= 0) && (zPos < m_dimZ)) {                    
@@ -381,6 +381,49 @@ void VoxelGridTracking::prediction()
     }
 }
 
+void VoxelGridTracking::measurementBasedUpdate()
+{
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
+            
+                if (! voxel.empty()) {
+                    voxel.setOccupiedPosteriorProb(m_particlesPerCell);
+                    const double Nrc = voxel.occupiedPosteriorProb() * m_particlesPerCell;
+                    const double fc = Nrc / voxel.numParticles();
+                    
+                    if (fc > 1.0) {
+                        const double Fn = floor(fc);       // Integer part
+                        const double Ff = fc - Fn;         // Fractional part
+                        
+                        const uint32_t numParticles = voxel.numParticles();
+                        for (uint32_t i = 0; i < numParticles; i++) {
+                            
+                            const Particle3d & p = voxel.getParticle(i);
+                            
+                            for (uint32_t k = 1; k < Fn; k++)
+                                voxel.makeCopy(p);
+                            
+                            const double r = (double)rand() / (double)RAND_MAX;
+                            if (r < Ff)
+                                voxel.makeCopy(p);
+                        }
+                    } else if (fc < 1.0) {
+                        const uint32_t numParticles = voxel.numParticles();
+                        for (uint32_t i = 0; i < numParticles; i++) {
+                            const double r = (double)rand() / (double)RAND_MAX;
+                            if (r > fc)
+                                voxel.removeParticle(i);
+                        }
+                    }
+                }
+                
+                voxel.setMainVectors();
+            }
+        }
+    }
+}
 
 void VoxelGridTracking::publishVoxels()
 {
@@ -522,6 +565,62 @@ void VoxelGridTracking::publishParticles()
     cloudMsg.header.stamp = ros::Time();
     
     m_particlesPositionPub.publish(cloudMsg);
+}
+
+void VoxelGridTracking::publishMainVectors()
+{
+    visualization_msgs::MarkerArray mainVectors;
+    
+    uint32_t idCount = 0;
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                const Voxel & voxel = m_grid[x][y][z];
+                
+                if (voxel.magnitude() != 0.0) {
+                    
+                    visualization_msgs::Marker mainVector;
+                    mainVector.header.frame_id = "left_cam";
+                    mainVector.header.stamp = ros::Time();
+                    mainVector.id = idCount++;
+                    mainVector.ns = "mainVectors";
+                    mainVector.type = visualization_msgs::Marker::ARROW;
+                    mainVector.action = visualization_msgs::Marker::ADD;
+                    
+                    mainVector.pose.orientation.x = 0.0;
+                    mainVector.pose.orientation.y = 0.0;
+                    mainVector.pose.orientation.z = 0.0;
+                    mainVector.pose.orientation.w = 1.0;
+                    mainVector.scale.x = 0.01;
+                    mainVector.scale.y = 0.03;
+                    mainVector.scale.z = 0.1;
+                    mainVector.color.a = 1.0;
+                    mainVector.color.r = m_colors[x][y][z][0];
+                    mainVector.color.g = m_colors[x][y][z][1];
+                    mainVector.color.b = m_colors[x][y][z][2];
+                    
+                    //         orientation.lifetime = ros::Duration(5.0);
+                    
+                    geometry_msgs::Point origin, dest;
+                    origin.x = voxel.centroidX();
+                    origin.y = voxel.centroidY();
+                    origin.z = voxel.centroidZ();
+                    
+                    
+                    dest.x = voxel.centroidX() + voxel.vx() * m_deltaTime;
+                    dest.y = voxel.centroidY() + voxel.vy() * m_deltaTime;
+                    dest.z = voxel.centroidZ() + voxel.vz() * m_deltaTime;
+                    
+                    mainVector.points.push_back(origin);
+                    mainVector.points.push_back(dest);
+                    
+                    mainVectors.markers.push_back(mainVector);
+                }
+            }
+        }
+    }
+    
+    m_mainVectorsPub.publish(mainVectors);
 }
 
 }

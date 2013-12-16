@@ -51,10 +51,12 @@ protected:
     void particleToVoxel(const Particle3d & particle, 
                          int32_t & posX, int32_t & posY, int32_t & posZ);
     void prediction();
+    void measurementBasedUpdate();
     
     // Visualization functions
     void publishVoxels();
-    void publishParticles();    
+    void publishParticles();
+    void publishMainVectors();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
@@ -87,6 +89,7 @@ protected:
     ros::Publisher m_pointsPerVoxelPub;
     ros::Publisher m_particlesPub;
     ros::Publisher m_particlesPositionPub;
+    ros::Publisher m_mainVectorsPub;
 };
 
 }

@@ -61,6 +61,8 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
         m_sigmaZ = sigmaZ / m_sizeZ;
     }
     
+    m_magnitude = 0.0;
+    
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 }
 
@@ -123,6 +125,8 @@ void Voxel::setMainVectors() {
         m_vy /= m_particles.size();
         m_vz /= m_particles.size();
     }
+    
+    m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
 }
 
 void Voxel::addPoint(const pcl::PointXYZRGB& point)

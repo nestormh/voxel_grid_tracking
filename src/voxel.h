@@ -83,6 +83,12 @@ public:
     double centroidY() const { return m_centroidY; }
     double centroidZ() const { return m_centroidZ; }
     
+    double magnitude() const { return m_magnitude; }
+    
+    double vx() const { return m_vx; }
+    double vy() const { return m_vy; }
+    double vz() const { return m_vz; }
+    
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPoints() const { return m_pointCloud; }
     
     void reset();
@@ -98,6 +104,7 @@ protected:
     
     double m_vx, m_vy, m_vz;
     double m_centroidX, m_centroidY, m_centroidZ;
+    double m_magnitude;
     
     vector <Particle3d> m_particles;
     
