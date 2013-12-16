@@ -33,10 +33,12 @@ namespace voxel_grid_tracking {
     m_y = centroidY + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeY;
     m_z = centroidZ + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeZ;
     
-    const double theta = ((double)rand() / RAND_MAX) * 2.0 * 3.14;
+    const double theta = ((double)rand() / RAND_MAX) * 2.0 * M_PI;
+    const double gamma = ((double)rand() / RAND_MAX) * 2.0 * M_PI;
     m_vx = maxVelX * ((double)rand() / RAND_MAX) * cos(theta);
     m_vy = maxVelY * ((double)rand() / RAND_MAX) * sin(theta);
-    m_vz = 0.0;
+    m_vz = maxVelZ * ((double)rand() / RAND_MAX) * sin(gamma);
+
 }
 
 Particle3d::Particle3d(const double& x, const double& y, const double& z, 
@@ -51,7 +53,7 @@ Particle3d::Particle3d(const Particle3d& particle)
 {
 }
 
-void Particle3d::transform(const Eigen::Matrix4d& R, const Eigen::Vector4d& t, const Eigen::MatrixXd& stateTransition)
+void Particle3d::transform(const Eigen::MatrixXd & R, const Eigen::VectorXd & t, const Eigen::MatrixXd& stateTransition)
 {
     Eigen::VectorXd newPosAndVel(6), oldPosAndVel(6);
     Eigen::VectorXd tmpPosAndVel(6), deltaPosAndVel(6), finalPosAndVel(6);
@@ -72,9 +74,9 @@ void Particle3d::transform(const Eigen::Matrix4d& R, const Eigen::Vector4d& t, c
     m_vy = finalPosAndVel(4);
     m_vz = finalPosAndVel(5);
     
-    m_vx = newPosAndVel(3);
-    m_vy = newPosAndVel(4);
-    m_vz = newPosAndVel(5);
+//     m_vx = newPosAndVel(3);
+//     m_vy = newPosAndVel(4);
+//     m_vz = newPosAndVel(5);
 }
 
 ostream& operator<<(ostream & stream, const Particle3d & in) {

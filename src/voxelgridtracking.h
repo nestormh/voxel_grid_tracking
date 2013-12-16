@@ -48,6 +48,9 @@ protected:
     void getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
     void getMeasurementModel();
     void initialization();
+    void particleToVoxel(const Particle3d & particle, 
+                         int32_t & posX, int32_t & posY, int32_t & posZ);
+    void prediction();
     
     // Visualization functions
     void publishVoxels();
@@ -83,6 +86,7 @@ protected:
     ros::Publisher m_voxelsPub;
     ros::Publisher m_pointsPerVoxelPub;
     ros::Publisher m_particlesPub;
+    ros::Publisher m_particlesPositionPub;
 };
 
 }

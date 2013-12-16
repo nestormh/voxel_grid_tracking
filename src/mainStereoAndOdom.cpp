@@ -154,7 +154,7 @@ void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl
     sensor_msgs::PointCloud2 cloudMsg;
     pcl::toROSMsg (*tmpPointCloud, cloudMsg);
     cloudMsg.header.frame_id = CAMERA_FRAME_ID;
-    cloudMsg.header.stamp = ros::Time();
+    cloudMsg.header.stamp = ros::Time::now();
     
     pointCloudPub.publish(cloudMsg);
     
@@ -301,8 +301,10 @@ void testStereoTracking() {
             }
             case ObstaclesFromStereo::KARLSRUHE_V2:
             {
-                yaw = egoValues[i].deltaYaw;
-                speed = egoValues[i].speed;
+//                 yaw = egoValues[i].deltaYaw;
+//                 speed = egoValues[i].speed;
+                yaw = 0.0;
+                speed = 0.0;
                 deltaTime = egoValues[i].deltaTime;
                 
                 break;

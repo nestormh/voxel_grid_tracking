@@ -67,7 +67,7 @@ public:
     void makeCopy(const Particle3d & particle);
     void addParticle(const Particle3d& particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
-    void transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::MatrixXd & stateTransition, VoxelGrid & newGrid);
+    void transformParticles(const Eigen::MatrixXd & R, const Eigen::VectorXd & t, const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles);
     void clearParticles() { m_particles.clear(); }
     void setParticles(const vector <Particle3d> & particles) { m_particles = particles; }
     

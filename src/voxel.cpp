@@ -96,21 +96,14 @@ void Voxel::addParticle(const Particle3d& particle)
     m_particles.push_back(particle);
 }
     
-void Voxel::transformParticles(const Eigen::Matrix4d & R, const Eigen::Vector4d & t, const Eigen::MatrixXd & stateTransition, VoxelGrid & newGrid)
+void Voxel::transformParticles(const Eigen::MatrixXd & R, const Eigen::VectorXd & t, 
+                               const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles)
 {
     BOOST_FOREACH(Particle3d & particle, m_particles) {
         particle.transform(R, t, stateTransition);
         
-        const int newVoxelX = particle.x() / m_sizeX;
-        const int newVoxelY = particle.y() / m_sizeY;
-        const int newVoxelZ = particle.z() / m_sizeZ;
+        newParticles.push_back(particle);
         
-        if ((newVoxelX >= 0) && (newVoxelX < newGrid.shape()[0]) &&
-            (newVoxelY >= 0) && (newVoxelY < newGrid.shape()[1]) &&
-            (newVoxelZ >= 0) && (newVoxelZ < newGrid.shape()[2])) {
-                
-            newGrid[newVoxelX][newVoxelY][newVoxelZ].addParticle(particle);
-        }
     }
     m_particles.clear();
 }

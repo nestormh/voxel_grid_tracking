@@ -82,7 +82,7 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerCell = 1000;
+    m_particlesPerCell = 100;
     m_threshProbForCreation = 0.2;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
@@ -115,12 +115,12 @@ VoxelGridTracking::VoxelGridTracking()
     
     m_lastMapOdomTransform.stamp_ = ros::Time(-1);
     ros::NodeHandle nh("~");
-    //     m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
+// //         m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
     m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 1, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
     
     m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
     m_particlesPub = nh.advertise<geometry_msgs::PoseArray> ("particles", 1);
-//     m_particlesPub = nh.advertise<visualization_msgs::MarkerArray> ("particles", 1);
+    m_particlesPositionPub = nh.advertise<sensor_msgs::PointCloud2> ("particlesPosition", 1);
     m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
     
 //     ros::spin();
@@ -137,7 +137,10 @@ void VoxelGridTracking::start()
     ros::Rate rate(15.0);
     while (ros::ok()) {
         try{
-            while (! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01)));
+            while ((! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01))) && (ros::ok()));
+            
+            if (! ros::ok())
+                break;
             
             listener.lookupTransform("/map", "/odom", ros::Time(0), transform);
             if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
@@ -177,11 +180,11 @@ void VoxelGridTracking::start()
             ROS_ERROR("%s",ex.what());
         }
         
-        ros::spinOnce();
+//         ros::spinOnce();
         rate.sleep();
     }
     
-    ros::spin();
+//     ros::spin();
 }
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
@@ -205,18 +208,21 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     getMeasurementModel();
     
-//     if (m_initialized) {
-//         prediction();
+    if (m_initialized) {
+        prediction();
 //         measurementBasedUpdate();
 //         reconstructObjects(pointCloud);
-//     } 
+    } else {
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
     initialization();
+    }
 //     
 //     publishAll(pointCloud);
     END_CLOCK(totalCompute, startCompute)
     
+    publishVoxels();
+    publishParticles();
     publishVoxels();
     publishParticles();
     
@@ -312,6 +318,70 @@ void VoxelGridTracking::initialization()
     m_initialized = true;
 }
 
+void VoxelGridTracking::particleToVoxel(const Particle3d & particle, 
+                                        int32_t & posX, int32_t & posY, int32_t & posZ)
+{
+    const double dPosX = (particle.x() - m_minX) / m_cellSizeX;
+    const double dPosY = (particle.y() - m_minY) / m_cellSizeY;
+    const double dPosZ = (particle.z() - m_minZ) / m_cellSizeZ;
+    
+    posX = (dPosX < 0.0)? -1 : dPosX;
+    posY = (dPosY < 0.0)? -1 : dPosY;
+    posZ = (dPosZ < 0.0)? -1 : dPosZ;
+}
+
+void VoxelGridTracking::prediction()
+{
+    const double dx = m_deltaSpeed * m_deltaTime * cos(m_deltaYaw); // / m_cellSizeX;
+    const double dy = m_deltaSpeed * m_deltaTime * cos(m_deltaYaw); // / m_cellSizeX;
+    const double dz = 0.0;
+    
+    Eigen::MatrixXd R(6, 6);
+    Eigen::VectorXd t(6, 1);
+    Eigen::MatrixXd stateTransition(6, 6);
+    R << cos(m_deltaYaw), -sin(m_deltaYaw), 0, 0, 0, 0,
+         sin(m_deltaYaw), cos(m_deltaYaw), 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0,
+        0, 0, 0, cos(m_deltaYaw), -sin(m_deltaYaw), 0,
+        0, 0, 0, sin(m_deltaYaw), cos(m_deltaYaw), 0,
+        0, 0, 0, 0, 0, 1;
+    
+    t << dx, dy, dz, 0, 0, 0;
+    stateTransition << 1, 0, 0, m_deltaTime, 0, 0,
+                        0, 1, 0, 0, m_deltaTime, 0,
+                        0, 0, 1, 0, 0, m_deltaTime,
+                        0, 0, 0, 1, 0, 0,
+                        0, 0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 0, 1;
+    
+    // TODO: Put correct values for deltaX, deltaY, deltaZ, deltaVX, deltaVY, deltaVZ in class Particle, based on the covariance matrix
+    vector <Particle3d> newParticles;
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
+                voxel.transformParticles(R, t, stateTransition, newParticles);
+                voxel.clearParticles();
+            }
+        }
+    }
+    
+    BOOST_FOREACH(const Particle3d & particle, newParticles) {
+        int32_t xPos, yPos, zPos;
+        particleToVoxel(particle, xPos, yPos, zPos);
+        
+        
+        if ((xPos >= 0) && (xPos < m_dimX) &&
+            (yPos >= 0) && (yPos < m_dimY) &&
+            (zPos >= 0) && (zPos < m_dimZ)) {                    
+        
+            if (m_grid[xPos][yPos][zPos].occupied())
+                m_grid[xPos][yPos][zPos].addParticle(particle);
+        }
+    }
+}
+
+
 void VoxelGridTracking::publishVoxels()
 {
     visualization_msgs::MarkerArray voxelMarkers;
@@ -324,9 +394,7 @@ void VoxelGridTracking::publishVoxels()
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 const Voxel & voxel = m_grid[x][y][z];
                 
-//                 if (voxel.occupied()) {
-                if (voxel.occupiedProb() != 0.0) {
-                    
+                if (voxel.occupied()) {
                     visualization_msgs::Marker voxelMarker;
                     voxelMarker.header.frame_id = m_baseFrame;
                     voxelMarker.header.stamp = ros::Time();
@@ -349,7 +417,7 @@ void VoxelGridTracking::publishVoxels()
                     voxelMarker.color.r = m_colors[x][y][z][0];
                     voxelMarker.color.g = m_colors[x][y][z][1];
                     voxelMarker.color.b = m_colors[x][y][z][2];
-//                     voxelMarker.color.a = 0.4;
+//                     voxelMarker.color.a = 0.2;
 //                     voxelMarker.color.r = 255;
 //                     voxelMarker.color.g = 0;
 //                     voxelMarker.color.b = 0;
@@ -370,7 +438,6 @@ void VoxelGridTracking::publishVoxels()
                         
                         vizPointCloud->push_back(tmpPoint);
                     }
-                    
                     voxelMarkers.markers.push_back(voxelMarker);
                 }
             }
@@ -390,6 +457,7 @@ void VoxelGridTracking::publishVoxels()
 void VoxelGridTracking::publishParticles()
 {
     geometry_msgs::PoseArray particles;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr particlePointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     
     particles.header.frame_id = m_baseFrame;
     particles.header.stamp = ros::Time();
@@ -410,86 +478,50 @@ void VoxelGridTracking::publishParticles()
                     
                     const double & vx = particle.vx();
                     const double & vy = particle.vy();
+                    const double & vz = particle.vz();
                     
-                    const double & norm = sqrt(vx * vx + vy * vy);
+                    const double & normYaw = sqrt(vx * vx + vy * vy);
+                    const double & normPitch = sqrt(vy * vy + vz * vz);
                     
-                    double yaw = acos(vx / norm);
+                    double yaw = acos(vx / normYaw);
                     if (vy < 0)
                         yaw = -yaw;
                     
-                    const tf::Quaternion & quat = tf::createQuaternionFromRPY(0.0, 0.0, yaw);
+                    double pitch = asin(vz / normPitch);
+                    if (vy < 0)
+                        pitch = -pitch;
+                    
+                    const tf::Quaternion & quat = tf::createQuaternionFromRPY(0.0, pitch, yaw);
                     pose.orientation.w = quat.w();
                     pose.orientation.x = quat.x();
                     pose.orientation.y = quat.y();
                     pose.orientation.z = quat.z();
                     
                     particles.poses.push_back(pose);
+                
+                    pcl::PointXYZRGB tmpPoint;
+                    
+                    tmpPoint.x = particle.x();
+                    tmpPoint.y = particle.y();
+                    tmpPoint.z = particle.z();
+                    tmpPoint.r = m_colors[x][y][z][0] * 255;
+                    tmpPoint.g = m_colors[x][y][z][1] * 255;
+                    tmpPoint.b = m_colors[x][y][z][2] * 255;
+                    
+                    particlePointCloud->push_back(tmpPoint);
                 }
             }
         }
     }
     
     m_particlesPub.publish(particles);
-    /*visualization_msgs::MarkerArray particlesMarkers;
-
-    uint32_t idCount = 0;
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                const Voxel & voxel = m_grid[x][y][z];
-                
-                if (! voxel.empty()) {
-                    
-                    for (uint32_t i = 0; i < voxel.numParticles(); i++) {
-                        const Particle3d & particle = voxel.getParticle(i);
-                        
-                        visualization_msgs::Marker particleMarker;
-                        particleMarker.header.frame_id = m_baseFrame;
-                        particleMarker.header.stamp = ros::Time();
-                        particleMarker.id = idCount++;
-                        particleMarker.ns = "particles";
-                        particleMarker.type = visualization_msgs::Marker::ARROW;
-                        particleMarker.action = visualization_msgs::Marker::ADD;
-                        
-                        particleMarker.pose.orientation.x = 0.0;
-                        particleMarker.pose.orientation.y = 0.0;
-                        particleMarker.pose.orientation.z = 0.0;
-                        particleMarker.pose.orientation.w = 1.0;
-                        particleMarker.scale.x = 0.001;
-                        particleMarker.scale.y = 0.003;
-                        particleMarker.scale.z = 0.01;
-                        particleMarker.color.r = m_colors[x][y][z][0];
-                        particleMarker.color.g = m_colors[x][y][z][1];
-                        particleMarker.color.b = m_colors[x][y][z][2];
-                        particleMarker.color.a = 1.0;
-                        
-//                         cout << "Adding particle " << cv::Point3d(particle.x(), particle.y(), particle.z()) << endl;
-//                         if (fabs(particle.z() - z) > m_cellSizeZ) {
-//                             cout << "z " << z << endl;
-//                             cout << "particle.z() " << particle.z() << endl;
-//                             cout << particle.z() - z << endl;
-//                         }
-                        
-                        geometry_msgs::Point origin, dest;
-                        origin.x = particle.x();
-                        origin.y = particle.y();
-                        origin.z = particle.z();
-
-                        dest.x = particle.x() + (particle.vx() / m_maxVelX) * m_cellSizeX;
-                        dest.y = particle.y() + (particle.vy() / m_maxVelY) * m_cellSizeY;
-                        dest.z = particle.z();
-                        
-                        particleMarker.points.push_back(origin);
-                        particleMarker.points.push_back(dest);
-                        
-                        particlesMarkers.markers.push_back(particleMarker);
-                    }
-                }
-            }
-        }
-    }
-
-    m_particlesPub.publish(particlesMarkers);*/
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*particlePointCloud, cloudMsg);
+    cloudMsg.header.frame_id = m_baseFrame;
+    cloudMsg.header.stamp = ros::Time();
+    
+    m_particlesPositionPub.publish(cloudMsg);
 }
 
 }
