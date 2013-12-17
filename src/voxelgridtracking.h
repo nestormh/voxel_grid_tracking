@@ -26,8 +26,10 @@
 #include "polargridtracking.h"
 
 #include "voxel.h"
+#include "voxelobstacle.h"
 
 #define DEFAULT_BASE_FRAME "left_cam"
+#define MAX_OBSTACLES_VISUALIZATION 10000
 
 namespace voxel_grid_tracking {
     
@@ -52,11 +54,13 @@ protected:
                          int32_t & posX, int32_t & posY, int32_t & posZ);
     void prediction();
     void measurementBasedUpdate();
+    void segment();
     
     // Visualization functions
     void publishVoxels();
     void publishParticles();
     void publishMainVectors();
+    void publishObstacles();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
@@ -66,12 +70,17 @@ protected:
     
     typedef boost::multi_array<double, 4> ColorMatrix;
     ColorMatrix m_colors;
+    typedef boost::multi_array<double, 2> ColorVector;
+    ColorVector m_obstacleColors;
     
     uint32_t m_dimX, m_dimY, m_dimZ;
     
     bool m_initialized;
     
     tf::StampedTransform m_lastMapOdomTransform;
+    
+    typedef vector<VoxelObstacle> ObstacleList;
+    ObstacleList m_obstacles;
     
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
@@ -80,6 +89,8 @@ protected:
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     double m_particlesPerCell, m_threshProbForCreation;
     string m_baseFrame;
+    uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
+    double m_threshYaw, m_threshPitch, m_threshMagnitude;
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;
@@ -90,6 +101,7 @@ protected:
     ros::Publisher m_particlesPub;
     ros::Publisher m_particlesPositionPub;
     ros::Publisher m_mainVectorsPub;
+    ros::Publisher m_obstaclesPub;
 };
 
 }

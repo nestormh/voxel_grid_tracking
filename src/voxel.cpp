@@ -114,6 +114,7 @@ void Voxel::setMainVectors() {
     m_vx = 0.0;
     m_vy = 0.0;
     m_vz = 0.0;
+    
     if (m_particles.size() != 0) {
         BOOST_FOREACH(Particle3d particle, m_particles) {
             m_vx += particle.vx();
@@ -127,6 +128,17 @@ void Voxel::setMainVectors() {
     }
     
     m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
+    
+    const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
+    const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
+    
+    m_yaw = acos(m_vx / normYaw);
+    if (m_vy < 0)
+        m_yaw = -m_yaw;
+    
+    m_pitch = asin(m_vz / normPitch);
+    if (m_vy < 0)
+        m_pitch = -m_pitch;
 }
 
 void Voxel::addPoint(const pcl::PointXYZRGB& point)
@@ -142,6 +154,7 @@ void Voxel::update()
 void Voxel::reset()
 {
     m_pointCloud->clear();
+    m_obstIdx = -1;
 }
 
 }

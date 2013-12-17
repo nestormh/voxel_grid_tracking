@@ -84,10 +84,20 @@ public:
     double centroidZ() const { return m_centroidZ; }
     
     double magnitude() const { return m_magnitude; }
+    double yaw() const { return m_yaw; }
+    double pitch() const { return m_pitch; }
     
     double vx() const { return m_vx; }
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
+    
+    double x() const { return m_x; }
+    double y() const { return m_y; }
+    double z() const { return m_z; }
+    
+    bool assignedToObstacle() { return m_obstIdx != -1; }
+    
+    void assignObstacle(const int32_t & obstIdx) { m_obstIdx = obstIdx; }
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPoints() const { return m_pointCloud; }
     
@@ -105,6 +115,9 @@ protected:
     double m_vx, m_vy, m_vz;
     double m_centroidX, m_centroidY, m_centroidZ;
     double m_magnitude;
+    double m_yaw, m_pitch;
+    
+    int32_t m_obstIdx;
     
     vector <Particle3d> m_particles;
     

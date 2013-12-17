@@ -11,6 +11,7 @@
     <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
     </node>   
     
+<!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
 <!--     <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
             <remap from="~/deltaTime"

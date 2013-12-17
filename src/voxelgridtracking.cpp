@@ -30,10 +30,12 @@
 #include <pcl_ros/point_cloud.h>
 
 #include <boost/foreach.hpp>
+#include <boost/graph/graph_concepts.hpp>
 
 #include <opencv2/opencv.hpp>
 
 #include <iostream>
+#include <queue>
 
 #include "utilspolargridtracking.h"
 
@@ -85,6 +87,14 @@ VoxelGridTracking::VoxelGridTracking()
     m_particlesPerCell = 1000;
     m_threshProbForCreation = 0.2;
     
+    m_neighBorX = 1;
+    m_neighBorY = 1;
+    m_neighBorZ = 1;
+    
+    m_threshYaw = 45.0 * M_PI / 180.0;
+    m_threshPitch = 9999999.0; //0.0;
+    m_threshMagnitude = 9999999.0;
+    
     m_baseFrame = DEFAULT_BASE_FRAME;
     // TODO: End of TODO
     
@@ -113,6 +123,13 @@ VoxelGridTracking::VoxelGridTracking()
         }
     }
     
+    m_obstacleColors.resize(boost::extents[MAX_OBSTACLES_VISUALIZATION][3]);
+    for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION; i++) {
+        for (uint32_t c = 0; c < 3; c++) {
+            m_obstacleColors[i][c] = (double)rand() / RAND_MAX;
+        }
+    }
+    
     m_lastMapOdomTransform.stamp_ = ros::Time(-1);
     ros::NodeHandle nh("~");
 // //         m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
@@ -123,6 +140,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_particlesPositionPub = nh.advertise<sensor_msgs::PointCloud2> ("particlesPosition", 1);
     m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
     m_mainVectorsPub = nh.advertise<visualization_msgs::MarkerArray>("mainVectors", 1);
+    m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 1);
     
 //     ros::spin();
 }
@@ -212,6 +230,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
+        segment();
 //         reconstructObjects(pointCloud);
     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
@@ -228,6 +247,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     publishVoxels();
     publishParticles();
     publishMainVectors();
+    publishObstacles();
 }
 
 void VoxelGridTracking::reset()
@@ -420,6 +440,51 @@ void VoxelGridTracking::measurementBasedUpdate()
                 }
                 
                 voxel.setMainVectors();
+            }
+        }
+    }
+}
+
+void VoxelGridTracking::segment()
+{
+    m_obstacles.clear();
+    
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
+                if (! voxel.empty()) {
+                    if (! voxel.assignedToObstacle()) {
+                        
+                        std::deque<Voxel> voxelsQueue;
+                        
+                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude);
+                        if (! obst.addVoxelToObstacle(voxel))
+                            continue;
+                        
+                        voxelsQueue.push_back(voxel);
+                        
+                        while (! voxelsQueue.empty()) {
+                            Voxel & currVoxel = voxelsQueue.back();
+                            voxelsQueue.pop_back();
+                            
+                            for (uint32_t x1 = max(0, (int)(currVoxel.x() - m_neighBorX)); x1 <= min(m_dimX - 1, (int)currVoxel.x() + m_neighBorX); x1++) {
+                                for (uint32_t y1 = max(0, (int)(currVoxel.y() - m_neighBorY)); y1 <= min(m_dimY - 1, (int)currVoxel.y() + m_neighBorY); y1++) {
+                                    for (uint32_t z1 = max(0, (int)(currVoxel.z() - m_neighBorZ)); z1 <= min(m_dimZ - 1, (int)currVoxel.z() + m_neighBorZ); z1++) {
+                                        Voxel & newVoxel = m_grid[x1][y1][z1];
+                                        if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
+                                            
+                                            if (obst.addVoxelToObstacle(newVoxel))
+                                                voxelsQueue.push_back(newVoxel);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        m_obstacles.push_back(obst);
+                    }
+                }
             }
         }
     }
@@ -622,5 +687,68 @@ void VoxelGridTracking::publishMainVectors()
     
     m_mainVectorsPub.publish(mainVectors);
 }
+
+void VoxelGridTracking::publishObstacles()
+{
+    visualization_msgs::MarkerArray voxelCleaners;
+    
+    for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION; i++) {
+        visualization_msgs::Marker voxelMarker;
+        voxelMarker.header.frame_id = m_baseFrame;
+        voxelMarker.header.stamp = ros::Time();
+        voxelMarker.id = i;
+        voxelMarker.ns = "obstacles";
+        voxelMarker.type = visualization_msgs::Marker::CUBE;
+        voxelMarker.action = visualization_msgs::Marker::DELETE;
+        
+        voxelCleaners.markers.push_back(voxelMarker);
+    }
+    
+    m_obstaclesPub.publish(voxelCleaners);
+    
+    visualization_msgs::MarkerArray voxelMarkers;
+
+    uint32_t idCount = 0;
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const vector<Voxel> & voxels = m_obstacles[i].voxels();
+        BOOST_FOREACH(const Voxel & voxel, voxels) {
+            if (! voxel.empty()) {
+                visualization_msgs::Marker voxelMarker;
+                voxelMarker.header.frame_id = m_baseFrame;
+                voxelMarker.header.stamp = ros::Time();
+                voxelMarker.id = idCount++;
+                voxelMarker.ns = "obstacles";
+                voxelMarker.type = visualization_msgs::Marker::CUBE;
+                voxelMarker.action = visualization_msgs::Marker::ADD;
+                
+                voxelMarker.pose.position.x = voxel.centroidX();
+                voxelMarker.pose.position.y = voxel.centroidY();
+                voxelMarker.pose.position.z = voxel.centroidZ();
+                
+                voxelMarker.pose.orientation.x = 0.0;
+                voxelMarker.pose.orientation.y = 0.0;
+                voxelMarker.pose.orientation.z = 0.0;
+                voxelMarker.pose.orientation.w = 1.0;
+                voxelMarker.scale.x = m_cellSizeX;
+                voxelMarker.scale.y = m_cellSizeY;
+                voxelMarker.scale.z = m_cellSizeZ;
+                voxelMarker.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
+                voxelMarker.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
+                voxelMarker.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
+                //                     voxelMarker.color.a = 0.2;
+                //                     voxelMarker.color.r = 255;
+                //                     voxelMarker.color.g = 0;
+                //                     voxelMarker.color.b = 0;
+                voxelMarker.color.a = voxel.occupiedProb();
+                
+                voxelMarkers.markers.push_back(voxelMarker);
+            }
+        }
+    }
+    
+    m_obstaclesPub.publish(voxelMarkers);
+}
+
 
 }
