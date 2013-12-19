@@ -26,9 +26,10 @@ class VoxelObstacle
 {
 public:
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
-             const double & threshMagnitude, Voxel & voxel);
+                  const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod, 
+                  Voxel & voxel);
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
-             const double & threshMagnitude);
+                  const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod);
     bool addVoxelToObstacle(Voxel & voxel);
     
     vector<Voxel> voxels() const { return m_voxels; }
@@ -52,12 +53,15 @@ protected:
     double m_yaw;
     double m_pitch;
     
+    double m_minDensity;
+    
     double m_density;
     
     double m_vx, m_vy, m_vz;
     
     // Params
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
+    SpeedMethod m_speedMethod;
 };
 
 }

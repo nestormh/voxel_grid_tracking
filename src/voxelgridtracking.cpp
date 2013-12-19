@@ -96,7 +96,14 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshMagnitude = 9999999.0;
     
     m_minVoxelsPerObstacle = 2;
-    m_minObstacleDensity = 0.1;
+    m_minObstacleDensity = 20.0;
+    m_minVoxelDensity = 10.0;
+    
+    // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
+    m_speedMethod = SPEED_METHOD_CIRC_HIST;
+    
+    m_yawInterval = 5.0 * M_PI / 180.0;
+    m_pitchInterval = 2 * M_PI;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
     // TODO: End of TODO
@@ -118,7 +125,9 @@ VoxelGridTracking::VoxelGridTracking()
                                         (y + 0.5) * m_cellSizeY + m_minY,
                                         (z + 0.5) * m_cellSizeZ + m_minZ,
                                         m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
-                                        m_maxVelX, m_maxVelY, m_maxVelZ, m_cameraParams);
+                                        m_maxVelX, m_maxVelY, m_maxVelZ, 
+                                        m_cameraParams, m_speedMethod,
+                                        m_yawInterval, m_pitchInterval);
                 for (uint32_t c = 0; c < 3; c++) {
                     m_colors[x][y][z][c] = (double)rand() / RAND_MAX;
                 }
@@ -234,6 +243,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
         prediction();
         measurementBasedUpdate();
         segment();
+//         noiseRemoval();
         aggregation();
 //         reconstructObjects(pointCloud);
     } 
@@ -441,9 +451,9 @@ void VoxelGridTracking::measurementBasedUpdate()
                                 voxel.removeParticle(i);
                         }
                     }
+                    
+                    voxel.setMainVectors();
                 }
-                
-                voxel.setMainVectors();
             }
         }
     }
@@ -462,7 +472,7 @@ void VoxelGridTracking::segment()
                         
                         std::deque<Voxel> voxelsQueue;
                         
-                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude);
+                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_speedMethod);
                         if (! obst.addVoxelToObstacle(voxel))
                             continue;
                         
@@ -497,29 +507,36 @@ void VoxelGridTracking::segment()
 void VoxelGridTracking::aggregation()
 {
     ObstacleList::iterator it = m_obstacles.begin();
-    uint32_t idx1 = 0;
     while (it != m_obstacles.end()) {
         bool joined = false;
         if (it->numVoxels() <= m_minVoxelsPerObstacle) {
-            cout << idx1 << " is small" << endl;
-            uint32_t idx2 = idx1 + 1;
             for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
                 if (it->isObstacleConnected(*it2)) {
-                    cout << "joining " << idx1 << " and " << idx2 << endl;
                     it2->joinObstacles(*it);
                     it = m_obstacles.erase(it);
                     joined = true;
                     
                     break;
                 }
-                idx2++;
             }
         }
         if (! joined)
             it++;
-        idx1++;
     }
 }
+
+void VoxelGridTracking::noiseRemoval()
+{
+    ObstacleList::iterator it = m_obstacles.begin();
+    while (it != m_obstacles.end()) {
+//         cout << "density " << it->density() << endl;
+        if (it->density() < m_minObstacleDensity)
+            it = m_obstacles.erase(it);
+        else
+            it++;
+    }
+}
+
 
 
 void VoxelGridTracking::publishVoxels()
@@ -674,7 +691,7 @@ void VoxelGridTracking::publishMainVectors()
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 const Voxel & voxel = m_grid[x][y][z];
                 
-                if (voxel.magnitude() != 0.0) {
+                if (! voxel.empty()) {
                     
                     visualization_msgs::Marker mainVector;
                     mainVector.header.frame_id = "left_cam";

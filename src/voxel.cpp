@@ -37,11 +37,13 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
              const double & centroidX, const double & centroidY, const double & centroidZ,
              const double & sizeX, const double & sizeY, const double & sizeZ, 
              const double & maxVelX, const double & maxVelY, const double & maxVelZ,
-             const polar_grid_tracking::t_Camera_params & params) : 
+             const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
+             const double & yawInterval, const double & pitchInterval) : 
                     m_x(x), m_y(y), m_z(z), 
                     m_centroidX(centroidX), m_centroidY(centroidY), m_centroidZ(centroidZ), 
                     m_sizeX(sizeX), m_sizeY(sizeY), m_sizeZ(sizeZ), 
-                    m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ)
+                    m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ),
+                    m_speedMethod(speedMethod), m_yawInterval(yawInterval), m_pitchInterval(pitchInterval)
 {
     if ((x == 0) || (y == 0) || (z == 0)) {
         m_sigmaX = 0.0;
@@ -111,34 +113,92 @@ void Voxel::transformParticles(const Eigen::MatrixXd & R, const Eigen::VectorXd 
 }
 
 void Voxel::setMainVectors() {
+    
     m_vx = 0.0;
     m_vy = 0.0;
     m_vz = 0.0;
     
-    if (m_particles.size() != 0) {
-        BOOST_FOREACH(Particle3d particle, m_particles) {
-            m_vx += particle.vx();
-            m_vy += particle.vy();
-            m_vz += particle.vz();
+    switch (m_speedMethod) {
+        case SPEED_METHOD_MEAN: {
+            if (m_particles.size() != 0) {
+                BOOST_FOREACH(Particle3d particle, m_particles) {
+                    m_vx += particle.vx();
+                    m_vy += particle.vy();
+                    m_vz += particle.vz();
+                }
+            
+                m_vx /= m_particles.size();
+                m_vy /= m_particles.size();
+                m_vz /= m_particles.size();
+            }
+            
+            m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
+            
+            const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
+            const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
+            
+            m_yaw = acos(m_vx / normYaw);
+            if (m_vy < 0)
+                m_yaw = -m_yaw;
+            
+            m_pitch = asin(m_vz / normPitch);
+            
+            break;
         }
-    
-        m_vx /= m_particles.size();
-        m_vy /= m_particles.size();
-        m_vz /= m_particles.size();
+        case SPEED_METHOD_CIRC_HIST: {
+            
+//             vector<t_histogram> m_histogramYaw(2 * M_PI / m_yawInterval);
+            typedef boost::multi_array<polar_grid_tracking::t_histogram, 2> CircularHist;
+            const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
+            const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
+            CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
+            
+            BOOST_FOREACH(Particle3d particle, m_particles) {
+                const double & normYaw = sqrt(particle.vx() * particle.vx() + particle.vy() * particle.vy());
+                const double & normPitch = sqrt(particle.vy() * particle.vy() + particle.vz() * particle.vz());
+                
+                double yaw = acos(particle.vx() / normYaw);
+                if (particle.vy() < 0)
+                    yaw = 2 * M_PI - yaw;
+                double pitch = asin(particle.vz() / normPitch);
+                
+                uint32_t idxYaw = yaw / m_yawInterval;
+                uint32_t idxPitch = pitch / m_pitchInterval;
+                                
+                histogram[idxPitch][idxYaw].numPoints++;
+                histogram[idxPitch][idxYaw].magnitudeSum += sqrt(particle.vx() * particle.vx() + 
+                                                                 particle.vy() * particle.vy() + particle.vz() * particle.vz());
+            }
+             
+            
+            uint32_t maxIdxPitch = 0;
+            uint32_t maxIdxYaw = 0;
+            uint32_t numVectors = 0;
+            for (uint32_t idxPitch = 0; idxPitch < totalPitchBins; idxPitch++) {
+                for (uint32_t idxYaw = 0; idxYaw < totalYawBins; idxYaw++) {
+                    if (histogram[idxPitch][idxYaw].numPoints > numVectors) {
+                        numVectors = histogram[idxPitch][idxYaw].numPoints;
+                        maxIdxPitch = idxPitch;
+                        maxIdxYaw = idxYaw;
+                    }
+                }
+            }
+            
+            m_yaw = maxIdxYaw * m_yawInterval;
+            m_pitch = maxIdxPitch * m_pitchInterval;
+            m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
+            
+            m_vx = m_magnitude * cos(m_yaw);
+            m_vy = m_magnitude * sin(m_yaw);
+            m_vz = m_magnitude * sin(m_pitch);
+            
+            break;
+        }
+        default: {
+            ROS_ERROR("Speed method not known: %d", m_speedMethod);
+            exit(-1);
+        }
     }
-    
-    m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
-    
-    const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
-    const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
-    
-    m_yaw = acos(m_vx / normYaw);
-    if (m_vy < 0)
-        m_yaw = -m_yaw;
-    
-    m_pitch = asin(m_vz / normPitch);
-    if (m_vy < 0)
-        m_pitch = -m_pitch;
 }
 
 void Voxel::addPoint(const pcl::PointXYZRGB& point)
@@ -148,11 +208,11 @@ void Voxel::addPoint(const pcl::PointXYZRGB& point)
 
 void Voxel::update()
 {
-    m_density = (double)m_pointCloud->size() / (m_sizeX * m_sizeY * m_sizeZ);
+    m_density = (double)m_pointCloud->size()/* / (m_sizeX * m_sizeY * m_sizeZ)*/;
 }
 
 void Voxel::reset()
-{
+{    
     m_pointCloud->clear();
     m_obstIdx = -1;
 }

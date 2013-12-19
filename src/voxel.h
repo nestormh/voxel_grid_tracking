@@ -45,7 +45,8 @@ public:
           const double & centroidX, const double & centroidY, const double & centroidZ, 
           const double & sizeX, const double & sizeY, const double & sizeZ, 
           const double & maxVelX, const double & maxVelY, const double & maxVelZ,
-          const polar_grid_tracking::t_Camera_params & params);
+          const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
+          const double & yawInterval, const double & pitchInterval);
     
     void createParticles(const uint32_t & numParticles);
     
@@ -122,6 +123,11 @@ protected:
     double m_centroidX, m_centroidY, m_centroidZ;
     double m_magnitude;
     double m_yaw, m_pitch;
+    
+    double m_yawInterval;
+    double m_pitchInterval;
+    
+    SpeedMethod m_speedMethod;
     
     int32_t m_obstIdx;
     

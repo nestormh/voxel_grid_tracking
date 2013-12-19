@@ -23,24 +23,31 @@
 namespace voxel_grid_tracking {
     
     VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw, const double& threshPitch, 
-                        const double& threshMagnitude, Voxel& voxel) :
-                        m_idx(obstIdx), m_threshMagnitude(threshMagnitude), 
-                        m_threshYaw(threshYaw), m_threshPitch(threshPitch)
+                                 const double& threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
+                                 Voxel& voxel) :
+                                    m_idx(obstIdx), m_threshMagnitude(threshMagnitude), 
+                                    m_threshYaw(threshYaw), m_threshPitch(threshPitch),
+                                    m_minDensity(minDensity), m_speedMethod(speedMethod)
 {
     addVoxelToObstacle(voxel);
     
 }
 
 VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw, 
-                        const double& threshPitch, const double& threshMagnitude) :
-                        m_idx(obstIdx), m_threshMagnitude(threshMagnitude), 
-                        m_threshYaw(threshYaw), m_threshPitch(threshPitch)
+                             const double& threshPitch, const double& threshMagnitude, 
+                             const double & minDensity, const SpeedMethod & speedMethod) :
+                                m_idx(obstIdx), m_threshMagnitude(threshMagnitude), 
+                                m_threshYaw(threshYaw), m_threshPitch(threshPitch),
+                                m_minDensity(minDensity), m_speedMethod(speedMethod)
 {
 
 }
 
 bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
 {
+    if (voxel.density() < m_minDensity)
+        return false;
+    
     if (m_voxels.size() != 0) {
         const double & diffMagnitude = fabs(m_magnitude - voxel.magnitude());
         const double & diffYaw = fabs(calculateDifferenceBetweenAngles(m_yaw, voxel.yaw()));
@@ -96,7 +103,7 @@ void VoxelObstacle::updateMotionInformation()
     if (vy < 0)
         m_pitch = -m_pitch;
     
-    m_density /= m_voxels.size();
+    m_density /= (double)m_voxels.size();
 }
 
 bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)

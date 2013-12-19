@@ -56,6 +56,7 @@ protected:
     void measurementBasedUpdate();
     void segment();
     void aggregation();
+    void noiseRemoval();
     
     // Visualization functions
     void publishVoxels();
@@ -94,6 +95,10 @@ protected:
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
     uint32_t m_minVoxelsPerObstacle;
     double m_minObstacleDensity;
+    double m_minVoxelDensity;
+    SpeedMethod m_speedMethod;
+    double m_yawInterval;
+    double m_pitchInterval;
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;

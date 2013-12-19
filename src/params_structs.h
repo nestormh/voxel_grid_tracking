@@ -28,6 +28,10 @@
 
 using namespace std;
 
+namespace voxel_grid_tracking {
+    enum SpeedMethod { SPEED_METHOD_MEAN = 0, SPEED_METHOD_CIRC_HIST = 1 };
+}
+
 namespace polar_grid_tracking {
     
 typedef struct {        
