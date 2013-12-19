@@ -31,6 +31,15 @@ public:
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
                   const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod);
     bool addVoxelToObstacle(Voxel & voxel);
+    void update(const double & m_voxelSizeX, const double & m_voxelSizeY, const double & m_voxelSizeZ);
+    
+    double centerX() const { return m_centerX; }
+    double centerY() const { return m_centerY; }
+    double centerZ() const { return m_centerZ; }
+    
+    double sizeX() const { return m_sizeX; }
+    double sizeY() const { return m_sizeY; }
+    double sizeZ() const { return m_sizeZ; }
     
     vector<Voxel> voxels() const { return m_voxels; }
     
@@ -45,6 +54,7 @@ public:
     
 protected:
     void updateMotionInformation();
+    void updateWithVoxel(const Voxel & voxel);
     
     vector<Voxel> m_voxels;
     
@@ -58,6 +68,10 @@ protected:
     double m_density;
     
     double m_vx, m_vy, m_vz;
+    
+    double m_centerX, m_centerY, m_centerZ;
+    double m_sizeX, m_sizeY, m_sizeZ;
+    double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
     
     // Params
     double m_threshYaw, m_threshPitch, m_threshMagnitude;

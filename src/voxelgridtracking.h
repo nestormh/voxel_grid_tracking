@@ -57,12 +57,14 @@ protected:
     void segment();
     void aggregation();
     void noiseRemoval();
+    void updateObstacles();
     
     // Visualization functions
     void publishVoxels();
     void publishParticles();
     void publishMainVectors();
     void publishObstacles();
+    void publishObstacleCubes();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
@@ -110,6 +112,7 @@ protected:
     ros::Publisher m_particlesPositionPub;
     ros::Publisher m_mainVectorsPub;
     ros::Publisher m_obstaclesPub;
+    ros::Publisher m_obstacleCubesPub;
 };
 
 }

@@ -29,6 +29,8 @@ namespace voxel_grid_tracking {
                                     m_threshYaw(threshYaw), m_threshPitch(threshPitch),
                                     m_minDensity(minDensity), m_speedMethod(speedMethod)
 {
+    
+    
     addVoxelToObstacle(voxel);
     
 }
@@ -57,20 +59,44 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
             (diffYaw < m_threshYaw) && 
             (diffPitch < m_threshPitch)) {
             
-            m_voxels.push_back(voxel);
-            m_vx += voxel.vx();
-            m_vy += voxel.vy();
-            m_vz += voxel.vz();
-            m_density += voxel.density();
-            updateMotionInformation();
             voxel.assignObstacle(m_idx);
+        
+            updateWithVoxel(voxel);    
+        
+            m_voxels.push_back(voxel);
             
             return true;
         } else {
             return false;
         }
     } else {
+        voxel.assignObstacle(m_idx);
+        
+        updateWithVoxel(voxel);
+        
         m_voxels.push_back(voxel);
+        
+        return true;
+    }
+}
+
+void VoxelObstacle::updateWithVoxel(const Voxel& voxel)
+{
+    if (m_voxels.size() != 0) {
+        m_vx += voxel.vx();
+        m_vy += voxel.vy();
+        m_vz += voxel.vz();
+        m_density += voxel.density();
+
+        m_minX = min(m_minX, voxel.centroidX());
+        m_maxX = max(m_maxX, voxel.centroidX());
+        m_minY = min(m_minY, voxel.centroidY());
+        m_maxY = max(m_maxY, voxel.centroidY());
+        m_minZ = min(m_minZ, voxel.centroidZ());
+        m_maxZ = max(m_maxZ, voxel.centroidZ());
+        
+        updateMotionInformation();
+    } else {
         m_magnitude = voxel.magnitude();
         m_yaw = voxel.yaw();
         m_pitch = voxel.pitch();
@@ -78,9 +104,13 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
         m_vy = voxel.vy();
         m_vz = voxel.vz();
         m_density = voxel.density();
-        voxel.assignObstacle(m_idx);
         
-        return true;
+        m_minX = voxel.centroidX();
+        m_maxX = voxel.centroidX();
+        m_minY = voxel.centroidY();
+        m_maxY = voxel.centroidY();
+        m_minZ = voxel.centroidZ();
+        m_maxZ = voxel.centroidZ();
     }
 }
 
@@ -103,7 +133,7 @@ void VoxelObstacle::updateMotionInformation()
     if (vy < 0)
         m_pitch = -m_pitch;
     
-    m_density /= (double)m_voxels.size();
+    m_density /= (double)m_voxels.size();    
 }
 
 bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)
@@ -112,9 +142,6 @@ bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)
     
     BOOST_FOREACH(const Voxel & voxel1, m_voxels) {
         BOOST_FOREACH(const Voxel & voxel2, obstacle.voxels()) {
-            cout << cv::Point3d(voxel1.x(), voxel1.y(), voxel1.z()) << " -> " << 
-                    cv::Point3d(voxel2.x(), voxel2.y(), voxel2.z()) << " = " <<
-                    voxel1.nextTo(voxel2) << endl;
             if (voxel1.nextTo(voxel2)) {
                 return true;
             }
@@ -130,5 +157,19 @@ void VoxelObstacle::joinObstacles(VoxelObstacle& obstacle)
         addVoxelToObstacle(voxel);
     }
 }
+
+void VoxelObstacle::update(const double & m_voxelSizeX, const double & m_voxelSizeY, const double & m_voxelSizeZ)
+{
+    updateMotionInformation();
+    
+    m_centerX = (m_maxX + m_minX) / 2.0;
+    m_centerY = (m_maxY + m_minY) / 2.0;
+    m_centerZ = (m_maxZ + m_minZ) / 2.0;
+    
+    m_sizeX = m_maxX - m_minX + m_voxelSizeX;
+    m_sizeY = m_maxY - m_minY + m_voxelSizeY;
+    m_sizeZ = m_maxZ - m_minZ + m_voxelSizeZ;
+}
+
 
 }

@@ -153,7 +153,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
     m_mainVectorsPub = nh.advertise<visualization_msgs::MarkerArray>("mainVectors", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 1);
-    
+    m_obstacleCubesPub = nh.advertise<visualization_msgs::MarkerArray>("cubes", 1);
 //     ros::spin();
 }
 
@@ -244,8 +244,8 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
         measurementBasedUpdate();
         segment();
 //         noiseRemoval();
-        aggregation();
-//         reconstructObjects(pointCloud);
+//         aggregation();
+        updateObstacles();
     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
@@ -262,6 +262,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     publishParticles();
     publishMainVectors();
     publishObstacles();
+    publishObstacleCubes();
 }
 
 void VoxelGridTracking::reset()
@@ -479,6 +480,7 @@ void VoxelGridTracking::segment()
                         voxelsQueue.push_back(voxel);
                         
                         while (! voxelsQueue.empty()) {
+
                             Voxel & currVoxel = voxelsQueue.back();
                             voxelsQueue.pop_back();
                             
@@ -494,6 +496,33 @@ void VoxelGridTracking::segment()
                                     }
                                 }
                             }
+//                             for (uint32_t x1 = max(0, (int)(currVoxel.x() - m_neighBorX)); x1 <= min(m_dimX - 1, (int)currVoxel.x() + m_neighBorX); x1++) {
+//                                 if (x1 != currVoxel.x()) {
+//                                     Voxel & newVoxel = m_grid[x1][currVoxel.y()][currVoxel.z()];
+//                                     if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
+//                                         if (obst.addVoxelToObstacle(newVoxel))
+//                                             voxelsQueue.push_back(newVoxel);
+//                                     }
+//                                 }
+//                             }
+//                             for (uint32_t y1 = max(0, (int)(currVoxel.y() - m_neighBorY)); y1 <= min(m_dimY - 1, (int)currVoxel.y() + m_neighBorY); y1++) {
+//                                 if (y1 != currVoxel.y()) {
+//                                     Voxel & newVoxel = m_grid[currVoxel.x()][y1][currVoxel.z()];
+//                                     if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
+//                                         if (obst.addVoxelToObstacle(newVoxel))
+//                                             voxelsQueue.push_back(newVoxel);
+//                                     }
+//                                 }
+//                             }
+//                             for (uint32_t z1 = max(0, (int)(currVoxel.z() - m_neighBorZ)); z1 <= min(m_dimZ - 1, (int)currVoxel.z() + m_neighBorZ); z1++) {
+//                                 if (z1 != currVoxel.z()) {
+//                                     Voxel & newVoxel = m_grid[currVoxel.x()][currVoxel.y()][z1];
+//                                     if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
+//                                         if (obst.addVoxelToObstacle(newVoxel))
+//                                             voxelsQueue.push_back(newVoxel);
+//                                     }
+//                                 }
+//                             }
                         }
                         
                         m_obstacles.push_back(obst);
@@ -537,6 +566,12 @@ void VoxelGridTracking::noiseRemoval()
     }
 }
 
+void VoxelGridTracking::updateObstacles()
+{
+    BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles) {
+        obstacle.update(m_cellSizeX, m_cellSizeY, m_cellSizeZ);
+    }
+}
 
 
 void VoxelGridTracking::publishVoxels()
@@ -762,7 +797,7 @@ void VoxelGridTracking::publishObstacles()
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
         const vector<Voxel> & voxels = m_obstacles[i].voxels();
         BOOST_FOREACH(const Voxel & voxel, voxels) {
-            if (! voxel.empty()) {
+//             if (! voxel.empty()) {
                 visualization_msgs::Marker voxelMarker;
                 voxelMarker.header.frame_id = m_baseFrame;
                 voxelMarker.header.stamp = ros::Time();
@@ -792,11 +827,67 @@ void VoxelGridTracking::publishObstacles()
 //                 voxelMarker.color.a = voxel.occupiedProb();
                 
                 voxelMarkers.markers.push_back(voxelMarker);
-            }
+//             }
         }
+//         break;
     }
     
     m_obstaclesPub.publish(voxelMarkers);
+}
+
+void VoxelGridTracking::publishObstacleCubes()
+{
+    visualization_msgs::MarkerArray obstacleCubesCleaners;
+    
+    for (uint32_t i = 0; i < 1000; i++) {
+        visualization_msgs::Marker obstacleCubeMarker;
+        obstacleCubeMarker.header.frame_id = m_baseFrame;
+        obstacleCubeMarker.header.stamp = ros::Time();
+        obstacleCubeMarker.id = i;
+        obstacleCubeMarker.ns = "obstacleCubes";
+        obstacleCubeMarker.type = visualization_msgs::Marker::CUBE;
+        obstacleCubeMarker.action = visualization_msgs::Marker::DELETE;
+        
+        obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
+    }
+    
+    m_obstacleCubesPub.publish(obstacleCubesCleaners);
+    
+    visualization_msgs::MarkerArray obstacleCubeMarkers;
+    
+    uint32_t idCount = 0;
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const VoxelObstacle & obstacle = m_obstacles[i];
+        
+        visualization_msgs::Marker obstacleCubeMarker;
+        obstacleCubeMarker.header.frame_id = m_baseFrame;
+        obstacleCubeMarker.header.stamp = ros::Time();
+        obstacleCubeMarker.id = idCount++;
+        obstacleCubeMarker.ns = "obstacleCubes";
+        obstacleCubeMarker.type = visualization_msgs::Marker::CUBE;
+        obstacleCubeMarker.action = visualization_msgs::Marker::ADD;
+        
+        obstacleCubeMarker.pose.position.x = obstacle.centerX();
+        obstacleCubeMarker.pose.position.y = obstacle.centerY();
+        obstacleCubeMarker.pose.position.z = obstacle.centerZ();
+        
+        obstacleCubeMarker.pose.orientation.x = 0.0;
+        obstacleCubeMarker.pose.orientation.y = 0.0;
+        obstacleCubeMarker.pose.orientation.z = 0.0;
+        obstacleCubeMarker.pose.orientation.w = 1.0;
+        obstacleCubeMarker.scale.x = obstacle.sizeX();
+        obstacleCubeMarker.scale.y = obstacle.sizeY();
+        obstacleCubeMarker.scale.z = obstacle.sizeZ();
+        obstacleCubeMarker.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
+        obstacleCubeMarker.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
+        obstacleCubeMarker.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
+        obstacleCubeMarker.color.a = 0.4;
+        
+        obstacleCubeMarkers.markers.push_back(obstacleCubeMarker);
+        
+    }
+    m_obstacleCubesPub.publish(obstacleCubeMarkers);
 }
 
 

@@ -51,7 +51,7 @@
         <remap from="~output" to="/$(arg namespace)/pointCloudFiltered" />
         <rosparam>
             filter_field_name: z
-            filter_limit_min: 0.0
+            filter_limit_min: -0.1
             filter_limit_max: 3.5
         </rosparam>
     </node>

@@ -100,6 +100,8 @@ public:
     
     double density() const { return m_density; }
     
+    int32_t obstIdx() const { return m_obstIdx; }
+    
     bool assignedToObstacle() { return m_obstIdx != -1; }
     
     void assignObstacle(const int32_t & obstIdx) { m_obstIdx = obstIdx; }

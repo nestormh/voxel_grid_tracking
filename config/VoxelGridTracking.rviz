@@ -12,6 +12,7 @@ Panels:
         - /ParticlesPosition1
         - /mainVectors1
         - /Obstacles1
+        - /ObstacleCubes1
       Splitter Ratio: 0.4
     Tree Height: 758
   - Class: rviz/Selection
@@ -190,13 +191,21 @@ Visualization Manager:
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
       Name: mainVectors
       Namespaces:
-        {}
+        mainVectors: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
       Name: Obstacles
+      Namespaces:
+        obstacles: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /VoxelGridTracking/VoxelGridTracking/cubes
+      Name: ObstacleCubes
       Namespaces:
         {}
       Queue Size: 100
