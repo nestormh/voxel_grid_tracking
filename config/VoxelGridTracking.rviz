@@ -144,7 +144,7 @@ Visualization Manager:
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.01
-      Style: Flat Squares
+      Style: Points
       Topic: /VoxelGridTracking/VoxelGridTracking/pointPerVoxel
       Use Fixed Frame: true
       Use rainbow: true
@@ -190,7 +190,7 @@ Visualization Manager:
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
       Name: mainVectors
       Namespaces:
-        {}
+        mainVectors: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -225,17 +225,17 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 9.81602
+      Distance: 13.3034
       Focal Point:
-        X: 1.48063
-        Y: 6.91533
-        Z: 0.105509
+        X: 0.383512
+        Y: 9.64647
+        Z: 1.29855
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.719801
+      Pitch: 0.149797
       Target Frame: map
       Value: Orbit (rviz)
-      Yaw: 4.40318
+      Yaw: 4.70319
     Saved: ~
 Window Geometry:
   Displays:

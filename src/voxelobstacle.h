@@ -35,6 +35,13 @@ public:
     
     uint32_t idx() const { return m_idx; }
     
+    double density() const { return m_density; }
+    
+    uint32_t numVoxels() const { return m_voxels.size(); }
+    
+    bool isObstacleConnected(const VoxelObstacle & obstacle);
+    void joinObstacles(VoxelObstacle & obstacle);
+    
 protected:
     void updateMotionInformation();
     
@@ -44,6 +51,8 @@ protected:
     double m_magnitude;
     double m_yaw;
     double m_pitch;
+    
+    double m_density;
     
     double m_vx, m_vy, m_vz;
     

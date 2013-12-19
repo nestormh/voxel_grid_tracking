@@ -18,6 +18,8 @@
 #include "voxelobstacle.h"
 #include "utilspolargridtracking.h"
 
+#include <boost/foreach.hpp>
+
 namespace voxel_grid_tracking {
     
     VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw, const double& threshPitch, 
@@ -52,6 +54,7 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
             m_vx += voxel.vx();
             m_vy += voxel.vy();
             m_vz += voxel.vz();
+            m_density += voxel.density();
             updateMotionInformation();
             voxel.assignObstacle(m_idx);
             
@@ -67,6 +70,7 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
         m_vx = voxel.vx();
         m_vy = voxel.vy();
         m_vz = voxel.vz();
+        m_density = voxel.density();
         voxel.assignObstacle(m_idx);
         
         return true;
@@ -91,6 +95,33 @@ void VoxelObstacle::updateMotionInformation()
     m_pitch = asin(vz / normPitch);
     if (vy < 0)
         m_pitch = -m_pitch;
+    
+    m_density /= m_voxels.size();
+}
+
+bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)
+{
+    return true;
+    
+    BOOST_FOREACH(const Voxel & voxel1, m_voxels) {
+        BOOST_FOREACH(const Voxel & voxel2, obstacle.voxels()) {
+            cout << cv::Point3d(voxel1.x(), voxel1.y(), voxel1.z()) << " -> " << 
+                    cv::Point3d(voxel2.x(), voxel2.y(), voxel2.z()) << " = " <<
+                    voxel1.nextTo(voxel2) << endl;
+            if (voxel1.nextTo(voxel2)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+void VoxelObstacle::joinObstacles(VoxelObstacle& obstacle)
+{
+    BOOST_FOREACH(Voxel voxel, obstacle.voxels()) {
+        addVoxelToObstacle(voxel);
+    }
 }
 
 }

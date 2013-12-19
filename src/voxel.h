@@ -52,6 +52,8 @@ public:
     void setOccupiedProb(const double & occupiedProb) { m_occupiedProb = occupiedProb; }
     void setOccupiedPosteriorProb(const uint32_t & particlesPerVoxel);
     
+    bool nextTo(const Voxel & voxel) const;
+    
     double sigmaX() { return m_sigmaX; } 
     double sigmaY() { return m_sigmaY; } 
     double sigmaZ() { return m_sigmaZ; }
@@ -95,6 +97,8 @@ public:
     double y() const { return m_y; }
     double z() const { return m_z; }
     
+    double density() const { return m_density; }
+    
     bool assignedToObstacle() { return m_obstIdx != -1; }
     
     void assignObstacle(const int32_t & obstIdx) { m_obstIdx = obstIdx; }
@@ -111,6 +115,8 @@ protected:
     
     double m_occupiedProb;
     double m_occupiedPosteriorProb;
+    
+    double m_density;
     
     double m_vx, m_vy, m_vz;
     double m_centroidX, m_centroidY, m_centroidZ;

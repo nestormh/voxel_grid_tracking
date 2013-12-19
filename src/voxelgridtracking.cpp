@@ -69,12 +69,12 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxX = 6.0;
     m_minY = 0.0;
     m_maxY = 12.0;
-    m_minZ = 0.0;
+    m_minZ = -0.4;
     m_maxZ = 3.5;
     
     m_cellSizeX = 0.25;
     m_cellSizeY = 0.25;
-    m_cellSizeZ = 0.25;
+    m_cellSizeZ = 0.5;
 
     m_maxVelX = 5.0;
     m_maxVelY = 5.0;
@@ -84,7 +84,7 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerCell = 1000;
+    m_particlesPerCell = 10000;
     m_threshProbForCreation = 0.2;
     
     m_neighBorX = 1;
@@ -94,6 +94,9 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshYaw = 45.0 * M_PI / 180.0;
     m_threshPitch = 9999999.0; //0.0;
     m_threshMagnitude = 9999999.0;
+    
+    m_minVoxelsPerObstacle = 2;
+    m_minObstacleDensity = 0.1;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
     // TODO: End of TODO
@@ -231,6 +234,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
         prediction();
         measurementBasedUpdate();
         segment();
+        aggregation();
 //         reconstructObjects(pointCloud);
     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
@@ -490,6 +494,34 @@ void VoxelGridTracking::segment()
     }
 }
 
+void VoxelGridTracking::aggregation()
+{
+    ObstacleList::iterator it = m_obstacles.begin();
+    uint32_t idx1 = 0;
+    while (it != m_obstacles.end()) {
+        bool joined = false;
+        if (it->numVoxels() <= m_minVoxelsPerObstacle) {
+            cout << idx1 << " is small" << endl;
+            uint32_t idx2 = idx1 + 1;
+            for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
+                if (it->isObstacleConnected(*it2)) {
+                    cout << "joining " << idx1 << " and " << idx2 << endl;
+                    it2->joinObstacles(*it);
+                    it = m_obstacles.erase(it);
+                    joined = true;
+                    
+                    break;
+                }
+                idx2++;
+            }
+        }
+        if (! joined)
+            it++;
+        idx1++;
+    }
+}
+
+
 void VoxelGridTracking::publishVoxels()
 {
     visualization_msgs::MarkerArray voxelMarkers;
@@ -736,11 +768,11 @@ void VoxelGridTracking::publishObstacles()
                 voxelMarker.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
                 voxelMarker.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
                 voxelMarker.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
-                //                     voxelMarker.color.a = 0.2;
+                voxelMarker.color.a = 0.6;
                 //                     voxelMarker.color.r = 255;
                 //                     voxelMarker.color.g = 0;
                 //                     voxelMarker.color.b = 0;
-                voxelMarker.color.a = voxel.occupiedProb();
+//                 voxelMarker.color.a = voxel.occupiedProb();
                 
                 voxelMarkers.markers.push_back(voxelMarker);
             }

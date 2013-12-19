@@ -148,7 +148,7 @@ void Voxel::addPoint(const pcl::PointXYZRGB& point)
 
 void Voxel::update()
 {
-
+    m_density = (double)m_pointCloud->size() / (m_sizeX * m_sizeY * m_sizeZ);
 }
 
 void Voxel::reset()
@@ -156,5 +156,13 @@ void Voxel::reset()
     m_pointCloud->clear();
     m_obstIdx = -1;
 }
+
+bool Voxel::nextTo(const Voxel& voxel) const
+{
+    return (abs(m_x - voxel.x()) <= 1) &&
+           (abs(m_y - voxel.y()) <= 1) &&
+           (abs(m_z - voxel.z()) <= 1);
+}
+
 
 }

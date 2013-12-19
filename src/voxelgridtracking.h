@@ -55,6 +55,7 @@ protected:
     void prediction();
     void measurementBasedUpdate();
     void segment();
+    void aggregation();
     
     // Visualization functions
     void publishVoxels();
@@ -91,6 +92,8 @@ protected:
     string m_baseFrame;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
+    uint32_t m_minVoxelsPerObstacle;
+    double m_minObstacleDensity;
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;
