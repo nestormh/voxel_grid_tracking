@@ -171,5 +171,23 @@ void VoxelObstacle::update(const double & m_voxelSizeX, const double & m_voxelSi
     m_sizeZ = m_maxZ - m_minZ + m_voxelSizeZ;
 }
 
+double VoxelObstacle::commonVolume(const VoxelObstacle& obst1, const VoxelObstacle& obst2)
+{
+    const double minX = max(obst1.minX(), obst2.minX());
+    const double minY = max(obst1.minY(), obst2.minY());
+    const double minZ = max(obst1.minZ(), obst2.minZ());
+    const double maxX = min(obst1.maxX(), obst2.maxX());
+    const double maxY = min(obst1.maxY(), obst2.maxY());
+    const double maxZ = min(obst1.maxZ(), obst2.maxZ());
+    
+    const double szX = maxX - minX;
+    const double szY = maxY - minY;
+    const double szZ = maxZ - minZ;
+    
+    if ((szX < 0.0) || (szY < 0.0) || (szZ < 0.0))
+        return 0.0;
+    else
+        return szX * szY * szZ;
+}
 
 }

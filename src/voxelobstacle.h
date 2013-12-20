@@ -37,6 +37,13 @@ public:
     double centerY() const { return m_centerY; }
     double centerZ() const { return m_centerZ; }
     
+    double minX() const { return m_minX; }
+    double maxX() const { return m_maxX; }
+    double minY() const { return m_minY; }
+    double maxY() const { return m_maxY; }
+    double minZ() const { return m_minZ; }
+    double maxZ() const { return m_maxZ; }
+    
     double sizeX() const { return m_sizeX; }
     double sizeY() const { return m_sizeY; }
     double sizeZ() const { return m_sizeZ; }
@@ -51,6 +58,8 @@ public:
     
     bool isObstacleConnected(const VoxelObstacle & obstacle);
     void joinObstacles(VoxelObstacle & obstacle);
+    
+    static double commonVolume(const VoxelObstacle & obst1, const VoxelObstacle & obst2);
     
 protected:
     void updateMotionInformation();

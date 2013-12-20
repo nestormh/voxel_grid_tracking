@@ -98,12 +98,14 @@ VoxelGridTracking::VoxelGridTracking()
     m_minVoxelsPerObstacle = 2;
     m_minObstacleDensity = 20.0;
     m_minVoxelDensity = 10.0;
+    m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
     m_speedMethod = SPEED_METHOD_CIRC_HIST;
     
     m_yawInterval = 5.0 * M_PI / 180.0;
     m_pitchInterval = 2 * M_PI;
+    
     
     m_baseFrame = DEFAULT_BASE_FRAME;
     // TODO: End of TODO
@@ -246,6 +248,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //         noiseRemoval();
 //         aggregation();
         updateObstacles();
+        joinCommonVolumes();
     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
@@ -496,36 +499,10 @@ void VoxelGridTracking::segment()
                                     }
                                 }
                             }
-//                             for (uint32_t x1 = max(0, (int)(currVoxel.x() - m_neighBorX)); x1 <= min(m_dimX - 1, (int)currVoxel.x() + m_neighBorX); x1++) {
-//                                 if (x1 != currVoxel.x()) {
-//                                     Voxel & newVoxel = m_grid[x1][currVoxel.y()][currVoxel.z()];
-//                                     if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
-//                                         if (obst.addVoxelToObstacle(newVoxel))
-//                                             voxelsQueue.push_back(newVoxel);
-//                                     }
-//                                 }
-//                             }
-//                             for (uint32_t y1 = max(0, (int)(currVoxel.y() - m_neighBorY)); y1 <= min(m_dimY - 1, (int)currVoxel.y() + m_neighBorY); y1++) {
-//                                 if (y1 != currVoxel.y()) {
-//                                     Voxel & newVoxel = m_grid[currVoxel.x()][y1][currVoxel.z()];
-//                                     if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
-//                                         if (obst.addVoxelToObstacle(newVoxel))
-//                                             voxelsQueue.push_back(newVoxel);
-//                                     }
-//                                 }
-//                             }
-//                             for (uint32_t z1 = max(0, (int)(currVoxel.z() - m_neighBorZ)); z1 <= min(m_dimZ - 1, (int)currVoxel.z() + m_neighBorZ); z1++) {
-//                                 if (z1 != currVoxel.z()) {
-//                                     Voxel & newVoxel = m_grid[currVoxel.x()][currVoxel.y()][z1];
-//                                     if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
-//                                         if (obst.addVoxelToObstacle(newVoxel))
-//                                             voxelsQueue.push_back(newVoxel);
-//                                     }
-//                                 }
-//                             }
                         }
                         
-                        m_obstacles.push_back(obst);
+                        if (obst.numVoxels() > m_minVoxelsPerObstacle)
+                            m_obstacles.push_back(obst);
                     }
                 }
             }
@@ -539,15 +516,15 @@ void VoxelGridTracking::aggregation()
     while (it != m_obstacles.end()) {
         bool joined = false;
         if (it->numVoxels() <= m_minVoxelsPerObstacle) {
-            for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
-                if (it->isObstacleConnected(*it2)) {
-                    it2->joinObstacles(*it);
+//             for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
+//                 if (it->isObstacleConnected(*it2)) {
+//                     it2->joinObstacles(*it);
                     it = m_obstacles.erase(it);
                     joined = true;
-                    
-                    break;
-                }
-            }
+//                     
+//                     break;
+//                 }
+//             }
         }
         if (! joined)
             it++;
@@ -558,10 +535,12 @@ void VoxelGridTracking::noiseRemoval()
 {
     ObstacleList::iterator it = m_obstacles.begin();
     while (it != m_obstacles.end()) {
-//         cout << "density " << it->density() << endl;
-        if (it->density() < m_minObstacleDensity)
+        bool joined = false;
+        if (it->numVoxels() <= m_minVoxelsPerObstacle) {
             it = m_obstacles.erase(it);
-        else
+            joined = true;
+        }
+        if (! joined)
             it++;
     }
 }
@@ -573,6 +552,40 @@ void VoxelGridTracking::updateObstacles()
     }
 }
 
+void VoxelGridTracking::joinCommonVolumes()
+{
+    ObstacleList::iterator it1 = m_obstacles.begin();
+    uint32_t counter = 0;
+    while (it1 != m_obstacles.end()) {
+        bool joined = false;
+        const double volume1 = (it1->maxX() - it1->minX()) * (it1->maxY() - it1->minY()) * (it1->maxZ() - it1->minZ());
+        
+        for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
+            if (it1 == it2)
+                continue;
+            
+            const double & commonVolume = VoxelObstacle::commonVolume(*it1, *it2);
+            
+            if (commonVolume > 0.0) {
+                const double volume2 = (it2->maxX() - it2->minX()) * (it2->maxY() - it2->minY()) * (it2->maxZ() - it2->minZ());
+                    
+                const double volumePercent = commonVolume / min(volume1, volume2);
+                
+                if (commonVolume >= m_maxCommonVolume) {
+                    
+                    it1->joinObstacles(*it2);
+                    it1->update(m_cellSizeX, m_cellSizeY, m_cellSizeZ);
+                    it2 = m_obstacles.erase(it2);
+                    if (it2 != m_obstacles.begin())
+                        it2--;
+                }
+            }
+        }
+
+        if (! joined)
+            it1++;
+    }
+}
 
 void VoxelGridTracking::publishVoxels()
 {

@@ -58,6 +58,7 @@ protected:
     void aggregation();
     void noiseRemoval();
     void updateObstacles();
+    void joinCommonVolumes();
     
     // Visualization functions
     void publishVoxels();
@@ -101,6 +102,7 @@ protected:
     SpeedMethod m_speedMethod;
     double m_yawInterval;
     double m_pitchInterval;
+    double m_maxCommonVolume;
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;
