@@ -156,6 +156,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_mainVectorsPub = nh.advertise<visualization_msgs::MarkerArray>("mainVectors", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 1);
     m_obstacleCubesPub = nh.advertise<visualization_msgs::MarkerArray>("cubes", 1);
+    m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
 //     ros::spin();
 }
 
@@ -249,6 +250,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //         aggregation();
         updateObstacles();
         joinCommonVolumes();
+        updateSpeedFromObstacles();
     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
@@ -476,7 +478,7 @@ void VoxelGridTracking::segment()
                         
                         std::deque<Voxel> voxelsQueue;
                         
-                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_speedMethod);
+                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_speedMethod, m_yawInterval, m_pitchInterval);
                         if (! obst.addVoxelToObstacle(voxel))
                             continue;
                         
@@ -585,6 +587,12 @@ void VoxelGridTracking::joinCommonVolumes()
         if (! joined)
             it1++;
     }
+}
+
+void VoxelGridTracking::updateSpeedFromObstacles()
+{
+    BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles)
+        obstacle.updateSpeed();
 }
 
 void VoxelGridTracking::publishVoxels()
@@ -867,6 +875,7 @@ void VoxelGridTracking::publishObstacleCubes()
     m_obstacleCubesPub.publish(obstacleCubesCleaners);
     
     visualization_msgs::MarkerArray obstacleCubeMarkers;
+    visualization_msgs::MarkerArray obstacleSpeedMarkers;
     
     uint32_t idCount = 0;
     
@@ -899,8 +908,50 @@ void VoxelGridTracking::publishObstacleCubes()
         
         obstacleCubeMarkers.markers.push_back(obstacleCubeMarker);
         
+        // ********************************************************
+        // Publication of the speed of the obstacle
+        // ********************************************************
+        
+        visualization_msgs::Marker speedVector;
+        speedVector.header.frame_id = "left_cam";
+        speedVector.header.stamp = ros::Time();
+        speedVector.id = idCount++;
+        speedVector.ns = "mainVectors";
+        speedVector.type = visualization_msgs::Marker::ARROW;
+        speedVector.action = visualization_msgs::Marker::ADD;
+        
+        speedVector.pose.orientation.x = 0.0;
+        speedVector.pose.orientation.y = 0.0;
+        speedVector.pose.orientation.z = 0.0;
+        speedVector.pose.orientation.w = 1.0;
+        speedVector.scale.x = 0.01;
+        speedVector.scale.y = 0.03;
+        speedVector.scale.z = 0.1;
+        speedVector.color.a = 1.0;
+        speedVector.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
+        speedVector.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
+        speedVector.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
+        
+        //         orientation.lifetime = ros::Duration(5.0);
+        
+        geometry_msgs::Point origin, dest;
+        origin.x = obstacle.centerX();
+        origin.y = obstacle.minY();
+        origin.z = obstacle.centerZ();        
+        
+        dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime;
+        dest.y = obstacle.minY() + obstacle.vy() * m_deltaTime;
+        dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime;
+        
+        speedVector.points.push_back(origin);
+        speedVector.points.push_back(dest);
+        
+        obstacleSpeedMarkers.markers.push_back(speedVector);
+        
     }
+    
     m_obstacleCubesPub.publish(obstacleCubeMarkers);
+    m_obstacleSpeedPub.publish(obstacleSpeedMarkers);
 }
 
 

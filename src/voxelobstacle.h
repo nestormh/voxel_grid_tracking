@@ -26,10 +26,12 @@ class VoxelObstacle
 {
 public:
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
-                  const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod, 
+                  const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
+                  const double & yawInterval, const double & pitchInterval, 
                   Voxel & voxel);
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
-                  const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod);
+                  const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
+                  const double & yawInterval, const double & pitchInterval);
     bool addVoxelToObstacle(Voxel & voxel);
     void update(const double & m_voxelSizeX, const double & m_voxelSizeY, const double & m_voxelSizeZ);
     
@@ -48,6 +50,10 @@ public:
     double sizeY() const { return m_sizeY; }
     double sizeZ() const { return m_sizeZ; }
     
+    double vx() const { return m_vx; }
+    double vy() const { return m_vy; }
+    double vz() const { return m_vz; }
+    
     vector<Voxel> voxels() const { return m_voxels; }
     
     uint32_t idx() const { return m_idx; }
@@ -58,6 +64,8 @@ public:
     
     bool isObstacleConnected(const VoxelObstacle & obstacle);
     void joinObstacles(VoxelObstacle & obstacle);
+    
+    void updateSpeed();
     
     static double commonVolume(const VoxelObstacle & obst1, const VoxelObstacle & obst2);
     
@@ -77,6 +85,9 @@ protected:
     double m_density;
     
     double m_vx, m_vy, m_vz;
+    
+    double m_yawInterval;
+    double m_pitchInterval;
     
     double m_centerX, m_centerY, m_centerZ;
     double m_sizeX, m_sizeY, m_sizeZ;

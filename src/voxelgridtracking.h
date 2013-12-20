@@ -59,6 +59,7 @@ protected:
     void noiseRemoval();
     void updateObstacles();
     void joinCommonVolumes();
+    void updateSpeedFromObstacles();
     
     // Visualization functions
     void publishVoxels();
@@ -115,6 +116,7 @@ protected:
     ros::Publisher m_mainVectorsPub;
     ros::Publisher m_obstaclesPub;
     ros::Publisher m_obstacleCubesPub;
+    ros::Publisher m_obstacleSpeedPub;
 };
 
 }

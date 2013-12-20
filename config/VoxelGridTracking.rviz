@@ -13,8 +13,9 @@ Panels:
         - /mainVectors1
         - /Obstacles1
         - /ObstacleCubes1
+        - /ObstacleSpeed1
       Splitter Ratio: 0.4
-    Tree Height: 341
+    Tree Height: 758
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -187,13 +188,13 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
       Name: mainVectors
       Namespaces:
-        mainVectors: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
@@ -206,6 +207,14 @@ Visualization Manager:
       Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/cubes
       Name: ObstacleCubes
+      Namespaces:
+        obstacleCubes: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeed
+      Name: ObstacleSpeed
       Namespaces:
         {}
       Queue Size: 100
@@ -241,10 +250,10 @@ Visualization Manager:
         Z: 0.738571
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.484799
+      Pitch: 0.459799
       Target Frame: map
       Value: Orbit (rviz)
-      Yaw: 4.87819
+      Yaw: 3.92318
     Saved: ~
 Window Geometry:
   Displays:
