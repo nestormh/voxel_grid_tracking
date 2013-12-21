@@ -46,11 +46,12 @@ public:
     double vx() const { return m_vx; }
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
-
+    
 private:
     double m_x, m_y, m_z, m_vx, m_vy, m_vz;
     
     double m_maxVelX, m_maxVelY, m_maxVelZ;
+    
 };
 
 ostream& operator<<(ostream & stream, const Particle3d & in);

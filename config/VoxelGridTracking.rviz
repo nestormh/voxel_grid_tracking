@@ -205,21 +205,21 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/cubes
       Name: ObstacleCubes
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeed
       Name: ObstacleSpeed
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeedText

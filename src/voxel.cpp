@@ -126,7 +126,7 @@ void Voxel::setMainVectors() {
                     m_vy += particle.vy();
                     m_vz += particle.vz();
                 }
-            
+
                 m_vx /= m_particles.size();
                 m_vy /= m_particles.size();
                 m_vz /= m_particles.size();
@@ -147,27 +147,27 @@ void Voxel::setMainVectors() {
         }
         case SPEED_METHOD_CIRC_HIST: {
             
-//             vector<t_histogram> m_histogramYaw(2 * M_PI / m_yawInterval);
             typedef boost::multi_array<polar_grid_tracking::t_histogram, 2> CircularHist;
             const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
             
             BOOST_FOREACH(Particle3d particle, m_particles) {
-                const double & normYaw = sqrt(particle.vx() * particle.vx() + particle.vy() * particle.vy());
-                const double & normPitch = sqrt(particle.vy() * particle.vy() + particle.vz() * particle.vz());
                 
-                double yaw = acos(particle.vx() / normYaw);
-                if (particle.vy() < 0)
-                    yaw = 2 * M_PI - yaw;
-                double pitch = asin(particle.vz() / normPitch);
-                
-                uint32_t idxYaw = yaw / m_yawInterval;
-                uint32_t idxPitch = pitch / m_pitchInterval;
-                                
-                histogram[idxPitch][idxYaw].numPoints++;
-                histogram[idxPitch][idxYaw].magnitudeSum += sqrt(particle.vx() * particle.vx() + 
-                                                                 particle.vy() * particle.vy() + particle.vz() * particle.vz());
+                    const double & normYaw = sqrt(particle.vx() * particle.vx() + particle.vy() * particle.vy());
+                    const double & normPitch = sqrt(particle.vy() * particle.vy() + particle.vz() * particle.vz());
+                    
+                    double yaw = acos(particle.vx() / normYaw);
+                    if (particle.vy() < 0)
+                        yaw = 2 * M_PI - yaw;
+                    double pitch = asin(particle.vz() / normPitch);
+                    
+                    uint32_t idxYaw = yaw / m_yawInterval;
+                    uint32_t idxPitch = pitch / m_pitchInterval;
+                                    
+                    histogram[idxPitch][idxYaw].numPoints++;
+                    histogram[idxPitch][idxYaw].magnitudeSum += sqrt(particle.vx() * particle.vx() + 
+                                                                    particle.vy() * particle.vy() + particle.vz() * particle.vz());
             }
              
             

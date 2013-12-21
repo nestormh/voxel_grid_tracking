@@ -24,9 +24,9 @@ using namespace std;
 
 namespace voxel_grid_tracking {
 
-    Particle3d::Particle3d(const double & centroidX, const double & centroidY, const double & centroidZ, 
-                           const double & voxelSizeX, const double & voxelSizeY, const double & voxelSizeZ, 
-                           const double & maxVelX, const double & maxVelY, const double & maxVelZ)
+Particle3d::Particle3d(const double & centroidX, const double & centroidY, const double & centroidZ, 
+                        const double & voxelSizeX, const double & voxelSizeY, const double & voxelSizeZ, 
+                        const double & maxVelX, const double & maxVelY, const double & maxVelZ)
                             : m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ)
 {
     m_x = centroidX + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeX;
@@ -38,7 +38,7 @@ namespace voxel_grid_tracking {
     m_vx = maxVelX * ((double)rand() / RAND_MAX) * cos(theta);
     m_vy = maxVelY * ((double)rand() / RAND_MAX) * sin(theta);
     m_vz = maxVelZ * ((double)rand() / RAND_MAX) * sin(gamma);
-
+    
 }
 
 Particle3d::Particle3d(const double& x, const double& y, const double& z, 

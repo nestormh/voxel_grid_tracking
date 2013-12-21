@@ -97,14 +97,14 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshMagnitude = 9999999.0;
     
     m_minVoxelsPerObstacle = 2;
-    m_minObstacleDensity = 0.0; //20.0;
-    m_minVoxelDensity = 0.0; //10.0;
+    m_minObstacleDensity = 20.0;
+    m_minVoxelDensity = 10.0;
     m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
     m_speedMethod = SPEED_METHOD_CIRC_HIST;
     
-    m_obstacleSpeedMethod = SPEED_METHOD_MEAN;
+    m_obstacleSpeedMethod = SPEED_METHOD_CIRC_HIST;
     
     m_yawInterval = 5.0 * M_PI / 180.0;
     m_pitchInterval = 2 * M_PI;
@@ -259,9 +259,10 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //         noiseRemoval();
 //         aggregation();
         updateObstacles();
-//         joinCommonVolumes();
+        joinCommonVolumes();
         updateSpeedFromObstacles();
     }
+//     publishParticles();
 //         initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
@@ -328,6 +329,7 @@ void VoxelGridTracking::getMeasurementModel()
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 Voxel & voxel = m_grid[x][y][z];
+                                
                 const int sigmaX = voxel.sigmaX();
                 const int sigmaY = voxel.sigmaY();
                 const int sigmaZ = voxel.sigmaZ();
@@ -358,7 +360,8 @@ void VoxelGridTracking::initialization()
                 
                 const double & occupiedProb = voxel.occupiedProb();
                 // FIXME: Is it really important the fact that it is occupied or not?
-                if (voxel.occupied() /*&& voxel.empty() &&*/ /*(occupiedProb > m_threshProbForCreation)*/) {
+                if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
+
                     const uint32_t numParticles = m_particlesPerCell * occupiedProb / 2.0;
                     voxel.createParticles(numParticles);
                 }
