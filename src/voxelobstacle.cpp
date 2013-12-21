@@ -19,6 +19,7 @@
 #include "utilspolargridtracking.h"
 
 #include <boost/foreach.hpp>
+#include <boost/graph/graph_concepts.hpp>
 
 namespace voxel_grid_tracking {
     
@@ -194,68 +195,100 @@ double VoxelObstacle::commonVolume(const VoxelObstacle& obst1, const VoxelObstac
         return szX * szY * szZ;
 }
 
-void VoxelObstacle::updateSpeed()
+void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDeltaPitch, const double & egoSpeed)
 {
-//     typedef boost::multi_array<polar_grid_tracking::t_histogram, 2> CircularHist;
-//     const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
-//     const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
-//     CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
-//     
-//     BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-//         double yaw = voxel.yaw();
-//         double pitch = voxel.pitch();
-//         
-//         uint32_t idxYaw = yaw / m_yawInterval;
-//         uint32_t idxPitch = pitch / m_pitchInterval;
-//         
-//         histogram[idxPitch][idxYaw].numPoints++;
-//         histogram[idxPitch][idxYaw].magnitudeSum += voxel.magnitude();
-//     }
-//     
-//     
-//     uint32_t maxIdxPitch = 0;
-//     uint32_t maxIdxYaw = 0;
-//     uint32_t numVectors = 0;
-//     for (uint32_t idxPitch = 0; idxPitch < totalPitchBins; idxPitch++) {
-//         for (uint32_t idxYaw = 0; idxYaw < totalYawBins; idxYaw++) {
-//             if (histogram[idxPitch][idxYaw].numPoints > numVectors) {
-//                 numVectors = histogram[idxPitch][idxYaw].numPoints;
-//                 maxIdxPitch = idxPitch;
-//                 maxIdxYaw = idxYaw;
-//             }
-//         }
-//     }
-//     
-//     m_yaw = maxIdxYaw * m_yawInterval;
-//     m_pitch = maxIdxPitch * m_pitchInterval;
-//     m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
-// //     cout << "histogram[maxIdxPitch][maxIdxYaw].magnitudeSum " << histogram[maxIdxPitch][maxIdxYaw].magnitudeSum << endl;
-// //     cout << "histogram[maxIdxPitch][maxIdxYaw].numPoints " << histogram[maxIdxPitch][maxIdxYaw].numPoints << endl;
-// //     cout << "m_magnitude " << m_magnitude << endl;
-//     
-//     m_vx = m_magnitude * cos(m_yaw);
-//     m_vy = m_magnitude * sin(m_yaw);
-//     m_vz = m_magnitude * sin(m_pitch);
-    BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-        m_vx += voxel.vx();
-        m_vy += voxel.vy();
-        m_vz += voxel.vz();
+    switch (m_speedMethod) {
+        case SPEED_METHOD_MEAN: {
+//             cout << "SPEED_METHOD_MEAN" << endl;
+            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
+                m_vx += voxel.vx();
+                m_vy += voxel.vy();
+                m_vz += voxel.vz();
+            }
+            
+            m_vx /= m_voxels.size();
+            m_vy /= m_voxels.size();
+            m_vz /= m_voxels.size();
+            
+            m_vx -= egoSpeed * cos(egoDeltaYaw);
+            m_vy -= egoSpeed * sin(egoDeltaYaw);
+            m_vz -= egoSpeed * sin(egoDeltaPitch);
+            
+            m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
+            
+            cout << cv::Point3d(m_vx, m_vy, m_vz) << endl;
+            cout << "magnitude " << m_magnitude << endl;
+            
+            const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
+            const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
+            
+            m_yaw = acos(m_vx / normYaw);
+            if (m_vy < 0)
+                m_yaw = -m_yaw;
+            
+            m_pitch = asin(m_vz / normPitch);
+            break;
+        }
+        case SPEED_METHOD_CIRC_HIST: {
+//             cout << "SPEED_METHOD_CIRC_HIST" << endl;
+            typedef boost::multi_array<polar_grid_tracking::t_histogram, 2> CircularHist;
+            const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
+            const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
+            CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
+            
+            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
+                double yaw = voxel.yaw();
+                double pitch = voxel.pitch();
+                
+                uint32_t idxYaw = yaw / m_yawInterval;
+                uint32_t idxPitch = pitch / m_pitchInterval;
+                
+                histogram[idxPitch][idxYaw].numPoints++;
+                histogram[idxPitch][idxYaw].magnitudeSum += voxel.magnitude();
+            }
+            
+            uint32_t maxIdxPitch = 0;
+            uint32_t maxIdxYaw = 0;
+            uint32_t numVectors = 0;
+            for (uint32_t idxPitch = 0; idxPitch < totalPitchBins; idxPitch++) {
+                for (uint32_t idxYaw = 0; idxYaw < totalYawBins; idxYaw++) {
+                    if (histogram[idxPitch][idxYaw].numPoints > numVectors) {
+                        numVectors = histogram[idxPitch][idxYaw].numPoints;
+                        maxIdxPitch = idxPitch;
+                        maxIdxYaw = idxYaw;
+                    }
+                }
+            }
+            
+            m_yaw = maxIdxYaw * m_yawInterval;
+            m_pitch = maxIdxPitch * m_pitchInterval;
+            m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
+
+            m_yaw -= egoDeltaYaw;
+//             if (m_yaw < 0)
+//                 m_yaw += M_PI;
+            
+            m_pitch -= egoDeltaPitch;
+//             if (m_pitch < 0)
+//                 m_pitch += M_PI;
+            
+            m_magnitude -= egoSpeed;
+            if (m_magnitude < 0) {
+                m_yaw += M_PI;
+                m_pitch += M_PI;
+            }
+            
+            m_vx = m_magnitude * cos(m_yaw);
+            m_vy = m_magnitude * sin(m_yaw);
+            m_vz = m_magnitude * sin(m_pitch);
+            
+            break;
+        }
+        default: {
+            ROS_ERROR("Speed method not known: %d", m_speedMethod);
+            exit(-1);
+        }
     }
-    
-    m_vx /= m_voxels.size();
-    m_vy /= m_voxels.size();
-    m_vz /= m_voxels.size();
-    
-    m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
-    
-    const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
-    const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
-    
-    m_yaw = acos(m_vx / normYaw);
-    if (m_vy < 0)
-        m_yaw = -m_yaw;
-    
-    m_pitch = asin(m_vz / normPitch);
 }
 
 }

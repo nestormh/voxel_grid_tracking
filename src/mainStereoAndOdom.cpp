@@ -207,7 +207,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 55;
+            initialIdx = 15; //55;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
             leftImagePattern = "image_02/data/%010d.png";
@@ -301,10 +301,10 @@ void testStereoTracking() {
             }
             case ObstaclesFromStereo::KARLSRUHE_V2:
             {
-//                 yaw = egoValues[i].deltaYaw;
-//                 speed = egoValues[i].speed;
-                yaw = 0.0;
-                speed = 0.0;
+                yaw = egoValues[i].deltaYaw;
+                speed = egoValues[i].speed;
+//                 yaw = 0.0;
+//                 speed = 0.0;
                 deltaTime = egoValues[i].deltaTime;
                 
                 break;

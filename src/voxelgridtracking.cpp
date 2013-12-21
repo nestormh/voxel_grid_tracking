@@ -38,6 +38,7 @@
 #include <queue>
 
 #include "utilspolargridtracking.h"
+#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/CL/cl_platform.h>
 
 using namespace std;
 
@@ -65,8 +66,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_cameraParams.t = Eigen::MatrixXd(3, 1);
     m_cameraParams.t << 0.0598969, -1.00137, 0.00463762;
     
-    m_minX = -6.0;
-    m_maxX = 6.0;
+    m_minX = -4.0;
+    m_maxX = 4.0;
     m_minY = 0.0;
     m_maxY = 12.0;
     m_minZ = -0.4;
@@ -76,8 +77,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_cellSizeY = 0.25;
     m_cellSizeZ = 0.5;
 
-    m_maxVelX = 5.0;
-    m_maxVelY = 5.0;
+    m_maxVelX = 10.0;
+    m_maxVelY = 10.0;
     m_maxVelZ = 0.0;
     
     if (m_maxVelZ != 0.0) {
@@ -96,12 +97,14 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshMagnitude = 9999999.0;
     
     m_minVoxelsPerObstacle = 2;
-    m_minObstacleDensity = 20.0;
-    m_minVoxelDensity = 10.0;
+    m_minObstacleDensity = 0.0; //20.0;
+    m_minVoxelDensity = 0.0; //10.0;
     m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
     m_speedMethod = SPEED_METHOD_CIRC_HIST;
+    
+    m_obstacleSpeedMethod = SPEED_METHOD_MEAN;
     
     m_yawInterval = 5.0 * M_PI / 180.0;
     m_pitchInterval = 2 * M_PI;
@@ -157,6 +160,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 1);
     m_obstacleCubesPub = nh.advertise<visualization_msgs::MarkerArray>("cubes", 1);
     m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
+    m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
 //     ros::spin();
 }
 
@@ -179,10 +183,11 @@ void VoxelGridTracking::start()
             listener.lookupTransform("/map", "/odom", ros::Time(0), transform);
             if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
                 if (lastMapOdomTransform.stamp_ != transform.stamp_) {
-                    double yaw, yaw1, yaw2, pitch, roll;
-                    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw2);
-                    tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch, yaw1);
+                    double yaw, yaw1, yaw2, pitch, pitch1, pitch2, roll;
+                    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch2, yaw2);
+                    tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch1, yaw1);
                     yaw = yaw2 - yaw1;
+                    pitch = pitch2 - pitch1;
                     
                     double deltaX = lastMapOdomTransform.getOrigin().getX() - transform.getOrigin().getX();
                     double deltaY = lastMapOdomTransform.getOrigin().getY() - transform.getOrigin().getY();
@@ -197,9 +202,10 @@ void VoxelGridTracking::start()
                     
                     cout << "Transformation Received!!!!" << endl;
                     cout << "yaw " << yaw << endl;
+                    cout << "pitch " << pitch << endl;
                     cout << "speed " << speed << endl;
                     cout << "m_deltaTime " << m_deltaTime << endl;
-                    setDeltaYawSpeedAndTime(yaw, speed, m_deltaTime);
+                    setEgoMotion(yaw, pitch, speed, m_deltaTime);
                     rate.sleep();
                     
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -227,10 +233,14 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     cout << "Received point cloud with size = " << m_pointCloud->size() << endl;
 }
 
-void VoxelGridTracking::setDeltaYawSpeedAndTime(const double& deltaYaw, const double& deltaSpeed, const double& deltaTime)
+void VoxelGridTracking::setEgoMotion(const double& deltaYaw, const double& deltaPitch, const double& speed, const double& deltaTime)
 {
     m_deltaYaw = deltaYaw;
-    m_deltaSpeed = deltaSpeed;
+    m_deltaPitch = deltaPitch;
+    m_speed = speed;
+//     m_deltaYaw = 0.0;
+//     m_deltaPitch = 0.0;
+//     m_speed = 0.0;
     m_deltaTime = deltaTime;
 }
 
@@ -249,9 +259,10 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //         noiseRemoval();
 //         aggregation();
         updateObstacles();
-        joinCommonVolumes();
+//         joinCommonVolumes();
         updateSpeedFromObstacles();
-    } 
+    }
+//         initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
     initialization();
@@ -262,7 +273,6 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     ROS_INFO("[%s] Total time: %f seconds", __FUNCTION__, totalCompute);
     
     publishVoxels();
-    publishParticles();
     publishVoxels();
     publishParticles();
     publishMainVectors();
@@ -348,7 +358,7 @@ void VoxelGridTracking::initialization()
                 
                 const double & occupiedProb = voxel.occupiedProb();
                 // FIXME: Is it really important the fact that it is occupied or not?
-                if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
+                if (voxel.occupied() /*&& voxel.empty() &&*/ /*(occupiedProb > m_threshProbForCreation)*/) {
                     const uint32_t numParticles = m_particlesPerCell * occupiedProb / 2.0;
                     voxel.createParticles(numParticles);
                 }
@@ -373,18 +383,22 @@ void VoxelGridTracking::particleToVoxel(const Particle3d & particle,
 
 void VoxelGridTracking::prediction()
 {
-    const double dx = m_deltaSpeed * m_deltaTime * cos(m_deltaYaw); // / m_cellSizeX;
-    const double dy = m_deltaSpeed * m_deltaTime * cos(m_deltaYaw); // / m_cellSizeX;
-    const double dz = 0.0;
+    const double speed = m_speed;
+    const double deltaYaw = m_deltaYaw;
+    const double deltaPitch = m_deltaPitch;
+    
+    const double dx = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
+    const double dy = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
+    const double dz = -0.0;
     
     Eigen::MatrixXd R(6, 6);
     Eigen::VectorXd t(6, 1);
     Eigen::MatrixXd stateTransition(6, 6);
-    R << cos(m_deltaYaw), -sin(m_deltaYaw), 0, 0, 0, 0,
-         sin(m_deltaYaw), cos(m_deltaYaw), 0, 0, 0, 0,
+    R << cos(deltaYaw), -sin(deltaYaw), 0, 0, 0, 0,
+         sin(deltaYaw), cos(deltaYaw), 0, 0, 0, 0,
         0, 0, 1, 0, 0, 0,
-        0, 0, 0, cos(m_deltaYaw), -sin(m_deltaYaw), 0,
-        0, 0, 0, sin(m_deltaYaw), cos(m_deltaYaw), 0,
+        0, 0, 0, cos(deltaYaw), -sin(deltaYaw), 0,
+        0, 0, 0, sin(deltaYaw), cos(deltaYaw), 0,
         0, 0, 0, 0, 0, 1;
     
     t << dx, dy, dz, 0, 0, 0;
@@ -478,7 +492,7 @@ void VoxelGridTracking::segment()
                         
                         std::deque<Voxel> voxelsQueue;
                         
-                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_speedMethod, m_yawInterval, m_pitchInterval);
+                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_obstacleSpeedMethod, m_yawInterval, m_pitchInterval);
                         if (! obst.addVoxelToObstacle(voxel))
                             continue;
                         
@@ -592,7 +606,7 @@ void VoxelGridTracking::joinCommonVolumes()
 void VoxelGridTracking::updateSpeedFromObstacles()
 {
     BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles)
-        obstacle.updateSpeed();
+        obstacle.updateSpeed(m_deltaYaw, m_deltaPitch, m_speed);
 }
 
 void VoxelGridTracking::publishVoxels()
@@ -742,10 +756,9 @@ void VoxelGridTracking::publishMainVectors()
     visualization_msgs::MarkerArray mainVectors;
     
     uint32_t idCount = 0;
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                const Voxel & voxel = m_grid[x][y][z];
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const vector<Voxel> & voxels = m_obstacles[i].voxels();
+        BOOST_FOREACH(const Voxel & voxel, voxels) {
                 
                 if (! voxel.empty()) {
                     
@@ -765,9 +778,9 @@ void VoxelGridTracking::publishMainVectors()
                     mainVector.scale.y = 0.03;
                     mainVector.scale.z = 0.1;
                     mainVector.color.a = 1.0;
-                    mainVector.color.r = m_colors[x][y][z][0];
-                    mainVector.color.g = m_colors[x][y][z][1];
-                    mainVector.color.b = m_colors[x][y][z][2];
+                    mainVector.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
+                    mainVector.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
+                    mainVector.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
                     
                     //         orientation.lifetime = ros::Duration(5.0);
                     
@@ -787,7 +800,7 @@ void VoxelGridTracking::publishMainVectors()
                     mainVectors.markers.push_back(mainVector);
                 }
             }
-        }
+//         }
     }
     
     m_mainVectorsPub.publish(mainVectors);
@@ -876,6 +889,7 @@ void VoxelGridTracking::publishObstacleCubes()
     
     visualization_msgs::MarkerArray obstacleCubeMarkers;
     visualization_msgs::MarkerArray obstacleSpeedMarkers;
+    visualization_msgs::MarkerArray obstacleSpeedTextMarkers;
     
     uint32_t idCount = 0;
     
@@ -916,7 +930,7 @@ void VoxelGridTracking::publishObstacleCubes()
         speedVector.header.frame_id = "left_cam";
         speedVector.header.stamp = ros::Time();
         speedVector.id = idCount++;
-        speedVector.ns = "mainVectors";
+        speedVector.ns = "speedVector";
         speedVector.type = visualization_msgs::Marker::ARROW;
         speedVector.action = visualization_msgs::Marker::ADD;
         
@@ -939,19 +953,55 @@ void VoxelGridTracking::publishObstacleCubes()
         origin.y = obstacle.minY();
         origin.z = obstacle.centerZ();        
         
-        dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime;
-        dest.y = obstacle.minY() + obstacle.vy() * m_deltaTime;
-        dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime;
+//         dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime;
+//         dest.y = obstacle.minY() + obstacle.vy() * m_deltaTime;
+//         dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime;
+        dest.x = obstacle.centerX() + obstacle.vx();
+        dest.y = obstacle.minY() + obstacle.vy();
+        dest.z = obstacle.centerZ() + obstacle.vz();
         
         speedVector.points.push_back(origin);
         speedVector.points.push_back(dest);
         
         obstacleSpeedMarkers.markers.push_back(speedVector);
         
+        // ********************************************************
+        // Publication of the speed text of the obstacle
+        // ********************************************************
+        
+        visualization_msgs::Marker speedTextVector;
+        speedTextVector.header.frame_id = "left_cam";
+        speedTextVector.header.stamp = ros::Time();
+        speedTextVector.id = idCount++;
+        speedTextVector.ns = "speedText";
+        speedTextVector.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        speedTextVector.action = visualization_msgs::Marker::ADD;
+        
+        speedTextVector.pose.position.x = obstacle.centerX();
+        speedTextVector.pose.position.y = obstacle.centerY();
+        speedTextVector.pose.position.z = obstacle.maxZ() + (m_cellSizeZ / 2.0);
+        
+        speedTextVector.pose.orientation.x = 0.0;
+        speedTextVector.pose.orientation.y = 0.0;
+        speedTextVector.pose.orientation.z = 0.0;
+        speedTextVector.pose.orientation.w = 1.0;
+        speedTextVector.scale.z = 0.25;
+        speedTextVector.color.a = 1.0;
+        speedTextVector.color.r = 0.0;
+        speedTextVector.color.g = 1.0;
+        speedTextVector.color.b = 0.0;
+        
+        stringstream ss;
+        ss << std::setprecision(3) << obstacle.magnitude() << " m/s";
+        speedTextVector.text = ss.str();
+                
+        obstacleSpeedTextMarkers.markers.push_back(speedTextVector);
+        
     }
     
     m_obstacleCubesPub.publish(obstacleCubeMarkers);
     m_obstacleSpeedPub.publish(obstacleSpeedMarkers);
+    m_obstacleSpeedTextPub.publish(obstacleSpeedTextMarkers);
 }
 
 

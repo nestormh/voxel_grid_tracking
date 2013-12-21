@@ -39,7 +39,7 @@ public:
     VoxelGridTracking();
     
     void start();
-    void setDeltaYawSpeedAndTime(const double & deltaYaw, const double & deltaSpeed, const double & deltaTime);
+    void setEgoMotion(const double & deltaYaw, const double & deltaPitch, const double & deltaSpeed, const double & deltaTime);
 protected:
     // Callbacks
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
@@ -70,7 +70,7 @@ protected:
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
-    double m_deltaYaw, m_deltaSpeed, m_deltaTime;
+    double m_deltaYaw, m_deltaPitch, m_speed, m_deltaTime;
     
     VoxelGrid m_grid;
     
@@ -101,6 +101,7 @@ protected:
     double m_minObstacleDensity;
     double m_minVoxelDensity;
     SpeedMethod m_speedMethod;
+    SpeedMethod m_obstacleSpeedMethod;
     double m_yawInterval;
     double m_pitchInterval;
     double m_maxCommonVolume;
@@ -117,6 +118,7 @@ protected:
     ros::Publisher m_obstaclesPub;
     ros::Publisher m_obstacleCubesPub;
     ros::Publisher m_obstacleSpeedPub;
+    ros::Publisher m_obstacleSpeedTextPub;
 };
 
 }

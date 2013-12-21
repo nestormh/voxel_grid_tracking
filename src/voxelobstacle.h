@@ -54,6 +54,8 @@ public:
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
     
+    double magnitude() const { return m_magnitude; }
+    
     vector<Voxel> voxels() const { return m_voxels; }
     
     uint32_t idx() const { return m_idx; }
@@ -65,7 +67,7 @@ public:
     bool isObstacleConnected(const VoxelObstacle & obstacle);
     void joinObstacles(VoxelObstacle & obstacle);
     
-    void updateSpeed();
+    void updateSpeed(const double & egoDeltaYaw, const double & egoDeltaPitch, const double & egoSpeed);
     
     static double commonVolume(const VoxelObstacle & obst1, const VoxelObstacle & obst2);
     
