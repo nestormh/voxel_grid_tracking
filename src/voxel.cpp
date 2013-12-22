@@ -167,7 +167,8 @@ void Voxel::setMainVectors() {
                                     
                     histogram[idxPitch][idxYaw].numPoints++;
                     histogram[idxPitch][idxYaw].magnitudeSum += sqrt(particle.vx() * particle.vx() + 
-                                                                    particle.vy() * particle.vy() + particle.vz() * particle.vz());
+                                                                    particle.vy() * particle.vy() + 
+                                                                    particle.vz() * particle.vz());
             }
              
             
@@ -188,8 +189,8 @@ void Voxel::setMainVectors() {
             m_pitch = maxIdxPitch * m_pitchInterval;
             m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
             
-            m_vx = m_magnitude * cos(m_yaw);
-            m_vy = m_magnitude * sin(m_yaw);
+            m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch);
+            m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch);
             m_vz = m_magnitude * sin(m_pitch);
             
             break;
@@ -223,6 +224,5 @@ bool Voxel::nextTo(const Voxel& voxel) const
            (abs(m_y - voxel.y()) <= 1) &&
            (abs(m_z - voxel.z()) <= 1);
 }
-
 
 }

@@ -278,8 +278,8 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDe
                 m_pitch += M_PI;
             }
             
-            m_vx = m_magnitude * cos(m_yaw);
-            m_vy = m_magnitude * sin(m_yaw);
+            m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch);
+            m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch);
             m_vz = m_magnitude * sin(m_pitch);
             
             break;

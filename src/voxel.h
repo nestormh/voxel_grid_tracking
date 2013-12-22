@@ -107,7 +107,7 @@ public:
     void assignObstacle(const int32_t & obstIdx) { m_obstIdx = obstIdx; }
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPoints() const { return m_pointCloud; }
-    
+        
     void reset();
     
 protected:

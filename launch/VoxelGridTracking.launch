@@ -41,7 +41,7 @@
         <rosparam>
             filter_field_name: y
             filter_limit_min: 0.0
-            filter_limit_max: 12.0
+            filter_limit_max: 24.0
         </rosparam>
     </node>
 

@@ -15,6 +15,7 @@ Panels:
         - /ObstacleCubes1
         - /ObstacleSpeed1
         - /SpeedText1
+        - /Tracks1
       Splitter Ratio: 0.4
     Tree Height: 758
   - Class: rviz/Selection
@@ -189,13 +190,13 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
       Name: mainVectors
       Namespaces:
-        mainVectors: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
@@ -205,25 +206,33 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/cubes
       Name: ObstacleCubes
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeed
       Name: ObstacleSpeed
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeedText
       Name: SpeedText
+      Namespaces:
+        speedText: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /VoxelGridTracking/VoxelGridTracking/tracks
+      Name: Tracks
       Namespaces:
         {}
       Queue Size: 100
@@ -252,17 +261,17 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.4344
+      Distance: 35.4844
       Focal Point:
-        X: -2.14624
-        Y: 7.55298
-        Z: -0.754759
+        X: -0.646257
+        Y: 19.2473
+        Z: 1.71936
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.1998
+      Pitch: 0.349797
       Target Frame: left_cam
       Value: Orbit (rviz)
-      Yaw: 4.70818
+      Yaw: 4.65818
     Saved: ~
 Window Geometry:
   Displays:

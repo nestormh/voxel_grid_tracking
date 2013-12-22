@@ -69,7 +69,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_minX = -4.0;
     m_maxX = 4.0;
     m_minY = 0.0;
-    m_maxY = 12.0;
+    m_maxY = 24.0;
     m_minZ = -0.4;
     m_maxZ = 3.5;
     
@@ -96,7 +96,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshPitch = 9999999.0; //0.0;
     m_threshMagnitude = 9999999.0;
     
-    m_minVoxelsPerObstacle = 2;
+    m_minVoxelsPerObstacle = 0; //2;
     m_minObstacleDensity = 20.0;
     m_minVoxelDensity = 10.0;
     m_maxCommonVolume = 0.8;
@@ -1006,6 +1006,5 @@ void VoxelGridTracking::publishObstacleCubes()
     m_obstacleSpeedPub.publish(obstacleSpeedMarkers);
     m_obstacleSpeedTextPub.publish(obstacleSpeedTextMarkers);
 }
-
 
 }
