@@ -18,7 +18,6 @@
 #include "polargridtracking.h"
 #include "polargridtrackingros.h"
 #include "utils.h"
-#include "libvisohelper.h"
 #include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 
@@ -174,8 +173,6 @@ void testStereoTracking() {
             exit(0);
     }
     
-    LibvisoHelper visualOdom(cameraParams[0]);
-    
     boost::shared_ptr<ObstaclesFromStereo> pointCloudMaker;
     polar_grid_tracking::t_SGBM_params sgbmParams;
     sgbmParams.minDisparity = 0;
@@ -266,7 +263,6 @@ void testStereoTracking() {
             case ObstaclesFromStereo::KARLSRUHE:
             {
                 deltaTime = 0.25;
-                //                 visualOdom.compute(left, right, deltaTime, yaw, speed);
                 yaw = 0.0;
                 speed = 0.0;
                 
@@ -281,16 +277,6 @@ void testStereoTracking() {
                 break;
             }
         }
-        //         if (calibrationType != ObstaclesFromStereo::KARLSRUHE_V2) {
-        //             visualOdom.compute(left, right, deltaTime, yaw, speed);
-        //             cout << "Yaw = " << yaw * 180 / 3.14 << endl;
-        //             cout << "speed = " << speed << endl;
-        //         } else {
-//         yaw = 0.0;
-//         speed = 0.0;
-        //         }
-        
-        //         gridTracker.setDeltaYawSpeedAndTime(0.0 / 180.0 * 3.14, 0.0, 1.0);
         
         gridTracker.setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
         //         gridTracker.setDeltaYawSpeedAndTime(45.0 / 180.0 * 3.14, 0.0, deltaTime);

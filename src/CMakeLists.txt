@@ -19,8 +19,9 @@ add_executable(PolarGridTracking
     particle.cpp
     cell.cpp
     utilspolargridtracking.cpp
-    libvisohelper.cpp
-    ${VISO_FILES}
+#     libvisohelper.cpp
+#     ${VISO_FILES}
+    ${LIBELAS_SRC_FILES}
     main_ros.cpp
 )
 
@@ -30,6 +31,7 @@ include_directories(PolarGridTracking
     ${PCL_INCLUDE_DIRS}/pcl-1.7
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
+    ${LIBELAS_INCLUDE_DIRS}
     /opt/ros/hydro/include
 #     emon.a
 #     ${CUDA_INCLUDE_DIRS}
@@ -78,12 +80,14 @@ add_executable(stereo_and_odom
 #     utils.cpp
 #     libvisohelper.cpp
 #     ${VISO_FILES}
+    ${LIBELAS_SRC_FILES}
     mainStereoAndOdom.cpp
 )
 
 include_directories(stereo_and_odom
     ${PCL_INCLUDE_DIRS}/pcl-1.7
     ${OpenCV_INCLUDE_DIR}
+    ${LIBELAS_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIR}
     /opt/ros/hydro/include
 )

@@ -36,6 +36,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include "elas.h"
+
 using namespace std;
 
 ObstaclesFromStereo::ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType) : m_method(SGBM), m_size(size), 
@@ -65,17 +67,54 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
                                     m_SGBM_params.speckleWindowSize, m_SGBM_params.speckleRange, m_SGBM_params.fullDP);
             stereo(leftGray, rightGray, disp);
             
+            disp.convertTo(disp8, CV_64F, 1./16.);
+            
             break;
         }
         case STEREOVAR: {
             cv::StereoVar stereo;
             stereo(leftGray, rightGray, disp);
             
+            disp.convertTo(disp8, CV_64F, 1./16.);
+            
+            break;
+        }
+        case ELAS: {
+            
+            Elas elas(Elas::parameters(Elas::ROBOTICS));
+            
+            // matching function
+            // inputs: pointers to left (I1) and right (I2) intensity image (uint8, input)
+            //         pointers to left (D1) and right (D2) disparity image (float, output)
+            //         dims[0] = width of I1 and I2
+            //         dims[1] = height of I1 and I2
+            //         dims[2] = bytes per line (often equal to width, but allowed to differ)
+            //         note: D1 and D2 must be allocated before (bytes per line = width)
+            //               if subsampling is not active their size is width x height,
+            //               otherwise width/2 x height/2 (rounded towards zero)
+            leftGray.data;
+            int32_t dims[3];
+            dims[0] = leftGray.cols;
+            dims[1] = leftGray.rows;
+            dims[2] = leftGray.cols;
+    
+            float * D1 = new float[leftGray.cols * leftGray.rows];
+            float * D2 = new float[rightGray.cols * rightGray.rows];
+            
+            elas.process((uint8_t *)leftGray.data, (uint8_t *)rightGray.data, D1, D2, dims);
+            
+            for (uint32_t y = 0; y < leftGray.rows; y++) {
+                for (uint32_t x = 0; x < leftGray.cols; x++) {
+                    disp8.at<double>(y, x) = D1[y * leftGray.cols + x];
+                }
+            }
+
+            delete D1;
+            delete D2;
+            
             break;
         }
     }
-
-    disp.convertTo(disp8, CV_64F, 1./16.);
 
     //Create point cloud and fill it
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr unmaskedPointCloud (new pcl::PointCloud<pcl::PointXYZRGBL>);

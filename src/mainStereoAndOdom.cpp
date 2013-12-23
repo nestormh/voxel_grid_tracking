@@ -31,8 +31,13 @@
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
-#include "std_msgs/String.h"
+#include <std_msgs/String.h>
 #include <std_msgs/Float64.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
+#include <image_transport/image_transport.h>
+#include <sensor_msgs/CameraInfo.h>
+#include <camera_calibration_parsers/parse_yml.h>
 
 #include <boost/foreach.hpp>
 
@@ -46,6 +51,7 @@
 #include <pcl/point_types.h>
 
 #define CAMERA_FRAME_ID "left_cam"
+#define BASE_CAMERA_FRAME_ID "base_left_cam"
 
 using namespace std;
 
@@ -170,6 +176,14 @@ void testStereoTracking() {
     ros::Publisher clockPub = nh.advertise<rosgraph_msgs::Clock> ("/clock", 1);
     tf::TransformBroadcaster map2odomTfBroadcaster;
     
+    image_transport::ImageTransport it(nh);
+    image_transport::Publisher leftImgPub = it.advertise("left/image", 1);
+    image_transport::Publisher rightImgPub = it.advertise("right/image", 1);
+    
+    ros::Publisher leftInfoPub = nh.advertise<sensor_msgs::CameraInfo>("left/camera_info", 1);
+    ros::Publisher righttInfoPub = nh.advertise<sensor_msgs::CameraInfo>("right/camera_info", 1);
+    sensor_msgs::CameraInfo leftCameraInfo, rightCameraInfo;
+    
     uint32_t initialIdx;
     boost::filesystem::path correspondencesPath;
     boost::filesystem::path seqName;
@@ -217,14 +231,23 @@ void testStereoTracking() {
             
             ObstaclesFromStereo::readEgoValues((correspondencesPath / seqName).string(), egoValues);
             
+            string leftCalibFileName = "/local/imaged/Karlsruhe/2011_09_28/left_calib.yaml";
+            string leftCameraName = "left_camera";
+            camera_calibration_parsers::readCalibrationYml(leftCalibFileName, leftCameraName, leftCameraInfo);
+            
+            string rightCalibFileName = "/local/imaged/Karlsruhe/2011_09_28/right_calib.yaml";
+            string rightCameraName = "right_camera";
+            camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
+            
+            leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            
             break;
         }
         default:
             exit(0);
     }
-    
-//     LibvisoHelper visualOdom(cameraParams[0]);
-    
+        
     boost::shared_ptr<ObstaclesFromStereo> pointCloudMaker;
     polar_grid_tracking::t_SGBM_params sgbmParams;
     sgbmParams.minDisparity = 0;
@@ -263,7 +286,8 @@ void testStereoTracking() {
         if (i == initialIdx) {
             pointCloudMaker.reset(new ObstaclesFromStereo(cv::Size(left.cols, left.rows), calibrationType));
             pointCloudMaker->setCameraParams(cameraParams.at(0), cameraParams.at(1));
-            pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
+//             pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
+            pointCloudMaker->setMethod(ObstaclesFromStereo::ELAS);
             pointCloudMaker->setSGBMParams(sgbmParams);
             pointCloudMaker->setGroundThresh(0.3);
             pointCloudMaker->setBackGroundThresh(20);
@@ -276,6 +300,7 @@ void testStereoTracking() {
         }
         
         cv::imshow("imgL", left);
+        cv::moveWindow("imgL", 0, 0);
         //         cv::imshow("imgR", right);
 
         pointCloudMaker->generatePointClouds(left, right, leftMask);
@@ -346,12 +371,21 @@ void testStereoTracking() {
         transform.setOrigin(tf::Vector3(-posX, -posY, 0.0));
         transform.setRotation( tf::createQuaternionFromRPY(0.0, 0.0, posTheta) );
         
-//         std_msgs::Float64 deltaTimeMsg;
-//         deltaTimeMsg.data = deltaTime;
-//         deltaTimePub.publish(deltaTimeMsg);
+        sensor_msgs::Image msgLeft, msgRight;
+        cv_bridge::CvImage tmpLeft(msgLeft.header, sensor_msgs::image_encodings::BGR8, left);
+        cv_bridge::CvImage tmpRight(msgRight.header, sensor_msgs::image_encodings::BGR8, right);
+        leftCameraInfo.header.stamp = tmpLeft.header.stamp = ros::Time::now();
+        rightCameraInfo.header.stamp = tmpRight.header.stamp = ros::Time::now();
         
+        leftInfoPub.publish(leftCameraInfo);
+        righttInfoPub.publish(rightCameraInfo);
+
+        leftImgPub.publish(tmpLeft.toImageMsg());
+        rightImgPub.publish(tmpRight.toImageMsg());
+        
+//         publishPointCloud(pointCloudPub, pointCloud);
         publishPointCloud(pointCloudPub, tmpPointCloud);
-        broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
+//         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
         
 //         map2odomTfBroadcaster.sendTransform(
 //             tf::StampedTransform(

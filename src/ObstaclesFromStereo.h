@@ -35,13 +35,15 @@ using namespace polar_grid_tracking;
 
 class ObstaclesFromStereo {
 public:
-    typedef enum t_Method { SGBM = 0, STEREOVAR = 1};
+    typedef enum t_Method { SGBM = 0, STEREOVAR = 1, ELAS = 2 };
     typedef enum t_CalibrationFileType { DUBLIN = 0, KARLSRUHE = 1, KARLSRUHE_V2 = 2, BAHNHOFSTRASSE = 3 };
     
     ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType);
     ~ObstaclesFromStereo();
     
     void generatePointClouds(const cv::Mat & leftImg, const cv::Mat & rightImg, const cv::Mat & mask);
+    
+    void generatePointCloudsELAS(const cv::Mat & leftImg, const cv::Mat & rightImg, const cv::Mat & mask);
     
     void setCameraParams(const t_Camera_params & leftCameraParams, const t_Camera_params & rightCameraParams);
     void setSGBMParams(const t_SGBM_params & params) { m_SGBM_params = params; }

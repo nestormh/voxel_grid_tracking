@@ -11,8 +11,9 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf2_ros
-  octomap
-  octomap_msgs
+  cv_bridge
+  image_transport
+  camera_calibration_parsers
 )
 
 set(ROS_BUILD_TYPE Debug)
@@ -46,6 +47,7 @@ find_package(PCL 1.6 REQUIRED)
 find_package(octomap REQUIRED)
 
 INCLUDE("${STIXEL_WORLD_PATH}/StixelWorld.cmake")
+INCLUDE("libs/libElas.cmake")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
