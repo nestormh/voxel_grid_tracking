@@ -85,18 +85,18 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerCell = 10000;
+    m_particlesPerCell = 100;
     m_threshProbForCreation = 0.2;
     
     m_neighBorX = 1;
     m_neighBorY = 1;
     m_neighBorZ = 1;
     
-    m_threshYaw = 45.0 * M_PI / 180.0;
+    m_threshYaw = 90.0 * M_PI / 180.0;
     m_threshPitch = 9999999.0; //0.0;
     m_threshMagnitude = 9999999.0;
     
-    m_minVoxelsPerObstacle = 0; //2;
+    m_minVoxelsPerObstacle = 2;
     m_minObstacleDensity = 20.0;
     m_minVoxelDensity = 10.0;
     m_maxCommonVolume = 0.8;
@@ -172,15 +172,11 @@ void VoxelGridTracking::start()
     
     tf::TransformListener listener;
     tf::StampedTransform transform;
-    ros::Rate rate(15.0);
     while (ros::ok()) {
         try{
-            while ((! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01))) && (ros::ok()));
+            while ((! listener.waitForTransform ("/map", "/left_cam", ros::Time(0), ros::Duration(10.0), ros::Duration(0.000001))) && (ros::ok()));
             
-            if (! ros::ok())
-                break;
-            
-            listener.lookupTransform("/map", "/odom", ros::Time(0), transform);
+            listener.lookupTransform("/map", "/left_cam", ros::Time(0), transform);
             if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
                 if (lastMapOdomTransform.stamp_ != transform.stamp_) {
                     double yaw, yaw1, yaw2, pitch, pitch1, pitch2, roll;
@@ -191,10 +187,11 @@ void VoxelGridTracking::start()
                     
                     double deltaX = lastMapOdomTransform.getOrigin().getX() - transform.getOrigin().getX();
                     double deltaY = lastMapOdomTransform.getOrigin().getY() - transform.getOrigin().getY();
+                    double deltaZ = lastMapOdomTransform.getOrigin().getZ() - transform.getOrigin().getZ();
                     
                     m_deltaTime = transform.stamp_.toSec() - lastMapOdomTransform.stamp_.toSec();
                     
-                    double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY);
+                    double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
                     double speed = 0.0;
                     if (deltaS != 0.0) {
                         speed = deltaS / m_deltaTime;
@@ -202,11 +199,21 @@ void VoxelGridTracking::start()
                     
                     cout << "Transformation Received!!!!" << endl;
                     cout << "yaw " << yaw << endl;
+                    cout << "yaw1 " << yaw1 << endl;
+                    cout << "yaw2 " << yaw2 << endl;
                     cout << "pitch " << pitch << endl;
+                    cout << "deltaX " << deltaX << endl;
+                    cout << "deltaY " << deltaY << endl;
+                    cout << "deltaS " << deltaS << endl;
+                    cout << "lastMapOdomTransform " << cv::Point3d(lastMapOdomTransform.getOrigin().getX(), 
+                                                                   lastMapOdomTransform.getOrigin().getY(),
+                                                                   lastMapOdomTransform.getOrigin().getZ()) << endl;
+                    cout << "transform " << cv::Point3d(transform.getOrigin().getX(), 
+                                                        transform.getOrigin().getY(),
+                                                        transform.getOrigin().getZ()) << endl;
                     cout << "speed " << speed << endl;
                     cout << "m_deltaTime " << m_deltaTime << endl;
                     setEgoMotion(yaw, pitch, speed, m_deltaTime);
-                    rate.sleep();
                     
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
                     pcl::copyPointCloud(*m_pointCloud, *pointCloud);
@@ -220,11 +227,8 @@ void VoxelGridTracking::start()
             ROS_ERROR("%s",ex.what());
         }
         
-//         ros::spinOnce();
-        rate.sleep();
     }
     
-//     ros::spin();
 }
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
@@ -262,7 +266,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
         joinCommonVolumes();
         updateSpeedFromObstacles();
     }
-//     publishParticles();
+    publishParticles();
 //         initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
@@ -273,12 +277,17 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     ROS_INFO("[%s] Total time: %f seconds", __FUNCTION__, totalCompute);
     
+    INIT_CLOCK(startVis)
     publishVoxels();
     publishVoxels();
-    publishParticles();
+//     publishParticles();
     publishMainVectors();
     publishObstacles();
     publishObstacleCubes();
+//     publishROI();
+    END_CLOCK(totalVis, startVis)
+    
+    ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
 }
 
 void VoxelGridTracking::reset()
@@ -445,7 +454,7 @@ void VoxelGridTracking::measurementBasedUpdate()
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 Voxel & voxel = m_grid[x][y][z];
             
-                if (! voxel.empty()) {
+                if ((! voxel.empty()) && (voxel.occupied())) {
                     voxel.setOccupiedPosteriorProb(m_particlesPerCell);
                     const double Nrc = voxel.occupiedPosteriorProb() * m_particlesPerCell;
                     const double fc = Nrc / voxel.numParticles();
@@ -476,7 +485,9 @@ void VoxelGridTracking::measurementBasedUpdate()
                     }
                     
                     voxel.setMainVectors();
-                }
+                } /*else {
+                    voxel.reset();
+                }*/
             }
         }
     }
@@ -1006,5 +1017,68 @@ void VoxelGridTracking::publishObstacleCubes()
     m_obstacleSpeedPub.publish(obstacleSpeedMarkers);
     m_obstacleSpeedTextPub.publish(obstacleSpeedTextMarkers);
 }
+
+void VoxelGridTracking::publishROI()
+{
+    cv::Mat output = cv::Mat::zeros(cv::Size(m_cameraParams.width, m_cameraParams.height), CV_8UC3);
+    
+    const double fb = m_cameraParams.ku * m_cameraParams.baseline;
+    
+    Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
+    
+//     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+//         const VoxelObstacle & obstacle = m_obstacles[i];
+//         
+//         const double x = -obstacle.centerX();
+//         const double y = obstacle.centerZ();
+//         const double z = obstacle.centerY();
+//         
+//         
+//         pointMat << x, y, z;
+// //         pointMat = m_cameraParams.R.transpose() * pointMat;
+// //         pointMat += m_cameraParams.t;
+//         
+//         const double disparity = fb / pointMat[2];
+//         cout << cv::Point3d(obstacle.centerX(), obstacle.centerY(), obstacle.centerZ()) << endl;
+//         cout << "disparity " << disparity << endl;
+//         cout << "baseline " << m_cameraParams.baseline << endl;
+//         cout << "u0 " << m_cameraParams.u0 << endl;
+//         cout << "obstacle.centerX() " << obstacle.centerX() << endl;
+//         
+//         const double u =  m_cameraParams.u0 - ((pointMat[0] * disparity) /m_cameraParams.baseline);
+// //         const double u =  m_cameraParams.width - ((pointMat.data()[0] * disparity) / m_cameraParams.baseline);
+// //         const double u = ((pointMat.data()[0] * disparity) / m_cameraParams.baseline) - m_cameraParams.u0;
+//         cout << "u " << u << endl;
+//         const double v = m_cameraParams.v0 - ((pointMat.data()[1] * disparity) / m_cameraParams.baseline);
+//         
+//         cv::circle(output, cv::Point2d(u, v), 3, cv::Scalar((uint8_t)(m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2] * 255), 
+//                     (uint8_t)(m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1] * 255), 
+//                     (uint8_t)(m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0] * 255)), -1);
+//     }
+    
+    BOOST_FOREACH(const pcl::PointXYZRGB & point, m_pointCloud->points) {
+        const double x = -point.x;
+        const double y = point.y;
+        const double z = point.z;
+        
+        pointMat << x, y, z;
+        //         pointMat = m_cameraParams.R.transpose() * pointMat;
+        //         pointMat += m_cameraParams.t;
+        //         
+        const double disparity = fb / pointMat(2);
+        
+//         const double u =  m_cameraParams.u0 - ((pointMat(0) * disparity) /m_cameraParams.baseline);
+//         const double u =  m_cameraParams.width - ((pointMat.data()[0] * disparity) / m_cameraParams.baseline);
+        const double u = ((pointMat(0) * disparity) / m_cameraParams.baseline) - m_cameraParams.u0;
+        const double v = m_cameraParams.v0 - ((pointMat(1) * disparity) / m_cameraParams.baseline);
+        if ((u >= 0) && (u < output.cols) &&
+            (v >= 0) && (v < output.rows))
+                output.at<cv::Vec3b>(v, u) = cv::Vec3b(255, 255, 255); //point.b, point.g, point.r);
+    }
+    
+    cv::imshow("output", output);
+    cv::waitKey(20);
+}
+
 
 }

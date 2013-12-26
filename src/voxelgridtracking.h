@@ -67,6 +67,7 @@ protected:
     void publishMainVectors();
     void publishObstacles();
     void publishObstacleCubes();
+    void publishROI();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     

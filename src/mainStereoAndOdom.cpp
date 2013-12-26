@@ -221,9 +221,11 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 15; //55;
+            initialIdx = 1; //55;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
+//             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
+//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0015_sync");
+            seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
             leftImagePattern = "image_02/data/%010d.png";
             rightImagePattern = "image_03/data/%010d.png";
             
@@ -236,6 +238,29 @@ void testStereoTracking() {
             camera_calibration_parsers::readCalibrationYml(leftCalibFileName, leftCameraName, leftCameraInfo);
             
             string rightCalibFileName = "/local/imaged/Karlsruhe/2011_09_28/right_calib.yaml";
+            string rightCameraName = "right_camera";
+            camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
+            
+            leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            
+            break;
+        }
+        case ObstaclesFromStereo::BAHNHOFSTRASSE:
+        {
+            initialIdx = 1; //55;
+            correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
+            seqName = boost::filesystem::path("bahnhof");
+            rightImagePattern = "seq03-img-left/image_%08d_0.png";
+            leftImagePattern = "seq03-img-right/image_%08d_1.png";
+            
+            ObstaclesFromStereo::getParams("/local/imaged/stixels/bahnhof", cameraParams, ObstaclesFromStereo::BAHNHOFSTRASSE);
+            
+            string leftCalibFileName = "/local/imaged/stixels/bahnhof/left_calib.yaml";
+            string leftCameraName = "left_camera";
+            camera_calibration_parsers::readCalibrationYml(leftCalibFileName, leftCameraName, leftCameraInfo);
+            
+            string rightCalibFileName = "/local/imaged/stixels/bahnhof/right_calib.yaml";
             string rightCameraName = "right_camera";
             camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
             
@@ -286,8 +311,8 @@ void testStereoTracking() {
         if (i == initialIdx) {
             pointCloudMaker.reset(new ObstaclesFromStereo(cv::Size(left.cols, left.rows), calibrationType));
             pointCloudMaker->setCameraParams(cameraParams.at(0), cameraParams.at(1));
-//             pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
-            pointCloudMaker->setMethod(ObstaclesFromStereo::ELAS);
+            pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
+//             pointCloudMaker->setMethod(ObstaclesFromStereo::ELAS);
             pointCloudMaker->setSGBMParams(sgbmParams);
             pointCloudMaker->setGroundThresh(0.3);
             pointCloudMaker->setBackGroundThresh(20);
@@ -328,9 +353,17 @@ void testStereoTracking() {
             {
                 yaw = egoValues[i].deltaYaw;
                 speed = egoValues[i].speed;
-//                 yaw = 0.0;
-//                 speed = 0.0;
+// //                 yaw = 0.0;
+// //                 speed = 0.0;
                 deltaTime = egoValues[i].deltaTime;
+                
+                break;
+            }
+            case ObstaclesFromStereo::BAHNHOFSTRASSE:
+            {
+                yaw = 0.0;
+                speed = 0.0;
+                deltaTime = 1.0 / 13.0;
                 
                 break;
             }
