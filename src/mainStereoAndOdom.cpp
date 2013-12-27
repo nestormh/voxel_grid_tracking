@@ -417,6 +417,7 @@ void testStereoTracking() {
         rightImgPub.publish(tmpRight.toImageMsg());
         
 //         publishPointCloud(pointCloudPub, pointCloud);
+        
         publishPointCloud(pointCloudPub, tmpPointCloud);
 //         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
         

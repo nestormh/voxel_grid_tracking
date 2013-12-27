@@ -284,7 +284,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     publishMainVectors();
     publishObstacles();
     publishObstacleCubes();
-//     publishROI();
+    publishROI();
     END_CLOCK(totalVis, startVis)
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
@@ -1022,61 +1022,33 @@ void VoxelGridTracking::publishROI()
 {
     cv::Mat output = cv::Mat::zeros(cv::Size(m_cameraParams.width, m_cameraParams.height), CV_8UC3);
     
-    const double fb = m_cameraParams.ku * m_cameraParams.baseline;
-    
     Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
     
-//     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-//         const VoxelObstacle & obstacle = m_obstacles[i];
-//         
-//         const double x = -obstacle.centerX();
-//         const double y = obstacle.centerZ();
-//         const double z = obstacle.centerY();
-//         
-//         
-//         pointMat << x, y, z;
-// //         pointMat = m_cameraParams.R.transpose() * pointMat;
-// //         pointMat += m_cameraParams.t;
-//         
-//         const double disparity = fb / pointMat[2];
-//         cout << cv::Point3d(obstacle.centerX(), obstacle.centerY(), obstacle.centerZ()) << endl;
-//         cout << "disparity " << disparity << endl;
-//         cout << "baseline " << m_cameraParams.baseline << endl;
-//         cout << "u0 " << m_cameraParams.u0 << endl;
-//         cout << "obstacle.centerX() " << obstacle.centerX() << endl;
-//         
-//         const double u =  m_cameraParams.u0 - ((pointMat[0] * disparity) /m_cameraParams.baseline);
-// //         const double u =  m_cameraParams.width - ((pointMat.data()[0] * disparity) / m_cameraParams.baseline);
-// //         const double u = ((pointMat.data()[0] * disparity) / m_cameraParams.baseline) - m_cameraParams.u0;
-//         cout << "u " << u << endl;
-//         const double v = m_cameraParams.v0 - ((pointMat.data()[1] * disparity) / m_cameraParams.baseline);
-//         
-//         cv::circle(output, cv::Point2d(u, v), 3, cv::Scalar((uint8_t)(m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2] * 255), 
-//                     (uint8_t)(m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1] * 255), 
-//                     (uint8_t)(m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0] * 255)), -1);
-//     }
-    
     BOOST_FOREACH(const pcl::PointXYZRGB & point, m_pointCloud->points) {
-        const double x = -point.x;
-        const double y = point.y;
-        const double z = point.z;
+//         pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.y, m_cameraParams.t(2) + point.z;
+        pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.z, m_cameraParams.t(2) + point.y;
+//         pointMat << m_cameraParams.t(0) + point.x, m_cameraParams.t(1) - point.z, m_cameraParams.t(2) + point.y;
         
-        pointMat << x, y, z;
-        //         pointMat = m_cameraParams.R.transpose() * pointMat;
-        //         pointMat += m_cameraParams.t;
-        //         
-        const double disparity = fb / pointMat(2);
+        pointMat = m_cameraParams.R.inverse() * pointMat;
         
-//         const double u =  m_cameraParams.u0 - ((pointMat(0) * disparity) /m_cameraParams.baseline);
-//         const double u =  m_cameraParams.width - ((pointMat.data()[0] * disparity) / m_cameraParams.baseline);
-        const double u = ((pointMat(0) * disparity) / m_cameraParams.baseline) - m_cameraParams.u0;
-        const double v = m_cameraParams.v0 - ((pointMat(1) * disparity) / m_cameraParams.baseline);
+        
+        const double d = m_cameraParams.ku * m_cameraParams.baseline / pointMat(2);
+        const double u = m_cameraParams.u0 - ((pointMat(0) * d) / m_cameraParams.baseline);
+        const double v = m_cameraParams.v0 - ((pointMat(1) * m_cameraParams.kv * d) / (m_cameraParams.ku * m_cameraParams.baseline));
+        
+        cout << cv::Point3d(- point.x, point.y, point.z) << " -> " << pointMat.transpose() 
+             << " -> " << cv::Point3d(u, v, d) << endl;
+        
         if ((u >= 0) && (u < output.cols) &&
-            (v >= 0) && (v < output.rows))
-                output.at<cv::Vec3b>(v, u) = cv::Vec3b(255, 255, 255); //point.b, point.g, point.r);
+            (v >= 0) && (v < output.rows)) {
+
+            output.at<cv::Vec3b>(v, u) = cv::Vec3b(point.b, point.g, point.r);
+        }
     }
     
-    cv::imshow("output", output);
+    cv::imwrite("/tmp/img.png", output);
+    
+    cv::imshow("reconstructImage", output);
     cv::waitKey(20);
 }
 

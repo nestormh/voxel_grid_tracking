@@ -42,6 +42,7 @@
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
                     to="/$(arg namespace)/pointCloudFiltered" />
+<!--                    to="/VoxelGridTracking/stereo_and_odom/pointCloudStereo" />-->
     </node>
 </group>
 
