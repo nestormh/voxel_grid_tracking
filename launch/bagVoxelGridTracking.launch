@@ -1,0 +1,25 @@
+<launch>
+    
+<arg name="namespace" default="VoxelGridTracking"/>
+<param name="use_sim_time" value="true"/>
+
+<group ns="$(arg namespace)">
+
+<!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
+<!--    <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+        <remap from="~/deltaTime"
+            to="/$(arg namespace)/stereo_and_odom/deltaTime" />
+        <remap from="~/pointCloud"
+            to="/$(arg namespace)/pointCloudFiltered" />
+    </node>-->
+</group>
+<node pkg="rosbag" type="play"  name="rosbag" output="screen" required="true"
+    args="&#45;&#45;clock &#45;&#45;pause -d 0 -s 0 -r 1 $(find bags)/local/Karlsruhe_2011_09_26_drive_0091_sync_filtered.bag &#45;&#45;topics \
+    /tf \
+    /VoxelGridTracking/pointCloudFiltered \
+    /clock" />
+
+<node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+        $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
+</launch>

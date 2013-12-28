@@ -183,11 +183,15 @@ void Voxel::setMainVectors() {
                         maxIdxYaw = idxYaw;
                     }
                 }
-            }
+            }                
             
             m_yaw = maxIdxYaw * m_yawInterval;
             m_pitch = maxIdxPitch * m_pitchInterval;
             m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
+            
+//             if (((double)numVectors / m_particles.size()) < 0.25) {
+//                 m_yaw = m_pitch = m_magnitude = 0.0;
+//             }
             
             m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch);
             m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch);

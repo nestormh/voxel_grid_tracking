@@ -42,7 +42,6 @@
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
                     to="/$(arg namespace)/pointCloudFiltered" />
-<!--                    to="/VoxelGridTracking/stereo_and_odom/pointCloudStereo" />-->
     </node>
 </group>
 
@@ -84,5 +83,7 @@
 
 <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
       $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
+<!--<node pkg="rosbag" type="record"  name="rosbag"
+    args="-a -j -o /tmp/2011_09_26_drive_0091_sync_" />-->
     
 </launch>

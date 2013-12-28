@@ -54,3 +54,24 @@ cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map
     
     return img;
 }
+
+void project3dTo2d(const pcl::PointXYZRGB& point3d, pcl::PointXYZRGB& point2d, 
+                   const polar_grid_tracking::t_Camera_params & cameraParams)
+{
+    Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
+    
+    pointMat << cameraParams.t(0) + point3d.x, cameraParams.t(1) + point3d.y, cameraParams.t(2) + point3d.z;
+    
+    pointMat = cameraParams.R.inverse() * pointMat;
+    
+    const double d = cameraParams.ku * cameraParams.baseline / pointMat(2);
+    const double u = cameraParams.u0 - ((pointMat(0) * d) / cameraParams.baseline);
+    const double v = cameraParams.v0 - ((pointMat(1) * cameraParams.kv * d) / (cameraParams.ku * cameraParams.baseline));
+    
+    point2d.x = u;
+    point2d.y = v;
+    point2d.z = d;
+    point2d.r = point3d.r;
+    point2d.g = point3d.g;
+    point2d.b = point3d.b;
+}

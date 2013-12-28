@@ -58,6 +58,7 @@ protected:
     void aggregation();
     void noiseRemoval();
     void updateObstacles();
+    void filterObstacles();
     void joinCommonVolumes();
     void updateSpeedFromObstacles();
     
@@ -89,6 +90,8 @@ protected:
     typedef vector<VoxelObstacle> ObstacleList;
     ObstacleList m_obstacles;
     
+    uint32_t m_currentId;
+    
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
     double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
@@ -106,6 +109,7 @@ protected:
     double m_yawInterval;
     double m_pitchInterval;
     double m_maxCommonVolume;
+    double m_minObstacleHeight;
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;
@@ -120,6 +124,7 @@ protected:
     ros::Publisher m_obstacleCubesPub;
     ros::Publisher m_obstacleSpeedPub;
     ros::Publisher m_obstacleSpeedTextPub;
+    ros::Publisher m_ROIPub;
 };
 
 }

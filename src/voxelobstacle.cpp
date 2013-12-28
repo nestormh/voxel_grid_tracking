@@ -250,9 +250,11 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDe
             uint32_t maxIdxPitch = 0;
             uint32_t maxIdxYaw = 0;
             uint32_t numVectors = 0;
+            uint32_t lastNumVectors = 0;
             for (uint32_t idxPitch = 0; idxPitch < totalPitchBins; idxPitch++) {
                 for (uint32_t idxYaw = 0; idxYaw < totalYawBins; idxYaw++) {
                     if (histogram[idxPitch][idxYaw].numPoints > numVectors) {
+                        lastNumVectors = numVectors;
                         numVectors = histogram[idxPitch][idxYaw].numPoints;
                         maxIdxPitch = idxPitch;
                         maxIdxYaw = idxYaw;
@@ -264,19 +266,22 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDe
             m_pitch = maxIdxPitch * m_pitchInterval;
             m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
 
-            m_yaw -= egoDeltaYaw;
-//             if (m_yaw < 0)
-//                 m_yaw += M_PI;
-            
-            m_pitch -= egoDeltaPitch;
-//             if (m_pitch < 0)
-//                 m_pitch += M_PI;
-            
-            m_magnitude -= egoSpeed;
-            if (m_magnitude < 0) {
-                m_yaw += M_PI;
-                m_pitch += M_PI;
-            }
+//             if (m_magnitude != 0.0) {
+//                 m_yaw -= egoDeltaYaw;
+//     //             if (m_yaw < 0)
+//     //                 m_yaw += M_PI;
+//                 
+//                 m_pitch -= egoDeltaPitch;
+//     //             if (m_pitch < 0)
+//     //                 m_pitch += M_PI;
+//                 
+//                 m_magnitude -= egoSpeed;
+//                 if (m_magnitude < 0) {
+//                     m_yaw += M_PI;
+//                     m_pitch += M_PI;
+//                     m_magnitude = fabs(m_magnitude);
+//                 }
+//             }
             
             m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch);
             m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch);

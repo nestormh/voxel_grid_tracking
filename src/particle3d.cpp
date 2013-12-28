@@ -74,9 +74,9 @@ void Particle3d::transform(const Eigen::MatrixXd & R, const Eigen::VectorXd & t,
     m_vy = finalPosAndVel(4);
     m_vz = finalPosAndVel(5);
     
-//     m_vx = newPosAndVel(3);
-//     m_vy = newPosAndVel(4);
-//     m_vz = newPosAndVel(5);
+    m_vx = newPosAndVel(3);
+    m_vy = newPosAndVel(4);
+    m_vz = newPosAndVel(5);
 }
 
 ostream& operator<<(ostream & stream, const Particle3d & in) {

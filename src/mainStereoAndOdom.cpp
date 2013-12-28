@@ -59,7 +59,7 @@ using namespace std;
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
 void testStereoTracking();
 void testPointCloud();
-void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
+void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, const uint32_t & idx);
 
 // Definitions
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
@@ -137,7 +137,7 @@ void testPointCloud() {
     visualizePointCloud(pointCloud);
 }
 
-void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
+void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, const uint32_t & idx) {
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     
@@ -161,10 +161,11 @@ void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl
     pcl::toROSMsg (*tmpPointCloud, cloudMsg);
     cloudMsg.header.frame_id = CAMERA_FRAME_ID;
     cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = idx;
     
     pointCloudPub.publish(cloudMsg);
     
-    ros::spinOnce();
+//     ros::spinOnce();
 }
 
 void testStereoTracking() {
@@ -221,11 +222,12 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 1; //55;
+            initialIdx = 1; //72; //55;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-//             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");
+            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0015_sync");
-            seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
+//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
+//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
             leftImagePattern = "image_02/data/%010d.png";
             rightImagePattern = "image_03/data/%010d.png";
             
@@ -286,6 +288,11 @@ void testStereoTracking() {
     sgbmParams.speckleWindowSize = 100;
     sgbmParams.speckleRange = 32;    
     sgbmParams.fullDP = true;
+    
+    rosgraph_msgs::Clock clockMsg;
+    clockMsg.clock = ros::Time(0.0);
+    clockPub.publish(clockMsg);
+    ros::spinOnce();
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
         //         stringstream ss;
@@ -374,10 +381,6 @@ void testStereoTracking() {
         posTheta += yaw; 
         accTime += deltaTime;
         
-        rosgraph_msgs::Clock clockMsg;
-        clockMsg.clock = ros::Time(accTime);
-        clockPub.publish(clockMsg);
-        
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
@@ -396,6 +399,7 @@ void testStereoTracking() {
             tmpPointCloud->push_back(newPoint);
         }
         
+        publishPointCloud(pointCloudPub, tmpPointCloud, i);
         
         static tf::TransformBroadcaster broadcaster;
         tf::StampedTransform transform;
@@ -416,9 +420,12 @@ void testStereoTracking() {
         leftImgPub.publish(tmpLeft.toImageMsg());
         rightImgPub.publish(tmpRight.toImageMsg());
         
-//         publishPointCloud(pointCloudPub, pointCloud);
+        rosgraph_msgs::Clock clockMsg;
+        clockMsg.clock = ros::Time(accTime);
+        clockPub.publish(clockMsg);
         
-        publishPointCloud(pointCloudPub, tmpPointCloud);
+        ros::spinOnce();
+//         publishPointCloud(pointCloudPub, pointCloud);
 //         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
         
 //         map2odomTfBroadcaster.sendTransform(

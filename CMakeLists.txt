@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   camera_calibration_parsers
+  message_generation
 )
 
 set(ROS_BUILD_TYPE Debug)
@@ -63,11 +64,14 @@ INCLUDE("libs/libElas.cmake")
 #######################################
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  point_2d.msg
+  Vector2.msg
+  roi_and_speed_2d.msg
+  roi_and_speed_3d.msg
+  roiArray.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -77,10 +81,11 @@ INCLUDE("libs/libElas.cmake")
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -94,7 +99,7 @@ INCLUDE("libs/libElas.cmake")
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES polar_grid_tracking_ros
-#  CATKIN_DEPENDS roscpp std_msgs
+ CATKIN_DEPENDS roscpp std_msgs tf tf2_ros cv_bridge image_transport camera_calibration_parsers message_runtime
 #  DEPENDS system_lib
 )
 
