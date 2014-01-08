@@ -1,0 +1,85 @@
+<launch>
+    <arg name="namespace" default="testGridTracking"/>
+  <param name="use_sim_time" value="true"/>
+
+<node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 -1.57 map odom 100" />
+<!-- <node pkg="tf" type="static_transform_publisher" name="odom2baselink" args="0 0 0 0 0 0 odom base_link 100" /> -->
+<node pkg="tf" type="static_transform_publisher" name="baselink2basefootprint" args="0 0 0 0 0 0 base_link base_footprint 100" />
+<!-- <node pkg="tf" type="static_transform_publisher" name="baselink2leftcam" args="0 0 0.4 0 0 0 base_footprint left_cam 100" /> -->
+<node pkg="tf" type="static_transform_publisher" name="basefootprint2baseleftcam" args="0 -0.4 0 0 0 0 base_footprint base_left_cam 100" />
+<node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 0 0 0 0 1.57 base_left_cam left_cam 100" />
+
+<include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
+    <arg name="manager" value="$(arg namespace)/point_cloud2" />
+    <arg name="respawn" value="false" />
+    <arg name="left" value="left" />
+    <arg name="right" value="right" />
+</include>
+
+<node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
+        <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
+<!--     <remap from="image" to="image_rect"/> -->
+</node>
+   
+
+<group ns="$(arg namespace)">
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
+    <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
+    </node> 
+<!--    <node name="stereo_generator" pkg="stereo_image_proc" type="stereo_image_proc" output="screen" required="true" >
+        <remap from="left/image_raw" to="stereo_and_odom/left/image" />
+        <remap from="left/camera_info" to="stereo_and_odom/left/camera_info" />
+        <remap from="right/image_raw" to="stereo_and_odom/right/image" />
+        <remap from="right/camera_info" to="stereo_and_odom/right/camera_info" />
+    </node>-->
+    
+<!--             <node launch-prefix="gdb &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+    <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
+<!--     <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+            <remap from="~/deltaTime"
+                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />
+            <remap from="~/pointCloudStereo"
+                    to="/$(arg namespace)/pointCloudFiltered" />
+    </node>
+</group>
+
+<group ns="filters">
+    <!-- PCL Manager -->
+     <node pkg="nodelet" type="nodelet" name="box_filter_pcl_manager" args="manager" output="screen"/>
+    
+    <!-- Run a passthrough filter to delimit in x direction -->
+    <node pkg="nodelet" type="nodelet" name="psx" args="load pcl/PassThrough box_filter_pcl_manager" output="screen">
+        <remap from="~input" to="/$(arg namespace)/stereo_and_odom/pointCloudStereo" />
+        <rosparam>
+            filter_field_name: x
+            filter_limit_min: -4.0
+            filter_limit_max: 4.0
+        </rosparam>
+    </node>
+
+    <!-- Run a passthrough filter to delimit in y direction -->
+    <node pkg="nodelet" type="nodelet" name="psy" args="load pcl/PassThrough box_filter_pcl_manager" output="screen">
+        <remap from="~input" to="psx/output" />
+        <rosparam>
+            filter_field_name: y
+            filter_limit_min: 0.0
+            filter_limit_max: 24.0
+        </rosparam>
+    </node>
+
+    <!-- Run a passthrough filter to delimit in z direction -->
+    <node pkg="nodelet" type="nodelet" name="psz" args="load pcl/PassThrough box_filter_pcl_manager" output="screen">
+        <remap from="~input" to="psy/output" />
+        <remap from="~output" to="/$(arg namespace)/pointCloudFiltered" />
+        <rosparam>
+            filter_field_name: z
+            filter_limit_min: -0.1
+            filter_limit_max: 3.5
+        </rosparam>
+    </node>
+</group>
+
+<node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+    $(find PolarGridTracking)/config/PolarGridTracking.rviz"/>
+    
+</launch>
