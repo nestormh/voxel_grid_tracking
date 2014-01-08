@@ -80,11 +80,13 @@ add_executable(stereo_and_odom
 #     utils.cpp
 #     libvisohelper.cpp
 #     ${VISO_FILES}
+    ${POLAR_CALIBRATION_CPP_FILES}
     ${LIBELAS_SRC_FILES}
     mainStereoAndOdom.cpp
 )
 
 include_directories(stereo_and_odom
+    ${POLAR_CALIBRATION_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}/pcl-1.7
     ${OpenCV_INCLUDE_DIR}
     ${LIBELAS_INCLUDE_DIRS}

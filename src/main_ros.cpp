@@ -188,10 +188,14 @@ void testStereoTracking() {
     sgbmParams.fullDP = true;
     
     // TODO: Read from a parameters file
-    uint32_t rows = 60; // 400
-    uint32_t cols = 60; // 128
-    double cellSizeX = 0.2; // 0.1
-    double cellSizeZ = 0.2; // 0.1
+    uint32_t rows = 96; // 400
+    uint32_t cols = 32; // 128
+    double cellSizeX = 0.25; // 0.1
+    double cellSizeZ = 0.25; // 0.1
+//     uint32_t rows = 60; // 400
+//     uint32_t cols = 60; // 128
+//     double cellSizeX = 0.2; // 0.1
+//     double cellSizeZ = 0.2; // 0.1
     double maxVelX = 5.0; // 0.1
     double maxVelZ= 5.0; // 0.1 
     double particlesPerCell = 1000; //1000;
@@ -299,7 +303,7 @@ void testStereoTracking() {
 }
 
 void polarTracking() {
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::BAHNHOFSTRASSE;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
     
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
     

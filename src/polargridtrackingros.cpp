@@ -46,6 +46,26 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
                                                               gridDepthFactor, gridColumnFactor, yawInterval,
                                                               threshYaw, threshMagnitude)
 {
+    // TODO: Get from params
+//     m_cameraParams.minX = 0.0;
+//     m_cameraParams.minY = 0.0;
+//     m_cameraParams.width = 1244;
+//     m_cameraParams.height = 370;
+//     m_cameraParams.u0 = 604.081;
+//     m_cameraParams.v0 = 180.507;
+//     m_cameraParams.ku = 707.049;
+//     m_cameraParams.kv = 707.049;
+//     m_cameraParams.distortion = 0;
+//     m_cameraParams.baseline = 0.472539;
+//     m_cameraParams.R = Eigen::MatrixXd(3, 3);
+//     m_cameraParams.R << 0.999984, -0.00501274, -0.00271074,
+//     0.00500201, 0.99998, -0.00395038,
+//     0.00273049, 0.00393676, 0.999988;
+//     m_cameraParams.t = Eigen::MatrixXd(3, 1);
+//     m_cameraParams.t << 0.0598969, -1.00137, 0.00463762;
+    
+    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    
     ros::NodeHandle nh("~");
     m_pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloud", 1);
     m_extendedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("extendedPointCloud", 1);
@@ -59,46 +79,62 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 10);
     m_roiPub = nh.advertise<visualization_msgs::MarkerArray>("obstaclesROI", 10);
     m_pointCloudInObstaclePub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudInObstacle", 1);
+    
+    m_lastMapOdomTransform.stamp_ = ros::Time(-1);
+    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloudStereo", 0, boost::bind(&PolarGridTrackingROS::pointCloudCallback, this, _1));
 }
 
 void PolarGridTrackingROS::start()
 {
-
-    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     tf::StampedTransform lastMapOdomTransform;
     lastMapOdomTransform.stamp_ = ros::Time(-1);
     
-    ros::NodeHandle nh("~");
-    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloudStereo", 1, boost::bind(&PolarGridTrackingROS::pointCloudCallback, this, _1));
-        
     tf::TransformListener listener;
     tf::StampedTransform transform;
-    ros::Rate rate(10.0);
     while (ros::ok()) {
+        ros::spinOnce();
         try{
-            while (! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01)));
+            while ((! listener.waitForTransform ("/map", "/left_cam", ros::Time(0), ros::Duration(10.0), ros::Duration(0.000001))) && (ros::ok()));
             
-            listener.lookupTransform("/map", "/odom", ros::Time(0), transform);
+            listener.lookupTransform("/map", "/left_cam", ros::Time(0), transform);
             if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
                 if (lastMapOdomTransform.stamp_ != transform.stamp_) {
-                    // FIXME: Get the time increment from the timestamp, not from the Z
-                    const double deltaTime = transform.getOrigin().getZ() - lastMapOdomTransform.getOrigin().getZ();
-                    
-                    double yaw, yaw1, yaw2, pitch, roll;
-                    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw2);
-                    tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch, yaw1);
+                    double yaw, yaw1, yaw2, pitch, pitch1, pitch2, roll;
+                    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch2, yaw2);
+                    tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch1, yaw1);
                     yaw = yaw2 - yaw1;
+                    pitch = pitch2 - pitch1;
                     
-                    double deltaX = transform.getOrigin().getX() - lastMapOdomTransform.getOrigin().getX();
-                    double deltaY = transform.getOrigin().getY() - lastMapOdomTransform.getOrigin().getY();
+                    double deltaX = lastMapOdomTransform.getOrigin().getX() - transform.getOrigin().getX();
+                    double deltaY = lastMapOdomTransform.getOrigin().getY() - transform.getOrigin().getY();
+                    double deltaZ = lastMapOdomTransform.getOrigin().getZ() - transform.getOrigin().getZ();
                     
-                    double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY);
+                    m_deltaTime = transform.stamp_.toSec() - lastMapOdomTransform.stamp_.toSec();
+                    
+                    double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
                     double speed = 0.0;
                     if (deltaS != 0.0) {
-                        speed = deltaS / deltaTime;
+                        speed = deltaS / m_deltaTime;
                     }
                     
-                    setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
+                    cout << "Transformation Received!!!!" << endl;
+                    cout << "yaw " << yaw << endl;
+                    cout << "yaw1 " << yaw1 << endl;
+                    cout << "yaw2 " << yaw2 << endl;
+                    cout << "pitch " << pitch << endl;
+                    cout << "deltaX " << deltaX << endl;
+                    cout << "deltaY " << deltaY << endl;
+                    cout << "deltaS " << deltaS << endl;
+                    cout << "lastMapOdomTransform " << cv::Point3d(lastMapOdomTransform.getOrigin().getX(), 
+                                                                   lastMapOdomTransform.getOrigin().getY(),
+                                                                   lastMapOdomTransform.getOrigin().getZ()) << endl;
+                    cout << "transform " << cv::Point3d(transform.getOrigin().getX(), 
+                                                        transform.getOrigin().getY(),
+                                                        transform.getOrigin().getZ()) << endl;
+                    cout << "speed " << speed << endl;
+                    cout << "m_deltaTime " << m_deltaTime << endl;
+
+                    setDeltaYawSpeedAndTime(yaw, speed, m_deltaTime);
                     
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
                     pcl::copyPointCloud(*m_pointCloud, *pointCloud);
@@ -107,22 +143,74 @@ void PolarGridTrackingROS::start()
                 }
             }
             lastMapOdomTransform = transform;
+//             ros::spinOnce();
         } catch (tf::TransformException ex){
             ROS_ERROR("%s",ex.what());
         }
         
-        
-        
-        rate.sleep();
     }
     
-    ros::spin();
+    
+    //     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+//     tf::StampedTransform lastMapOdomTransform;
+//     lastMapOdomTransform.stamp_ = ros::Time(-1);
+//     
+//     tf::TransformListener listener;
+//     tf::StampedTransform transform;
+//     ros::Rate rate(10.0);
+//     while (ros::ok()) {
+//         try{
+//             while (! listener.waitForTransform ("/map", "/odom", ros::Time(0), ros::Duration(10.0), ros::Duration(0.01)));
+//             
+//             listener.lookupTransform("/map", "/odom", ros::Time(0), transform);
+//             if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
+//                 if (lastMapOdomTransform.stamp_ != transform.stamp_) {
+//                     // FIXME: Get the time increment from the timestamp, not from the Z
+//                     const double deltaTime = transform.getOrigin().getZ() - lastMapOdomTransform.getOrigin().getZ();
+//                     
+//                     double yaw, yaw1, yaw2, pitch, roll;
+//                     tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw2);
+//                     tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch, yaw1);
+//                     yaw = yaw2 - yaw1;
+//                     
+//                     double deltaX = transform.getOrigin().getX() - lastMapOdomTransform.getOrigin().getX();
+//                     double deltaY = transform.getOrigin().getY() - lastMapOdomTransform.getOrigin().getY();
+//                     
+//                     double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY);
+//                     double speed = 0.0;
+//                     if (deltaS != 0.0) {
+//                         speed = deltaS / deltaTime;
+//                     }
+//                     
+//                     setDeltaYawSpeedAndTime(yaw, speed, deltaTime);
+//                     
+//                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+//                     pcl::copyPointCloud(*m_pointCloud, *pointCloud);
+//                     
+//                     compute(pointCloud);
+//                 }
+//             }
+//             lastMapOdomTransform = transform;
+//         } catch (tf::TransformException ex){
+//             ROS_ERROR("%s",ex.what());
+//         }
+//         
+//         
+//         
+//         rate.sleep();
+//     }
+//     
+//     ros::spin();
 }
 
 void PolarGridTrackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 {
+    m_currentId = msg->header.seq;
+//     pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
+//     cout << "Received point cloud " << msg->header.seq << " with size = " << m_pointCloud->size() << endl;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *tmpPointCloud);
+    cout << "Received point cloud " << msg->header.seq << " with size = " << tmpPointCloud->size() << endl;
     
     m_pointCloud->clear();
     
@@ -133,7 +221,7 @@ void PolarGridTrackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::Co
         pcl::PointXYZRGB newPoint;
         
         newPoint.x = point.x - m_cellSizeX / 2.0;
-        newPoint.y = -(point.z - m_cellSizeZ / 2.0);
+        newPoint.y = (point.z - m_cellSizeZ / 2.0);
         newPoint.z = point.y;
         newPoint.r = point.r;
         newPoint.g = point.g;
@@ -152,14 +240,14 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
 //     drawTopDownMap(pointCloud);
     
     getMeasurementModel();
-
+// 
     if (m_initialized) {
         prediction();
         measurementBasedUpdate();
         reconstructObjects(pointCloud);
     } 
     publishParticles(m_oldParticlesPub, 2.0);
-
+// 
     initialization();
     
 //     if (! m_initialized) {
@@ -714,6 +802,44 @@ void PolarGridTrackingROS::publishROIs()
 
 
         obstaclesROI.markers.push_back(line_list);
+        
+        visualization_msgs::Marker obstacles;
+        obstacles.header.frame_id = "left_cam";
+        obstacles.header.stamp = ros::Time();
+        obstacles.id = i;
+        line_list.ns = "rois";
+        obstacles.type = visualization_msgs::Marker::CUBE;
+        obstacles.action = visualization_msgs::Marker::ADD;
+        
+        const double minX = points[0].x;
+        const double maxX = points[1].x;
+        const double minY = points[0].y;
+        const double maxY = points[6].y;
+        const double maxZ = points[2].z;
+        
+        const double & normYaw = sqrt(centroid.x * centroid.x + centroid.y * centroid.y);
+        double yaw = acos(centroid.y / normYaw);
+        if (centroid.x > 0)
+            yaw = -yaw;
+        
+        const tf::Quaternion & quat = tf::createQuaternionFromRPY(0.0, 0.0, yaw);
+        
+        obstacles.pose.position.x = centroid.x;
+        obstacles.pose.position.y = centroid.y;
+        obstacles.pose.position.z = centroid.z;
+        obstacles.pose.orientation.x = quat.x();
+        obstacles.pose.orientation.y = quat.y();
+        obstacles.pose.orientation.z = quat.z();
+        obstacles.pose.orientation.w = quat.w();
+        obstacles.scale.x = maxX - minX;
+        obstacles.scale.y = maxY - minY;
+        obstacles.scale.z = maxZ;
+        obstacles.color.a = 0.5;
+        obstacles.color.r = line_list.color.r;
+        obstacles.color.g = line_list.color.g;
+        obstacles.color.b = line_list.color.b;
+        
+        obstaclesROI.markers.push_back(obstacles);
      
         // Orientation
         visualization_msgs::Marker orientation;

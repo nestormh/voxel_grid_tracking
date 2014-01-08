@@ -85,7 +85,7 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerCell = 100;
+    m_particlesPerCell = 1000;
     m_threshProbForCreation = 0.2;
     
     m_neighBorX = 1;
@@ -400,9 +400,9 @@ void VoxelGridTracking::particleToVoxel(const Particle3d & particle,
 
 void VoxelGridTracking::prediction()
 {
-    const double speed = m_speed;
-    const double deltaYaw = m_deltaYaw;
-    const double deltaPitch = m_deltaPitch;
+    const double speed = 0.0; //m_speed;
+    const double deltaYaw = 0.0; //m_deltaYaw;
+    const double deltaPitch = 0.0; //m_deltaPitch;
     
     const double dx = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
     const double dy = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
@@ -793,6 +793,22 @@ void VoxelGridTracking::publishParticles()
 
 void VoxelGridTracking::publishMainVectors()
 {
+    visualization_msgs::MarkerArray vectorCleaners;
+    
+    for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
+        visualization_msgs::Marker voxelMarker;
+        voxelMarker.header.frame_id = m_baseFrame;
+        voxelMarker.header.stamp = ros::Time();
+        voxelMarker.id = i;
+        voxelMarker.ns = "mainVectors";
+        voxelMarker.type = visualization_msgs::Marker::ARROW;
+        voxelMarker.action = visualization_msgs::Marker::DELETE;
+        
+        vectorCleaners.markers.push_back(voxelMarker);
+    }
+    
+    m_mainVectorsPub.publish(vectorCleaners);
+    
     visualization_msgs::MarkerArray mainVectors;
     
     uint32_t idCount = 0;
@@ -829,7 +845,6 @@ void VoxelGridTracking::publishMainVectors()
                     origin.y = voxel.centroidY();
                     origin.z = voxel.centroidZ();
                     
-                    
                     dest.x = voxel.centroidX() + voxel.vx() * m_deltaTime;
                     dest.y = voxel.centroidY() + voxel.vy() * m_deltaTime;
                     dest.z = voxel.centroidZ() + voxel.vz() * m_deltaTime;
@@ -850,7 +865,7 @@ void VoxelGridTracking::publishObstacles()
 {
     visualization_msgs::MarkerArray voxelCleaners;
     
-    for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION; i++) {
+    for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
         visualization_msgs::Marker voxelMarker;
         voxelMarker.header.frame_id = m_baseFrame;
         voxelMarker.header.stamp = ros::Time();

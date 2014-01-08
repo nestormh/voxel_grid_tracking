@@ -150,6 +150,8 @@ void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::P
         const uint32_t xPos = (point.x - minX) * factorX;
         const uint32_t zPos = point.z * factorZ;
         
+//         cout << cv::Point3d(point.x, point.y, point.z) << " --> " << cv::Point2d(xPos, zPos) << endl;
+        
         if ((xPos > 0) && (xPos < m_grid.cols()) && 
             (zPos > 0) && (zPos < m_grid.rows())) {
         
@@ -374,7 +376,7 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
         if ((point.x >= minX) && (point.x <= maxX) && (point.z <= maxZ)) {
             PointXYZRGBDirected destPoint;
             destPoint.x = point.x;
-            destPoint.y = -point.y;
+            destPoint.y = point.y;
             destPoint.z = point.z;
             
             destPoint.r = point.r;

@@ -14,6 +14,7 @@
  *  limitations under the License.
  */
 #include "ObstaclesFromStereo.h"
+#include "tracklets.h"
 
 #include <fstream>
 #include <iostream>
@@ -22,7 +23,10 @@
 
 #include <boost/foreach.hpp>
 
+#include <ros/ros.h>
+
 #include <opencv2/core/core.hpp>
+#include <tf/transform_datatypes.h>
 
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
@@ -778,3 +782,101 @@ void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_
     egoValues[0].deltaPos = 0;
 }
 
+vector< PolarGridTracking::roiArray > ObstaclesFromStereo::readROIList(const string & trackletsPath, const uint32_t & sequenceLength)
+{
+//     cout << "trackletsPath " << trackletsPath << endl;
+//     
+//     Tracklets tracklets;
+//     if (! tracklets.loadFromFile(trackletsPath)) {
+//         ROS_FATAL("Tracklets file could not be opened");
+//         exit(0);
+//     }
+// 
+//     vector< PolarGridTracking::roiArray > trackletList(sequenceLength);
+//     BOOST_FOREACH(PolarGridTracking::roiArray & roiMsg, trackletList) {
+//         roiMsg.rois2d.resize(sequenceLength);
+//         roiMsg.rois3d.resize(sequenceLength);
+//     }
+// //     PolarGridTracking::roiArray roiMsg;
+// //     roiMsg.rois3d.resize(m_obstacles.size());
+// //     roiMsg.rois2d.resize(m_obstacles.size());
+// //     
+// //     roiMsg.id = m_currentId;
+// //     roiMsg.header.frame_id = DEFAULT_BASE_FRAME;
+// //     roiMsg.header.stamp = ros::Time::now();
+//     
+//     for (uint32_t i = 0; i < sequenceLength; i++) {
+//         PolarGridTracking::roiArray & roiMsg = trackletList[i];
+//         
+//         for (uint32_t j = 0; j < tracklets.numberOfTracklets(); j++) {
+//             Tracklets::tTracklet & tracklet =  *(tracklets.getTracklet(j));
+//             Tracklets::tPose * pose;
+//             if (tracklets.getPose(j, i, pose)) {
+//                 roiMsg.rois3d[j].A.x = 
+//             }
+//         }
+// //         const vector<Tracklets::tPose> & poses = tracklet.poses;
+// //         for (uint32_t idx = tracklet.first_frame, j = 0; j <= poses.size(); j++, idx++) {
+// //             const Tracklets::tPose & pose = poses[j];
+// //             
+// //             PolarGridTracking::roiArray & roiMsg = trackletList[idx];
+// //             
+// //             // TODO: Compensate the Velodyne Rt in order to reference obstacle w.r.t the left camera.
+// //             roiMsg.rois3d.resize(tracklets.s);
+// //         }
+//     }
+//     
+//     exit(0);
+}
+
+vector< visualization_msgs::MarkerArray > ObstaclesFromStereo::readMarkerList(const string & trackletsPath, const uint32_t & sequenceLength)
+{
+    Tracklets tracklets;
+    if (! tracklets.loadFromFile(trackletsPath)) {
+        ROS_FATAL("Tracklets file could not be opened");
+        exit(0);
+    }
+    
+    vector< visualization_msgs::MarkerArray > trackletList(sequenceLength);
+    BOOST_FOREACH(visualization_msgs::MarkerArray & markers, trackletList) {
+        markers.markers.resize(sequenceLength);
+    }
+    
+    for (uint32_t i = 0; i < sequenceLength; i++) {
+        visualization_msgs::MarkerArray & markers = trackletList[i];
+        
+        for (uint32_t j = 0; j < tracklets.numberOfTracklets(); j++) {
+            Tracklets::tTracklet & tracklet =  *(tracklets.getTracklet(j));
+            Tracklets::tPose * pose;
+            if (tracklets.getPose(j, i, pose)) {
+                visualization_msgs::Marker voxelMarker;
+                voxelMarker.ns = "voxels";
+                voxelMarker.type = visualization_msgs::Marker::CUBE;
+                voxelMarker.action = visualization_msgs::Marker::ADD;
+                
+                voxelMarker.pose.position.x = -pose->ty;
+                voxelMarker.pose.position.y = pose->tx/* - 1.8*/;
+                voxelMarker.pose.position.z = -(tracklet.h / 2.0 + pose->tz);
+                
+                const tf::Quaternion & quat = tf::createQuaternionFromRPY(pose->rx, pose->ry, pose->rz);
+                
+                voxelMarker.pose.orientation.x = quat.x();
+                voxelMarker.pose.orientation.y = quat.y();
+                voxelMarker.pose.orientation.z = quat.z();
+                voxelMarker.pose.orientation.w = quat.w();
+                voxelMarker.scale.x = tracklet.w;
+                voxelMarker.scale.y = tracklet.l;
+                voxelMarker.scale.z = tracklet.h;
+                voxelMarker.color.r = (double)rand() / RAND_MAX;
+                voxelMarker.color.g = (double)rand() / RAND_MAX;
+                voxelMarker.color.b = (double)rand() / RAND_MAX;
+                voxelMarker.color.a = 0.5;
+                
+                markers.markers.push_back(voxelMarker);
+            }
+        }
+
+    }
+    
+    return trackletList;
+}

@@ -175,6 +175,8 @@ void testStereoTracking() {
     ros::Publisher pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStereo", 1);
 //     ros::Publisher deltaTimePub = nh.advertise<std_msgs::Float64> ("deltaTime", 1);
     ros::Publisher clockPub = nh.advertise<rosgraph_msgs::Clock> ("/clock", 1);
+    
+    ros::Publisher markersPub = nh.advertise<visualization_msgs::MarkerArray> ("tmpMarkers", 1);
     tf::TransformBroadcaster map2odomTfBroadcaster;
     
     image_transport::ImageTransport it(nh);
@@ -186,12 +188,15 @@ void testStereoTracking() {
     sensor_msgs::CameraInfo leftCameraInfo, rightCameraInfo;
     
     uint32_t initialIdx;
+    uint32_t lastIdx = 1000;
     boost::filesystem::path correspondencesPath;
     boost::filesystem::path seqName;
     string leftImagePattern;
     string rightImagePattern;
     vector<polar_grid_tracking::t_Camera_params> cameraParams;
     vector< t_ego_value > egoValues;
+    
+    vector< visualization_msgs::MarkerArray > markers;
     
     double posX = 0.0, posY = 0.0, posTheta = 0.0, accTime = 0.0;
     
@@ -222,12 +227,13 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 1; //72; //55;
+            initialIdx = 72; //55;
+            lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
+//             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0015_sync");
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
-//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
+            seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
             leftImagePattern = "image_02/data/%010d.png";
             rightImagePattern = "image_03/data/%010d.png";
             
@@ -242,6 +248,9 @@ void testStereoTracking() {
             string rightCalibFileName = "/local/imaged/Karlsruhe/2011_09_28/right_calib.yaml";
             string rightCameraName = "right_camera";
             camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
+            
+//             file:///local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml
+            markers = ObstaclesFromStereo::readMarkerList((correspondencesPath / seqName / "tracklet_labels.xml").string(), lastIdx);
             
             leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
             rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
@@ -419,6 +428,19 @@ void testStereoTracking() {
 
         leftImgPub.publish(tmpLeft.toImageMsg());
         rightImgPub.publish(tmpRight.toImageMsg());
+        
+        visualization_msgs::MarkerArray & markersMsg = markers[i - 1];
+        if (markersMsg.markers.size() > 0) {
+//             BOOST_FOREACH(visualization_msgs::Marker & marker, markersMsg.markers) {
+            for (uint32_t j = 0; j < markersMsg.markers.size(); j++) {
+                visualization_msgs::Marker & marker = markersMsg.markers[j];
+                marker.ns = "tmpMarkers";
+                marker.id = j;
+                marker.header.stamp = ros::Time::now();
+                marker.header.frame_id = CAMERA_FRAME_ID;
+            }
+            markersPub.publish(markersMsg);
+        }
         
         rosgraph_msgs::Clock clockMsg;
         clockMsg.clock = ros::Time(accTime);

@@ -72,6 +72,9 @@ protected:
     
     ros::Subscriber m_pointCloudSub;
     
+    tf::StampedTransform m_lastMapOdomTransform;
+    uint32_t m_currentId;
+    
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
 };
 

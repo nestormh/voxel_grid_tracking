@@ -47,6 +47,7 @@ find_package(PCL 1.6 REQUIRED)
 # find_package(MPFR REQUIRED)
 find_package(octomap REQUIRED)
 
+INCLUDE("${POLAR_CALIBRATION_PATH}/PolarCalibration.cmake")
 INCLUDE("${STIXEL_WORLD_PATH}/StixelWorld.cmake")
 INCLUDE("libs/libElas.cmake")
 

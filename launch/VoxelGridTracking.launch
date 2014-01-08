@@ -28,12 +28,12 @@
 <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
     <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
     </node> 
-    <node name="stereo_generator" pkg="stereo_image_proc" type="stereo_image_proc" output="screen" required="true" >
+<!--    <node name="stereo_generator" pkg="stereo_image_proc" type="stereo_image_proc" output="screen" required="true" >
         <remap from="left/image_raw" to="stereo_and_odom/left/image" />
         <remap from="left/camera_info" to="stereo_and_odom/left/camera_info" />
         <remap from="right/image_raw" to="stereo_and_odom/right/image" />
         <remap from="right/camera_info" to="stereo_and_odom/right/camera_info" />
-    </node>
+    </node>-->
     
 <!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
 <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
@@ -54,8 +54,8 @@
         <remap from="~input" to="/$(arg namespace)/stereo_and_odom/pointCloudStereo" />
         <rosparam>
             filter_field_name: x
-            filter_limit_min: -6.0
-            filter_limit_max: 6.0
+            filter_limit_min: -4.0
+            filter_limit_max: 4.0
         </rosparam>
     </node>
 
@@ -81,7 +81,7 @@
     </node>
 </group>
 
-<node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+<node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
       $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
 <!--<node pkg="rosbag" type="record"  name="rosbag"
     args="-a -j -o /tmp/2011_09_26_drive_0091_sync_" />-->

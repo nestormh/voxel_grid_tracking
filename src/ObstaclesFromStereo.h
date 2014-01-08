@@ -30,6 +30,10 @@
 
 #include "params_structs.h"
 
+#include "PolarGridTracking/roiArray.h"
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+
 using namespace std;
 using namespace polar_grid_tracking;
 
@@ -67,6 +71,9 @@ public:
     static void readEgoValues(const std::string & pathName, vector <t_ego_value> & egoValues);
 
     static void showCameraParams(const t_Camera_params & params);
+    
+    static vector <PolarGridTracking::roiArray> readROIList(const string & trackletsPath, const uint32_t & sequenceLength);
+    static vector< visualization_msgs::MarkerArray > readMarkerList(const string & trackletsPath, const uint32_t & sequenceLength);
 private:
     void setParamsGeometry(t_Camera_params & params);
     void filterMasked(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & inputCloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & outputCloud);

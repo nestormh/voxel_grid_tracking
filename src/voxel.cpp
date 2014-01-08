@@ -27,7 +27,7 @@ using namespace std;
 namespace voxel_grid_tracking {
     
 // FIXME: Use a bigger value after implementing this stage over the GPU
-#define DISPARITY_COMPUTATION_ERROR 0.75//0.075
+#define DISPARITY_COMPUTATION_ERROR 0.075//0.075
 
 Voxel::Voxel() 
 {
