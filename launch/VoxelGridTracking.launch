@@ -2,12 +2,21 @@
   <arg name="namespace" default="VoxelGridTracking"/>
   <param name="use_sim_time" value="true"/>
 
-<node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 -1.57 map odom 100" />
-<!-- <node pkg="tf" type="static_transform_publisher" name="odom2baselink" args="0 0 0 0 0 0 odom base_link 100" /> -->
-<node pkg="tf" type="static_transform_publisher" name="baselink2basefootprint" args="0 0 0 0 0 0 base_link base_footprint 100" />
-<!-- <node pkg="tf" type="static_transform_publisher" name="baselink2leftcam" args="0 0 0.4 0 0 0 base_footprint left_cam 100" /> -->
-<node pkg="tf" type="static_transform_publisher" name="basefootprint2baseleftcam" args="0 -0.4 0 0 0 0 base_footprint base_left_cam 100" />
-<node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 0 0 0 0 1.57 base_left_cam left_cam 100" />
+  <!--Security copy-->
+   <!--<node pkg="tf" type="static_transform_publisher" name="map2basefootprint" args="1 0 0 0 0 0 map base_footprint 100" />
+   <node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 0 0 0 base_footprint base_link 100" />
+   <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="1 0 0 -1.57 0 -1.57 base_link base_left_cam 100" />
+   <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" />-->  
+
+<node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 1.57 0 0 map odom 100" />
+<node pkg="tf" type="static_transform_publisher" name="libvisoframe2basefootprint" args="0 0 0 0 0 0 libviso_frame base_footprint 100" />
+
+<!-- <node pkg="tf" type="static_transform_publisher" name="map2basefootprint" args="1 0 0 0 0 0 map base_footprint 100" /> -->
+<node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 0 0 0 base_footprint base_link 100" />
+<node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="1 0 0 -1.57 0 -1.57 base_link base_left_cam 100" />
+<node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" />
+<!--<node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0 -0.4 0 0 0 0 base_link base_left_cam 100" />
+<node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 0 0 0 0 1.57 base_left_cam left_cam 100" />-->
 
 <include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
     <arg name="manager" value="$(arg namespace)/point_cloud2" />
@@ -17,7 +26,10 @@
 </include>
 
 <node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
-        <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
+    <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
+    <param name="base_link_frame_id" value="libviso_frame" />
+    <param name="odom_frame_id" value="odom" />
+
 <!--     <remap from="image" to="image_rect"/> -->
 </node>
    
@@ -84,6 +96,6 @@
 <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
       $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
 <!--<node pkg="rosbag" type="record"  name="rosbag"
-    args="-a -j -o /tmp/2011_09_26_drive_0091_sync_" />-->
+    args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     
 </launch>

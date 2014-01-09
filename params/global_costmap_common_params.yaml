@@ -1,0 +1,33 @@
+#START VOXEL STUFF
+map_type: costmap
+map_topic: nav_map
+origin_z: 0.0
+z_resolution: 1 #0.2
+z_voxels: 1 #50 #10
+unknown_threshold: 2000
+mark_threshold: 0
+#END VOXEL STUFF
+track_unknown_space: true
+unknown_cost_value: 1
+
+transform_tolerance: 0.3
+obstacle_range: 19.9
+max_obstacle_height: 50.0 #2.0
+raytrace_range: 19.9
+clear_map: false
+static_map: true
+
+footprint: [[-0.75, -0.55], [-0.75, 0.55], [2.05, 0.55], [2.05, -0.55]]
+
+# Parámetros que funcionaban en el laboratorio
+footprint_padding: 0.5
+inflation_radius: 10.0
+cost_scaling_factor: 1.0 #5.0
+lethal_cost_threshold: 254
+
+# footprint_padding: 1.25
+# inflation_radius: 1.5
+# cost_scaling_factor: 100.0 #5.0
+# lethal_cost_threshold: 254
+
+update_frequency: 0.01

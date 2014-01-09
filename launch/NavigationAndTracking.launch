@@ -1,0 +1,49 @@
+<launch>
+  <param name="use_sim_time" value="true"/>
+    
+  <arg name="namespace" default="verdino"/>
+  <arg name="testname" default="parking_ETSII_vacio"/>
+
+    <!--   VoxelGridTracking -->
+    <include file="$(find PolarGridTracking)/launch/VoxelGridTracking.launch"/>
+  
+<!--   <node name="map_server_nav" pkg="map_server" type="map_server" args="$(find grull_maps)/pgm/localization/parking_ETSII_concoches_georreferenciado_gpsgmap_L.yaml" > -->
+<!--        <remap from="map" to="$(arg namespace)/nav_map"/> -->
+<!--   </node>  -->
+  
+<group ns="$(arg namespace)">
+    <node name="map_server_nav" pkg="map_server" type="map_server" args="$(find grull_maps)/pgm/localization/parking_ETSII_vacio.yaml" >
+        <remap from="map" to="nav_map"/>
+    </node>     
+    
+<!--   <node launch-prefix="gdb -ex run &#45;&#45;args" pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen"> -->
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen" required="true">
+        <remap from="/move_base/TrajectoryPlannerROS/verdino/consignaVolante" to="/verdino/consignaVolante"/>
+        <remap from="/move_base/TrajectoryPlannerROS/verdino/consignaVel" to="/verdino/consignaVel"/>
+        <remap from="/move_base/verdino/consignaVel" to="/verdino/consignaVel"/>
+        
+        <remap from="/$(arg namespace)/odom" to="/stereo_odometer/odometry"/>
+        
+<!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
+<!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
+        
+        <param name="controller_frequency" value="5.0" />
+        <param name="planner_frequency" value="0"/>
+        <param name="clear_map" value="true" />
+        <param name="oscillation_distance" value="100.0" />
+        <param name="oscillation_timeout" value="999999.0" />
+
+        <param name="base_local_planner" value="grull_ackermann_base_local_planner/TrajectoryPlannerROS" />
+        <param name="base_global_planner" value="navfn/NavfnROS" />
+
+        <rosparam file="$(find PolarGridTracking)/params/global_costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find PolarGridTracking)/params/local_costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find PolarGridTracking)/params/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find PolarGridTracking)/params/base_local_planner_params.yaml" command="load" />
+
+        <param name="~/global_costmap/robot_base_frame" value="/base_footprint" />
+        <param name="~/local_costmap/robot_base_frame" value="/base_footprint" />
+    </node>
+</group>
+        
+</launch>

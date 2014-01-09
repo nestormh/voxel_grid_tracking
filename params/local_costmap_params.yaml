@@ -1,0 +1,16 @@
+local_costmap:
+  publish_voxel_map: false
+  robot_base_frame: /base_footprint
+  update_frequency: 5.0
+  publish_frequency: 5.0
+  rolling_window: true
+  
+  global_frame: /map
+  map_topic: nav_map
+  
+  static_map: false
+  resolution: 0.1
+  width: 40.0
+  height: 40.0
+  origin_x: 0.0
+  origin_y: 0.0

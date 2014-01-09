@@ -15,11 +15,39 @@
     </node>-->
 </group>
 <node pkg="rosbag" type="play"  name="rosbag" output="screen" required="true"
-    args="&#45;&#45;clock &#45;&#45;pause -d 0 -s 0 -r 1 $(find bags)/local/Karlsruhe_2011_09_26_drive_0091_sync_filtered.bag &#45;&#45;topics \
-    /tf \
-    /VoxelGridTracking/pointCloudFiltered \
-    /clock" />
+    args="&#45;&#45;clock -d 0 -s 1 -l /tmp/2011_09_26_drive_0091_sync__2014-01-08-17-34-39.bag" />2011_09_26_drive_0091_sync__2014-01-08-17-34-39.bag
+<!--     args="&#45;&#45;clock &#45;&#45;pause -d 0 -s 0 -r 1 $(find bags)/local/Karlsruhe_2011_09_26_drive_0091_sync_filtered.bag" /> -->
+<!--     &#45;&#45;topics \ -->
+<!--     /tf \ -->
+<!--     /VoxelGridTracking/pointCloudFiltered \ -->
+<!--     /clock" /> -->
 
-<node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-        $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
+<node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+    $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
+
+<!--<node pkg="rosbag" type="record"  name="rosbag"
+args="/VoxelGridTracking/VoxelGridTracking/cubes \
+/VoxelGridTracking/VoxelGridTracking/mainVectors \
+/VoxelGridTracking/VoxelGridTracking/obstacleSpeed \
+/VoxelGridTracking/VoxelGridTracking/obstacleSpeedText \
+/VoxelGridTracking/VoxelGridTracking/obstacles \
+/VoxelGridTracking/VoxelGridTracking/particles \
+/VoxelGridTracking/VoxelGridTracking/particlesPosition \
+/VoxelGridTracking/VoxelGridTracking/pointPerVoxel \
+/VoxelGridTracking/VoxelGridTracking/roiArray \
+/VoxelGridTracking/VoxelGridTracking/voxels \
+/VoxelGridTracking/pointCloudFiltered \
+/VoxelGridTracking/stereo_and_odom/left/camera_info \
+/VoxelGridTracking/stereo_and_odom/left/image \
+/VoxelGridTracking/stereo_and_odom/pointCloudStereo \
+/VoxelGridTracking/stereo_and_odom/right/camera_info \
+/VoxelGridTracking/stereo_and_odom/right/image \
+/clock \
+/stereo_odometer/info \
+/stereo_odometer/odometry \
+/stereo_odometer/point_cloud \
+/stereo_odometer/pose \
+/tf \
+/tf_static" />-->
+        
 </launch>
