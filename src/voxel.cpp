@@ -112,7 +112,7 @@ void Voxel::transformParticles(const Eigen::MatrixXd & R, const Eigen::VectorXd 
     m_particles.clear();
 }
 
-void Voxel::setMainVectors() {
+void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ) {
     
     m_vx = 0.0;
     m_vy = 0.0;
@@ -196,6 +196,25 @@ void Voxel::setMainVectors() {
             m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch);
             m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch);
             m_vz = m_magnitude * sin(m_pitch);
+            
+//             m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch) + deltaEgoX;
+//             m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch) + deltaEgoY;
+//             m_vz = m_magnitude * sin(m_pitch) + deltaEgoZ;
+//             
+//             // New magnitudes and angles after ego-motion compensation
+//             m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
+//             
+//             const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
+//             const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
+//             
+//             m_yaw = acos(m_vx / normYaw);
+//             if (m_vy < 0)
+//                 m_yaw = -m_yaw;
+//             
+//             m_pitch = asin(m_vz / normPitch);
+//             
+//             if (m_yaw < 0) m_yaw += M_PI;
+//             if (m_pitch < 0) m_pitch += M_PI;
             
             break;
         }

@@ -67,7 +67,7 @@ public:
     bool isObstacleConnected(const VoxelObstacle & obstacle);
     void joinObstacles(VoxelObstacle & obstacle);
     
-    void updateSpeed(const double & egoDeltaYaw, const double & egoDeltaPitch, const double & egoSpeed);
+    void updateSpeed(const double & egoDeltaX, const double & egoDeltaY, const double & egoDeltaZ);
     
     static double commonVolume(const VoxelObstacle & obst1, const VoxelObstacle & obst2);
     

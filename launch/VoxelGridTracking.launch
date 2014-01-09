@@ -2,32 +2,21 @@
   <arg name="namespace" default="VoxelGridTracking"/>
   <param name="use_sim_time" value="true"/>
 
-  <!--Security copy-->
-   <!--<node pkg="tf" type="static_transform_publisher" name="map2basefootprint" args="1 0 0 0 0 0 map base_footprint 100" />
-   <node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 0 0 0 base_footprint base_link 100" />
-   <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="1 0 0 -1.57 0 -1.57 base_link base_left_cam 100" />
-   <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" />-->  
-
 <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 1.57 0 0 map odom 100" />
-<node pkg="tf" type="static_transform_publisher" name="libvisoframe2basefootprint" args="0 0 0 0 0 0 libviso_frame base_footprint 100" />
-
-<!-- <node pkg="tf" type="static_transform_publisher" name="map2basefootprint" args="1 0 0 0 0 0 map base_footprint 100" /> -->
 <node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 0 0 0 base_footprint base_link 100" />
 <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="1 0 0 -1.57 0 -1.57 base_link base_left_cam 100" />
 <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" />
-<!--<node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0 -0.4 0 0 0 0 base_link base_left_cam 100" />
-<node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 0 0 0 0 1.57 base_left_cam left_cam 100" />-->
 
-<include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
+<!--<include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
     <arg name="manager" value="$(arg namespace)/point_cloud2" />
     <arg name="respawn" value="false" />
     <arg name="left" value="left" />
     <arg name="right" value="right" />
-</include>
+</include>-->
 
 <node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
     <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
-    <param name="base_link_frame_id" value="libviso_frame" />
+    <param name="base_link_frame_id" value="base_footprint" />
     <param name="odom_frame_id" value="odom" />
 
 <!--     <remap from="image" to="image_rect"/> -->
@@ -48,8 +37,8 @@
     </node>-->
     
 <!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-    <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+    <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+<!--     <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
             <remap from="~/deltaTime"
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"

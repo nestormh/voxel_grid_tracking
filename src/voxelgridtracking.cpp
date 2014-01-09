@@ -104,7 +104,7 @@ VoxelGridTracking::VoxelGridTracking()
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
     m_speedMethod = SPEED_METHOD_CIRC_HIST;
     
-    m_obstacleSpeedMethod = SPEED_METHOD_CIRC_HIST;
+    m_obstacleSpeedMethod = SPEED_METHOD_MEAN;
     
     m_yawInterval = 5.0 * M_PI / 180.0;
     m_pitchInterval = 2 * M_PI;
@@ -188,25 +188,35 @@ void VoxelGridTracking::start()
                     yaw = yaw2 - yaw1;
                     pitch = pitch2 - pitch1;
                     
-                    double deltaX = lastMapOdomTransform.getOrigin().getX() - transform.getOrigin().getX();
-                    double deltaY = lastMapOdomTransform.getOrigin().getY() - transform.getOrigin().getY();
-                    double deltaZ = lastMapOdomTransform.getOrigin().getZ() - transform.getOrigin().getZ();
+//                     double m_deltaX = lastMapOdomTransform.getOrigin().getX() - transform.getOrigin().getX();
+//                     double m_deltaY = lastMapOdomTransform.getOrigin().getY() - transform.getOrigin().getY();
+//                     double m_deltaZ = lastMapOdomTransform.getOrigin().getZ() - transform.getOrigin().getZ();
+
+                    m_deltaX = transform.getOrigin().getX() - lastMapOdomTransform.getOrigin().getX();
+                    m_deltaY = transform.getOrigin().getY() - lastMapOdomTransform.getOrigin().getY();
+                    m_deltaZ = transform.getOrigin().getZ() - lastMapOdomTransform.getOrigin().getZ();
+
                     
                     m_deltaTime = transform.stamp_.toSec() - lastMapOdomTransform.stamp_.toSec();
                     
-                    double deltaS = sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+                    double deltaS = sqrt(m_deltaX * m_deltaX + m_deltaY * m_deltaY + m_deltaZ * m_deltaZ);
                     double speed = 0.0;
                     if (deltaS != 0.0) {
                         speed = deltaS / m_deltaTime;
                     }
+                    
+                    m_deltaX /= m_deltaTime;
+                    m_deltaY /= m_deltaTime;
+                    m_deltaZ /= m_deltaTime;
                     
                     cout << "Transformation Received!!!!" << endl;
                     cout << "yaw " << yaw << endl;
                     cout << "yaw1 " << yaw1 << endl;
                     cout << "yaw2 " << yaw2 << endl;
                     cout << "pitch " << pitch << endl;
-                    cout << "deltaX " << deltaX << endl;
-                    cout << "deltaY " << deltaY << endl;
+                    cout << "m_deltaX " << m_deltaX << endl;
+                    cout << "m_deltaY " << m_deltaY << endl;
+                    cout << "m_deltaZ " << m_deltaZ << endl;
                     cout << "deltaS " << deltaS << endl;
                     cout << "lastMapOdomTransform " << cv::Point3d(lastMapOdomTransform.getOrigin().getX(), 
                                                                    lastMapOdomTransform.getOrigin().getY(),
@@ -266,6 +276,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
         segment();
 //         noiseRemoval();
 //         aggregation();
+        
         updateObstacles();
         filterObstacles();
         joinCommonVolumes();
@@ -489,7 +500,7 @@ void VoxelGridTracking::measurementBasedUpdate()
                         }
                     }
                     
-                    voxel.setMainVectors();
+                    voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
                 } /*else {
                     voxel.reset();
                 }*/
@@ -625,7 +636,7 @@ void VoxelGridTracking::joinCommonVolumes()
 void VoxelGridTracking::updateSpeedFromObstacles()
 {
     BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles)
-        obstacle.updateSpeed(m_deltaYaw, m_deltaPitch, m_speed);
+        obstacle.updateSpeed(m_deltaX, m_deltaY, m_deltaZ);
 }
 
 void VoxelGridTracking::filterObstacles()
@@ -858,6 +869,43 @@ void VoxelGridTracking::publishMainVectors()
 //         }
     }
     
+    // Ego-motion
+    visualization_msgs::Marker mainVector;
+    mainVector.header.frame_id = "left_cam";
+    mainVector.header.stamp = ros::Time();
+    mainVector.id = 0;
+    mainVector.ns = "egoMotionVector";
+    mainVector.type = visualization_msgs::Marker::ARROW;
+    mainVector.action = visualization_msgs::Marker::ADD;
+    
+    mainVector.pose.orientation.x = 0.0;
+    mainVector.pose.orientation.y = 0.0;
+    mainVector.pose.orientation.z = 0.0;
+    mainVector.pose.orientation.w = 1.0;
+    mainVector.scale.x = 0.01;
+    mainVector.scale.y = 0.03;
+    mainVector.scale.z = 0.1;
+    mainVector.color.a = 1.0;
+    mainVector.color.r = 1.0;
+    mainVector.color.g = 0.0;
+    mainVector.color.b = 0.0;
+    
+    //         orientation.lifetime = ros::Duration(5.0);
+    
+    geometry_msgs::Point origin, dest;
+    origin.x = 0.0;
+    origin.y = 0.0;
+    origin.z = 0.0;
+    
+    dest.x = m_deltaX * m_deltaTime;
+    dest.y = m_deltaY * m_deltaTime;
+    dest.z = m_deltaZ * m_deltaTime;
+    
+    mainVector.points.push_back(origin);
+    mainVector.points.push_back(dest);
+    
+    mainVectors.markers.push_back(mainVector);
+    
     m_mainVectorsPub.publish(mainVectors);
 }
 
@@ -1010,13 +1058,20 @@ void VoxelGridTracking::publishObstacleCubes()
         origin.x = obstacle.centerX();
         origin.y = obstacle.minY();
         origin.z = obstacle.centerZ();        
+
+        // NOTE: This makes vectors longer than they actually are. 
+        // For a realistic visualization, multiply by m_deltaTime
+//         dest.x = obstacle.centerX() + obstacle.vx();
+//         dest.y = obstacle.minY() + obstacle.vy();
+//         dest.z = obstacle.centerZ() + obstacle.vz();
         
-//         dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime;
-//         dest.y = obstacle.minY() + obstacle.vy() * m_deltaTime;
-//         dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime;
-        dest.x = obstacle.centerX() + obstacle.vx();
-        dest.y = obstacle.minY() + obstacle.vy();
-        dest.z = obstacle.centerZ() + obstacle.vz();
+        dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime;
+        dest.y = obstacle.minY() + obstacle.vy() * m_deltaTime;
+        dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime;
+
+//         dest.x = obstacle.centerX() + obstacle.vx() / obstacle.numVoxels() * m_deltaTime;
+//         dest.y = obstacle.minY() + obstacle.vy() / obstacle.numVoxels() * m_deltaTime;
+//         dest.z = obstacle.centerZ() + obstacle.vz() / obstacle.numVoxels() * m_deltaTime;
         
         speedVector.points.push_back(origin);
         speedVector.points.push_back(dest);

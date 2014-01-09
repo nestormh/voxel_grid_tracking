@@ -74,7 +74,7 @@ public:
     void clearParticles() { m_particles.clear(); }
     void setParticles(const vector <Particle3d> & particles) { m_particles = particles; }
     
-    void setMainVectors();
+    void setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ);
     void getMainVectors(double & vx, double & vy, double & vz) const { vx = m_vx; vy = m_vy; vz = m_vz; }
     
     void addPoint(const pcl::PointXYZRGB & point);

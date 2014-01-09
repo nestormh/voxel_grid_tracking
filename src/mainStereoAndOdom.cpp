@@ -60,6 +60,7 @@ void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointClo
 void testStereoTracking();
 void testPointCloud();
 void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud, const uint32_t & idx);
+void publishFakePointCloud(ros::Publisher & pointCloudPub, const double & radius, const uint32_t & idx);
 
 // Definitions
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud) {
@@ -168,6 +169,44 @@ void publishPointCloud(ros::Publisher & pointCloudPub, const pcl::PointCloud<pcl
 //     ros::spinOnce();
 }
 
+void publishFakePointCloud(ros::Publisher& pointCloudPub, const double& radius, const uint32_t & idx)
+{
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pointCloud->reserve(4 * radius / 0.01);
+    
+    for (double x = -radius; x <= radius; x += 0.01) {
+        pcl::PointXYZ point;
+        point.x = x;
+        point.y = -radius;
+        point.z = 0.0;
+        
+        pointCloud->push_back(point);
+        
+        point.y = radius;
+        pointCloud->push_back(point);
+    }
+    
+    for (double y = -radius; y <= radius; y += 0.01) {
+            pcl::PointXYZ point;
+            point.x = -radius;
+            point.y = y;
+            point.z = 0.0;
+                
+            pointCloud->push_back(point);
+            
+            point.x = radius;
+            pointCloud->push_back(point);
+    }
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*pointCloud, cloudMsg);
+    cloudMsg.header.frame_id = CAMERA_FRAME_ID;
+    cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = idx;
+    
+    pointCloudPub.publish(cloudMsg);
+}
+
 void testStereoTracking() {
     cv::namedWindow("imgL");
 //     cv::waitKey(0);
@@ -176,6 +215,7 @@ void testStereoTracking() {
     
     ros::NodeHandle nh("~");
     ros::Publisher pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStereo", 1);
+    ros::Publisher fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
 //     ros::Publisher deltaTimePub = nh.advertise<std_msgs::Float64> ("deltaTime", 1);
     ros::Publisher clockPub = nh.advertise<rosgraph_msgs::Clock> ("/clock", 1);
     
@@ -202,6 +242,9 @@ void testStereoTracking() {
     vector< visualization_msgs::MarkerArray > markers;
     
     double posX = 0.0, posY = 0.0, posTheta = 0.0, accTime = 0.0;
+    
+    // Params for the fake point cloud
+    double radius = 15.0;
     
     switch (calibrationType) {
         case ObstaclesFromStereo::DUBLIN:
@@ -230,7 +273,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 1; //72; //55;
+            initialIdx = 72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
 //             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
@@ -412,6 +455,7 @@ void testStereoTracking() {
         }
         
         publishPointCloud(pointCloudPub, tmpPointCloud, i);
+        publishFakePointCloud(fakePointCloudPub, radius, i);
         
         static tf::TransformBroadcaster broadcaster;
         tf::StampedTransform transform;

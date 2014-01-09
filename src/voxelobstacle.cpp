@@ -117,6 +117,7 @@ void VoxelObstacle::updateWithVoxel(const Voxel& voxel)
         m_minZ = voxel.centroidZ();
         m_maxZ = voxel.centroidZ();
     }
+    
 }
 
 void VoxelObstacle::updateMotionInformation()
@@ -195,11 +196,18 @@ double VoxelObstacle::commonVolume(const VoxelObstacle& obst1, const VoxelObstac
         return szX * szY * szZ;
 }
 
-void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDeltaPitch, const double & egoSpeed)
+void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDeltaY, const double & egoDeltaZ)
 {
     switch (m_speedMethod) {
         case SPEED_METHOD_MEAN: {
 //             cout << "SPEED_METHOD_MEAN" << endl;
+            m_vx = 0.0;
+            m_vy = 0.0;
+            m_vz = 0.0;
+            m_yaw = 0.0;
+            m_pitch = 0.0;
+            m_magnitude = 0.0;
+            
             BOOST_FOREACH(const Voxel & voxel, m_voxels) {
                 m_vx += voxel.vx();
                 m_vy += voxel.vy();
@@ -210,23 +218,6 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDe
             m_vy /= m_voxels.size();
             m_vz /= m_voxels.size();
             
-            m_vx -= egoSpeed * cos(egoDeltaYaw);
-            m_vy -= egoSpeed * sin(egoDeltaYaw);
-            m_vz -= egoSpeed * sin(egoDeltaPitch);
-            
-            m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
-            
-            cout << cv::Point3d(m_vx, m_vy, m_vz) << endl;
-            cout << "magnitude " << m_magnitude << endl;
-            
-            const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
-            const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
-            
-            m_yaw = acos(m_vx / normYaw);
-            if (m_vy < 0)
-                m_yaw = -m_yaw;
-            
-            m_pitch = asin(m_vz / normPitch);
             break;
         }
         case SPEED_METHOD_CIRC_HIST: {
@@ -294,6 +285,21 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaYaw, const double & egoDe
             exit(-1);
         }
     }
+    
+    m_vx += egoDeltaX;
+    m_vy += egoDeltaY;
+    m_vz += egoDeltaZ;
+    
+    m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
+    
+    const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
+    const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
+    
+    m_yaw = acos(m_vx / normYaw);
+    if (m_vy < 0)
+        m_yaw = -m_yaw;
+    
+    m_pitch = asin(m_vz / normPitch);
 }
 
 }

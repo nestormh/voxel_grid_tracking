@@ -73,6 +73,7 @@ protected:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     
     double m_deltaYaw, m_deltaPitch, m_speed, m_deltaTime;
+    double m_deltaX, m_deltaY, m_deltaZ;
     
     VoxelGrid m_grid;
     

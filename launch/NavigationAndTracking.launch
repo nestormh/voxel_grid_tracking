@@ -4,8 +4,19 @@
   <arg name="namespace" default="verdino"/>
   <arg name="testname" default="parking_ETSII_vacio"/>
 
-    <!--   VoxelGridTracking -->
+    <!-- VoxelGridTracking -->
     <include file="$(find PolarGridTracking)/launch/VoxelGridTracking.launch"/>
+    
+    <!-- grull_map_to_pointcloud -->
+<!--    <include file="$(find grull_map_to_pointcloud)/launch/launch.launch">
+        <arg name="nav_map_topic" value="/verdino/nav_map"/>
+        <arg name="pose_topic"    value="/stereo_odometer/pose"/>
+        <arg name="cloud_topic"   value="map_to_cloud"/>
+        <arg name="cloud_frame"   value="base_footprint"/>
+        <arg name="meters_grid"   value="5"/>
+        <arg name="show_map"      value="false"/>
+        <arg name="use_pose_with_covariance_stamped"      value="false"/>
+    </include>-->
   
 <!--   <node name="map_server_nav" pkg="map_server" type="map_server" args="$(find grull_maps)/pgm/localization/parking_ETSII_concoches_georreferenciado_gpsgmap_L.yaml" > -->
 <!--        <remap from="map" to="$(arg namespace)/nav_map"/> -->
@@ -23,6 +34,9 @@
         <remap from="/move_base/verdino/consignaVel" to="/verdino/consignaVel"/>
         
         <remap from="/$(arg namespace)/odom" to="/stereo_odometer/odometry"/>
+        
+        <remap from="/$(arg namespace)/filtered_point_cloud" to="/VoxelGridTracking/pointCloudFiltered" />
+        <remap from="/$(arg namespace)/fake_point_cloud" to="/VoxelGridTracking/stereo_and_odom/fakePointCloud" />
         
 <!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
 <!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
