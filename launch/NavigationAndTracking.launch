@@ -23,7 +23,7 @@
 <!--   </node>  -->
   
 <group ns="$(arg namespace)">
-    <node name="map_server_nav" pkg="map_server" type="map_server" args="$(find grull_maps)/pgm/localization/parking_ETSII_vacio.yaml" >
+    <node name="map_server_nav" pkg="map_server" type="map_server" args="$(find grull_maps)/pgm/localization/empty_world.yaml" >
         <remap from="map" to="nav_map"/>
     </node>     
     

@@ -47,6 +47,7 @@ namespace voxel_grid_tracking {
 VoxelGridTracking::VoxelGridTracking()
 {
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
     // TODO: Get from params
     m_cameraParams.minX = 0.0;
@@ -112,6 +113,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_minObstacleHeight = 1.25;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
+    
+    m_timeIncrementForFakePointCloud = 10.0;
     // TODO: End of TODO
     
     m_initialized = false;
@@ -163,6 +166,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
     m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
     m_ROIPub = nh.advertise<PolarGridTracking::roiArray>("roiArray", 1);
+    m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
 //     ros::spin();
 }
 
@@ -287,6 +291,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
     initialization();
+    generateFakePointClouds();
 //     
 //     publishAll(pointCloud);
     END_CLOCK(totalCompute, startCompute)
@@ -301,6 +306,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     publishObstacles();
     publishObstacleCubes();
     publishROI();
+    publishFakePointCloud();
     END_CLOCK(totalVis, startVis)
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
@@ -660,6 +666,44 @@ void VoxelGridTracking::filterObstacles()
     }
 }
 
+void VoxelGridTracking::generateFakePointClouds()
+{
+    m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const VoxelObstacle & obstacle = m_obstacles[i];
+        
+        if ((obstacle.minZ() - (m_cellSizeZ / 2.0)) == m_minZ) {
+            
+            const double & tColission = obstacle.centerX() / (m_deltaX - obstacle.vx());
+            const double deltaTime = tColission / m_timeIncrementForFakePointCloud;
+            
+            BOOST_FOREACH(const Voxel & voxel, obstacle.voxels()) {
+                BOOST_FOREACH(const pcl::PointXYZRGB & point, voxel.getPoints()->points) {
+                    for (double t = 0; t <= tColission; t += deltaTime) {
+    //                     double t = 1.0;
+                    
+                        pcl::PointXYZRGB newPoint;
+                        newPoint.x = point.x - obstacle.vx() * t;
+                        newPoint.y = point.y + obstacle.vy() * t;
+                        newPoint.z = point.z + obstacle.vz() * t;
+    //                     newPoint.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0] * 255;
+    //                     newPoint.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1] * 255;
+    //                     newPoint.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2] * 255;
+                        newPoint.r = point.r;
+                        newPoint.g = point.g;
+                        newPoint.b = point.b;
+                        
+                        m_fakePointCloud->push_back(newPoint);
+                        
+                        
+                    }
+                }
+            }
+        }
+    }
+}
+
 void VoxelGridTracking::publishVoxels()
 {
     visualization_msgs::MarkerArray voxelMarkers;
@@ -989,6 +1033,18 @@ void VoxelGridTracking::publishObstacleCubes()
         obstacleCubeMarker.action = visualization_msgs::Marker::DELETE;
         
         obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
+        
+        obstacleCubeMarker.ns = "speedVector";
+        obstacleCubeMarker.type = visualization_msgs::Marker::ARROW;
+        obstacleCubeMarker.action = visualization_msgs::Marker::DELETE;
+        
+        obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
+        
+        obstacleCubeMarker.ns = "speedText";
+        obstacleCubeMarker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        obstacleCubeMarker.action = visualization_msgs::Marker::DELETE;
+        
+        obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
     }
     
     m_obstacleCubesPub.publish(obstacleCubesCleaners);
@@ -1033,9 +1089,9 @@ void VoxelGridTracking::publishObstacleCubes()
         // ********************************************************
         
         visualization_msgs::Marker speedVector;
-        speedVector.header.frame_id = "left_cam";
+        speedVector.header.frame_id = m_baseFrame;
         speedVector.header.stamp = ros::Time();
-        speedVector.id = idCount++;
+        speedVector.id = idCount;
         speedVector.ns = "speedVector";
         speedVector.type = visualization_msgs::Marker::ARROW;
         speedVector.action = visualization_msgs::Marker::ADD;
@@ -1083,9 +1139,9 @@ void VoxelGridTracking::publishObstacleCubes()
         // ********************************************************
         
         visualization_msgs::Marker speedTextVector;
-        speedTextVector.header.frame_id = "left_cam";
+        speedTextVector.header.frame_id = m_baseFrame;
         speedTextVector.header.stamp = ros::Time();
-        speedTextVector.id = idCount++;
+        speedTextVector.id = idCount;
         speedTextVector.ns = "speedText";
         speedTextVector.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
         speedTextVector.action = visualization_msgs::Marker::ADD;
@@ -1124,7 +1180,7 @@ void VoxelGridTracking::publishROI()
     roiMsg.rois2d.resize(m_obstacles.size());
     
     roiMsg.id = m_currentId;
-    roiMsg.header.frame_id = DEFAULT_BASE_FRAME;
+    roiMsg.header.frame_id = m_baseFrame;
     roiMsg.header.stamp = ros::Time::now();
     
     pcl::PointXYZRGB point3d, point;
@@ -1238,5 +1294,15 @@ void VoxelGridTracking::publishROI()
     m_ROIPub.publish(roiMsg);
 }
 
+void VoxelGridTracking::publishFakePointCloud()
+{
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*m_fakePointCloud, cloudMsg);
+    cloudMsg.header.frame_id = m_baseFrame;
+    cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = m_currentId;
+    
+    m_fakePointCloudPub.publish(cloudMsg);
+}
 
 }

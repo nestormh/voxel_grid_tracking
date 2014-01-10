@@ -295,8 +295,8 @@ void testStereoTracking() {
             string rightCameraName = "right_camera";
             camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
             
-//             file:///local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml
             markers = ObstaclesFromStereo::readMarkerList((correspondencesPath / seqName / "tracklet_labels.xml").string(), lastIdx);
+//             markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
             
             leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
             rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;

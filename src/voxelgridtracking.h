@@ -61,6 +61,7 @@ protected:
     void filterObstacles();
     void joinCommonVolumes();
     void updateSpeedFromObstacles();
+    void generateFakePointClouds();
     
     // Visualization functions
     void publishVoxels();
@@ -69,8 +70,10 @@ protected:
     void publishObstacles();
     void publishObstacleCubes();
     void publishROI();
+    void publishFakePointCloud();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_fakePointCloud;
     
     double m_deltaYaw, m_deltaPitch, m_speed, m_deltaTime;
     double m_deltaX, m_deltaY, m_deltaZ;
@@ -111,6 +114,7 @@ protected:
     double m_pitchInterval;
     double m_maxCommonVolume;
     double m_minObstacleHeight;
+    double m_timeIncrementForFakePointCloud;
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;
@@ -126,6 +130,7 @@ protected:
     ros::Publisher m_obstacleSpeedPub;
     ros::Publisher m_obstacleSpeedTextPub;
     ros::Publisher m_ROIPub;
+    ros::Publisher m_fakePointCloudPub;
 };
 
 }
