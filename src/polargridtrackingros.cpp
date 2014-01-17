@@ -29,6 +29,8 @@
 #include "tf/transform_listener.h"
 // #include "tf2_ros/buffer.h"
 
+#include "utilspolargridtracking.h"
+
 #include "utils.h"
 
 #include <boost/foreach.hpp>
@@ -515,6 +517,8 @@ void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointX
     publishObstacles();
     publishROIs();
     publishPointCloudInObstacles(extendedPointCloud);
+    
+//     visualizeROI2d();
 }
 
 void PolarGridTrackingROS::publishPolarGrid()
@@ -1006,6 +1010,85 @@ void PolarGridTrackingROS::publishPointCloudInObstacles(const pcl::PointCloud< P
     m_pointCloudInObstaclePub.publish(cloudMsg);
 
     ros::spinOnce();
+}
+
+void PolarGridTrackingROS::visualizeROI2d()
+{
+    
+    string imgPattern = "/local/imaged/Karlsruhe/2011_09_28/2011_09_28_drive_0038_sync/image_02/data/%010d.png";
+    //     string imgPattern = "/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/image_02/data/%010d.png";
+    char imgNameL[1024];
+    sprintf(imgNameL, imgPattern.c_str(), m_currentId + 55);
+    
+    stringstream ss;
+    ss << "/home/nestor/Vídeos/VoxelTracking/pedestrian/output";
+    ss.width(10);
+    ss.fill('0');
+    ss << m_currentId;
+    ss << ".png";
+    
+    cout << "rois2d: " << imgNameL << endl;
+    
+    cv::Mat img = cv::imread(string(imgNameL));
+    
+    Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
+    
+    BOOST_FOREACH(const pcl::PointXYZRGB & point, m_pointCloud->points) {
+        //         pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.y, m_cameraParams.t(2) + point.z;
+        pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.y, m_cameraParams.t(2) + point.z;
+        //         pointMat << m_cameraParams.t(0) + point.x, m_cameraParams.t(1) - point.z, m_cameraParams.t(2) + point.y;
+        
+        pointMat = m_cameraParams.R.inverse() * pointMat;
+        
+        
+        const double d = m_cameraParams.ku * m_cameraParams.baseline / pointMat(2);
+        const double u = m_cameraParams.u0 - ((pointMat(0) * d) / m_cameraParams.baseline);
+        const double v = m_cameraParams.v0 - ((pointMat(1) * m_cameraParams.kv * d) / (m_cameraParams.ku * m_cameraParams.baseline));
+        
+        //         cout << cv::Point3d(- point.x, point.y, point.z) << " -> " << pointMat.transpose() 
+        //         << " -> " << cv::Point3d(u, v, d) << endl;
+        
+        if ((u >= 0) && (u < img.cols) &&
+            (v >= 0) && (v < img.rows)) {
+            
+            img.at<cv::Vec3b>(v, u) = cv::Vec3b(point.b, point.g, 255);
+            }
+    }
+    
+    pcl::PointXYZRGB point3d, point;
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        if ((m_obstacles[i].cells().size() <= 1) ||
+            (m_obstacles[i].magnitude() == 0.0))
+            continue;
+        
+        if (! m_obstacles[i].isValid())
+            continue;
+        
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr & roi = m_obstacles[i].roi();
+        
+        cv::Point2d pointUL(img.cols, img.rows), pointBR(0, 0);
+        
+        for (uint32_t j = 0; j < roi->size(); j++) {
+            point3d.x = -roi->at(j).x;
+            point3d.y = roi->at(j).z;
+            point3d.z = roi->at(j).y;
+            project3dTo2d(point3d, point, m_cameraParams);
+            
+            if (point.x < pointUL.x) pointUL.x = point.x;
+            if (point.y < pointUL.y) pointUL.y = point.y;
+            if (point.x > pointBR.x) pointBR.x = point.x;
+            if (point.y > pointBR.y) pointBR.y = point.y;
+        }
+
+        cv::rectangle(img, pointUL, pointBR, cv::Scalar((double)rand() / RAND_MAX * 128 + 128, (double)rand() / RAND_MAX * 128 + 128, (double)rand() / RAND_MAX * 128 + 128), 1);
+    }
+    
+//     cv::imwrite(ss.str(), img);
+    
+    cv::imshow("rois2d", img);
+    
+    cv::waitKey(200);
 }
 
 

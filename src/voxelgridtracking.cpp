@@ -72,7 +72,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_minY = 0.0;
     m_maxY = 24.0;
     m_minZ = -0.4;
-    m_maxZ = 3.5;
+    m_maxZ = 2.0; //3.5;
     
     m_cellSizeX = 0.25;
     m_cellSizeY = 0.25;
@@ -111,6 +111,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_pitchInterval = 2 * M_PI;
     
     m_minObstacleHeight = 1.25;
+    m_maxObstacleHeight = 2.0;
     
     m_baseFrame = DEFAULT_BASE_FRAME;
     
@@ -282,8 +283,8 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //         aggregation();
         
         updateObstacles();
+//         joinCommonVolumes();
         filterObstacles();
-        joinCommonVolumes();
         updateSpeedFromObstacles();
     }
     publishParticles();
@@ -307,6 +308,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     publishObstacleCubes();
     publishROI();
     publishFakePointCloud();
+//     visualizeROI2d();
     END_CLOCK(totalVis, startVis)
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
@@ -475,6 +477,17 @@ void VoxelGridTracking::measurementBasedUpdate()
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 Voxel & voxel = m_grid[x][y][z];
+                
+                if ((! voxel.empty()) && (voxel.occupied())) {
+                    voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
+                }
+            }
+        }
+    }
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
             
                 if ((! voxel.empty()) && (voxel.occupied())) {
                     voxel.setOccupiedPosteriorProb(m_particlesPerCell);
@@ -506,7 +519,7 @@ void VoxelGridTracking::measurementBasedUpdate()
                         }
                     }
                     
-                    voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
+//                     voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
                 } /*else {
                     voxel.reset();
                 }*/
@@ -587,12 +600,12 @@ void VoxelGridTracking::noiseRemoval()
 {
     ObstacleList::iterator it = m_obstacles.begin();
     while (it != m_obstacles.end()) {
-        bool joined = false;
+        bool erased = false;
         if (it->numVoxels() <= m_minVoxelsPerObstacle) {
             it = m_obstacles.erase(it);
-            joined = true;
+            erased = true;
         }
-        if (! joined)
+        if (! erased)
             it++;
     }
 }
@@ -653,6 +666,8 @@ void VoxelGridTracking::filterObstacles()
 //             ((it->centerZ() + (it->sizeZ() / 2.0)) < 0.75)) {
         if (it->sizeZ() < m_minObstacleHeight) {
             it = m_obstacles.erase(it);
+        }  else if (fabs(it->centerZ() - (it->sizeZ() / 2.0) - m_minZ) > m_cellSizeZ) {
+            it = m_obstacles.erase(it);
         } else {
             it++;
         }
@@ -675,8 +690,11 @@ void VoxelGridTracking::generateFakePointClouds()
         
         if ((obstacle.minZ() - (m_cellSizeZ / 2.0)) == m_minZ) {
             
-            const double & tColission = obstacle.centerX() / (m_deltaX - obstacle.vx());
-            const double deltaTime = tColission / m_timeIncrementForFakePointCloud;
+//             const double & tColission = min(obstacle.centerX() / (m_deltaX - obstacle.vx()), 1.5);
+//             const double deltaTime = tColission / m_timeIncrementForFakePointCloud;
+
+            const double tColission = 1.0;
+            const double deltaTime = 0.3;
             
             BOOST_FOREACH(const Voxel & voxel, obstacle.voxels()) {
                 BOOST_FOREACH(const pcl::PointXYZRGB & point, voxel.getPoints()->points) {
@@ -694,9 +712,7 @@ void VoxelGridTracking::generateFakePointClouds()
                         newPoint.g = point.g;
                         newPoint.b = point.b;
                         
-                        m_fakePointCloud->push_back(newPoint);
-                        
-                        
+                        m_fakePointCloud->push_back(newPoint);                        
                     }
                 }
             }
@@ -951,6 +967,7 @@ void VoxelGridTracking::publishMainVectors()
     mainVectors.markers.push_back(mainVector);
     
     m_mainVectorsPub.publish(mainVectors);
+    
 }
 
 void VoxelGridTracking::publishObstacles()
@@ -1013,7 +1030,6 @@ void VoxelGridTracking::publishObstacles()
                 voxelMarkers.markers.push_back(voxelMarker);
 //             }
         }
-//         break;
     }
     
     m_obstaclesPub.publish(voxelMarkers);
@@ -1165,7 +1181,6 @@ void VoxelGridTracking::publishObstacleCubes()
         speedTextVector.text = ss.str();
                 
         obstacleSpeedTextMarkers.markers.push_back(speedTextVector);
-        
     }
     
     m_obstacleCubesPub.publish(obstacleCubeMarkers);
@@ -1305,4 +1320,160 @@ void VoxelGridTracking::publishFakePointCloud()
     m_fakePointCloudPub.publish(cloudMsg);
 }
 
+void VoxelGridTracking::visualizeROI2d()
+{
+    string imgPattern = "/local/imaged/Karlsruhe/2011_09_28/2011_09_28_drive_0038_sync/image_02/data/%010d.png";
+//     string imgPattern = "/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/image_02/data/%010d.png";
+    char imgNameL[1024];
+    sprintf(imgNameL, imgPattern.c_str(), m_currentId + 1);
+    
+    stringstream ss;
+    ss << "/home/nestor/Vídeos/VoxelTracking/pedestrian/output";
+    ss.width(10);
+    ss.fill('0');
+    ss << m_currentId;
+    ss << ".png";
+    
+    cout << "rois2d: " << imgNameL << endl;
+    
+    cv::Mat img = cv::imread(string(imgNameL));
+    
+    pcl::PointXYZRGB point3d, point;
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const VoxelObstacle & obstacle = m_obstacles[i];
+        
+        if ((obstacle.minZ() - (m_cellSizeZ / 2.0)) != m_minZ)
+            continue;
+        
+        if (obstacle.magnitude() < 1.0)
+            continue;
+
+        cv::Point2d pointUL(img.cols, img.rows), pointBR(0, 0);
+        
+        const double halfX = obstacle.sizeX() / 2.0;
+        const double halfY = obstacle.sizeY() / 2.0;
+        const double halfZ = obstacle.sizeZ() / 2.0;
+        
+        // A
+        point3d.x = -(obstacle.centerX() - halfX);
+        point3d.y = (obstacle.centerZ() - halfZ);
+        point3d.z = (obstacle.centerY() + halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // B
+        point3d.x = -(obstacle.centerX() + halfX);
+        point3d.y = (obstacle.centerZ() + halfZ);
+        point3d.z = (obstacle.centerY() - halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // C
+        point3d.x = -(obstacle.centerX() - halfX);
+        point3d.y = (obstacle.centerZ() - halfZ);
+        point3d.z = (obstacle.centerY() - halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // D
+        point3d.x = -(obstacle.centerX() + halfX);
+        point3d.y = (obstacle.centerZ() - halfZ);
+        point3d.z = (obstacle.centerY() - halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // E
+        point3d.x = -(obstacle.centerX() - halfX);
+        point3d.y = (obstacle.centerZ() + halfZ);
+        point3d.z = (obstacle.centerY() + halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // F
+        point3d.x = -(obstacle.centerX() + halfX);
+        point3d.y = (obstacle.centerZ() + halfZ);
+        point3d.z = (obstacle.centerY() + halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // G
+        point3d.x = -(obstacle.centerX() - halfX);
+        point3d.y = (obstacle.centerZ() - halfZ);
+        point3d.z = (obstacle.centerY() + halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        // H
+        point3d.x = -(obstacle.centerX() + halfX);
+        point3d.y = (obstacle.centerZ() - halfZ);
+        point3d.z = (obstacle.centerY() + halfY);
+        project3dTo2d(point3d, point, m_cameraParams);
+        
+        if (point.x < pointUL.x) pointUL.x = point.x;
+        if (point.y < pointUL.y) pointUL.y = point.y;
+        if (point.x > pointBR.x) pointBR.x = point.x;
+        if (point.y > pointBR.y) pointBR.y = point.y;
+        
+        cv::rectangle(img, pointUL, pointBR, cv::Scalar((double)rand() / RAND_MAX * 128 + 128, (double)rand() / RAND_MAX * 128 + 128, (double)rand() / RAND_MAX * 128 + 128), 1);
+    }
+    
+    cv::imwrite(ss.str(), img);
+    
+    Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
+    
+    BOOST_FOREACH(const pcl::PointXYZRGB & point, m_pointCloud->points) {
+        //         pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.y, m_cameraParams.t(2) + point.z;
+        pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.z, m_cameraParams.t(2) + point.y;
+        //         pointMat << m_cameraParams.t(0) + point.x, m_cameraParams.t(1) - point.z, m_cameraParams.t(2) + point.y;
+        
+        pointMat = m_cameraParams.R.inverse() * pointMat;
+        
+        
+        const double d = m_cameraParams.ku * m_cameraParams.baseline / pointMat(2);
+        const double u = m_cameraParams.u0 - ((pointMat(0) * d) / m_cameraParams.baseline);
+        const double v = m_cameraParams.v0 - ((pointMat(1) * m_cameraParams.kv * d) / (m_cameraParams.ku * m_cameraParams.baseline));
+        
+        //         cout << cv::Point3d(- point.x, point.y, point.z) << " -> " << pointMat.transpose() 
+        //         << " -> " << cv::Point3d(u, v, d) << endl;
+        
+        if ((u >= 0) && (u < img.cols) &&
+            (v >= 0) && (v < img.rows)) {
+            
+            img.at<cv::Vec3b>(v, u) = cv::Vec3b(point.b, point.g, 255);
+            }
+    }
+    
+    cv::imshow("rois2d", img);
+    
+    cv::waitKey(200);
+}
 }

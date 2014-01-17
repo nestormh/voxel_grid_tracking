@@ -209,7 +209,7 @@ void publishFakePointCloud(ros::Publisher& pointCloudPub, const double& radius, 
 
 void testStereoTracking() {
     cv::namedWindow("imgL");
-//     cv::waitKey(0);
+    cv::waitKey(0);
     
     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
     
@@ -273,13 +273,13 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 72; //55;
+            initialIdx = 55; //260; //72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-//             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
+            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0015_sync");
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
-            seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
+//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
             leftImagePattern = "image_02/data/%010d.png";
             rightImagePattern = "image_03/data/%010d.png";
             
@@ -295,8 +295,8 @@ void testStereoTracking() {
             string rightCameraName = "right_camera";
             camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
             
-            markers = ObstaclesFromStereo::readMarkerList((correspondencesPath / seqName / "tracklet_labels.xml").string(), lastIdx);
-//             markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
+//             markers = ObstaclesFromStereo::readMarkerList((correspondencesPath / seqName / "tracklet_labels.xml").string(), lastIdx);
+            markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
             
             leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
             rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
@@ -373,8 +373,8 @@ void testStereoTracking() {
         if (i == initialIdx) {
             pointCloudMaker.reset(new ObstaclesFromStereo(cv::Size(left.cols, left.rows), calibrationType));
             pointCloudMaker->setCameraParams(cameraParams.at(0), cameraParams.at(1));
-            pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
-//             pointCloudMaker->setMethod(ObstaclesFromStereo::ELAS);
+//             pointCloudMaker->setMethod(ObstaclesFromStereo::SGBM);
+            pointCloudMaker->setMethod(ObstaclesFromStereo::ELAS);
             pointCloudMaker->setSGBMParams(sgbmParams);
             pointCloudMaker->setGroundThresh(0.3);
             pointCloudMaker->setBackGroundThresh(20);
@@ -504,7 +504,11 @@ void testStereoTracking() {
         
         // Publish point cloud
         
-        uint8_t keycode = cv::waitKey(0);
+        uint8_t keycode;
+//         if (i < 15)
+            keycode = cv::waitKey(0);
+//         else
+//             keycode = cv::waitKey(2000);
         if (keycode == 27) {
             break;
         }

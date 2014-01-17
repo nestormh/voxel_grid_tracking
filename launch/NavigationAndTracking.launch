@@ -36,7 +36,8 @@
         <remap from="/$(arg namespace)/odom" to="/stereo_odometer/odometry"/>
         
         <remap from="/$(arg namespace)/filtered_point_cloud" to="/VoxelGridTracking/pointCloudFiltered" />
-        <remap from="/$(arg namespace)/fake_point_cloud" to="/VoxelGridTracking/stereo_and_odom/fakePointCloud" />
+        <remap from="/$(arg namespace)/clearing_point_cloud" to="/VoxelGridTracking/stereo_and_odom/fakePointCloud" />
+        <remap from="/$(arg namespace)/fake_point_cloud" to="/VoxelGridTracking/VoxelGridTracking/fakePointCloud" />
         
 <!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
 <!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->

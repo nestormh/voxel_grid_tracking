@@ -29,15 +29,15 @@ Particle3d::Particle3d(const double & centroidX, const double & centroidY, const
                         const double & maxVelX, const double & maxVelY, const double & maxVelZ)
                             : m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ)
 {
-    m_x = centroidX + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeX;
-    m_y = centroidY + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeY;
-    m_z = centroidZ + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeZ;
+    m_x = centroidX;// + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeX;
+    m_y = centroidY;// + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeY;
+    m_z = centroidZ;// + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeZ;
     
     const double theta = ((double)rand() / RAND_MAX) * 2.0 * M_PI;
     const double gamma = ((double)rand() / RAND_MAX) * 2.0 * M_PI;
     m_vx = maxVelX * ((double)rand() / RAND_MAX) * cos(theta);
     m_vy = maxVelY * ((double)rand() / RAND_MAX) * sin(theta);
-    m_vz = maxVelZ * ((double)rand() / RAND_MAX) * sin(gamma);
+    m_vz = 0.0; //maxVelZ * ((double)rand() / RAND_MAX) * sin(gamma);
     
 }
 

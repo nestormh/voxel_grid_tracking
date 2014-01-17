@@ -71,6 +71,7 @@ protected:
     void publishObstacleCubes();
     void publishROI();
     void publishFakePointCloud();
+    void visualizeROI2d();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_fakePointCloud;
@@ -114,6 +115,7 @@ protected:
     double m_pitchInterval;
     double m_maxCommonVolume;
     double m_minObstacleHeight;
+    double m_maxObstacleHeight;
     double m_timeIncrementForFakePointCloud;
 
     // Subscribers

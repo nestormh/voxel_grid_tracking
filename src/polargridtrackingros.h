@@ -56,6 +56,7 @@ protected:
     void publishObstacles();
     void publishROIs();
     void publishPointCloudInObstacles(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud);
+    void visualizeROI2d();
     
     ros::Publisher m_pointCloudPub;
     ros::Publisher m_extendedPointCloudPub;

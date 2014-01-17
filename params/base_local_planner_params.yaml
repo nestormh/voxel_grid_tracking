@@ -53,7 +53,7 @@ TrajectoryPlannerROS:
                                                         
     # Frenet space related params
     globalDiscardDist: 5.0                          # Area in the surroundings of the car in which we will take into account the global planner
-    maxDist: 10.0                                   # Max distance to evolve the paths (Smax)
+    maxDist: 20.0                                   # Max distance to evolve the paths (Smax)
     maxWide: 5.0                                    # Max width covered by the paths (deltaQ)
     evolutionDist: 5.0                              # Distance for the evolution of the spline (Sf)
     numPaths: 20                                    # Number of temptative paths

@@ -34,8 +34,8 @@
     </node>-->
     
 <!--             <node launch-prefix="gdb &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
-    <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
-<!--     <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
+    <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloudStereo"

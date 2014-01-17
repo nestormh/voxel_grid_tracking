@@ -337,8 +337,8 @@ void polarTracking() {
     }
     
     // TODO: Read from a parameters file
-    uint32_t rows = 60; // 400
-    uint32_t cols = 60; // 128
+    uint32_t rows = 120; //60; // 400
+    uint32_t cols = 40; //60; // 128
 //     double cellSizeX = 0.2; // 0.1
 //     double cellSizeZ = 0.2; // 0.1
     double cellSizeX = 0.2; // 0.1
