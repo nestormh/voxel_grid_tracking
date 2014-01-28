@@ -40,7 +40,7 @@ using namespace polar_grid_tracking;
 class ObstaclesFromStereo {
 public:
     typedef enum t_Method { SGBM = 0, STEREOVAR = 1, ELAS = 2 };
-    typedef enum t_CalibrationFileType { DUBLIN = 0, KARLSRUHE = 1, KARLSRUHE_V2 = 2, BAHNHOFSTRASSE = 3 };
+    typedef enum t_CalibrationFileType { DUBLIN = 0, KARLSRUHE = 1, KARLSRUHE_V2 = 2, BAHNHOFSTRASSE = 3, DAIMLER = 4 };
     
     ObstaclesFromStereo(const cv::Size & size, const t_CalibrationFileType  & calibrationType);
     ~ObstaclesFromStereo();

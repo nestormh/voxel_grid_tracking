@@ -209,7 +209,7 @@ void publishFakePointCloud(ros::Publisher& pointCloudPub, const double& radius, 
 
 void testStereoTracking() {
     cv::namedWindow("imgL");
-    cv::waitKey(0);
+//     cv::waitKey(0);
     
     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
     
@@ -273,7 +273,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 55; //260; //72; //55;
+            initialIdx = 72; //260; //72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
@@ -306,6 +306,7 @@ void testStereoTracking() {
         case ObstaclesFromStereo::BAHNHOFSTRASSE:
         {
             initialIdx = 1; //55;
+            lastIdx = 1000;
             correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
             seqName = boost::filesystem::path("bahnhof");
             rightImagePattern = "seq03-img-left/image_%08d_0.png";
@@ -323,6 +324,34 @@ void testStereoTracking() {
             
             leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
             rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            
+            markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
+            
+            break;
+        }
+        case ObstaclesFromStereo::DAIMLER:
+        {
+            initialIdx = 1; //55;
+            lastIdx = 16400;
+            correspondencesPath = boost::filesystem::path("/local/imaged/Daimler");
+            seqName = boost::filesystem::path("TestData");
+            rightImagePattern = "c0/image_%05d.pgm";
+            leftImagePattern = "c1/image_%05d.pgm";
+            
+            ObstaclesFromStereo::getParams((correspondencesPath / seqName).string(), cameraParams, ObstaclesFromStereo::DAIMLER);
+            
+            string leftCalibFileName = "/local/imaged/Daimler/TestData/left_calib.yaml";
+            string leftCameraName = "left_camera";
+            camera_calibration_parsers::readCalibrationYml(leftCalibFileName, leftCameraName, leftCameraInfo);
+            
+            string rightCalibFileName = "/local/imaged/Daimler/TestData/right_calib.yaml";
+            string rightCameraName = "right_camera";
+            camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
+            
+            leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            
+            markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
             
             break;
         }
@@ -421,6 +450,7 @@ void testStereoTracking() {
                 
                 break;
             }
+            case ObstaclesFromStereo::DAIMLER:
             case ObstaclesFromStereo::BAHNHOFSTRASSE:
             {
                 yaw = 0.0;

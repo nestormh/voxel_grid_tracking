@@ -287,12 +287,12 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
         filterObstacles();
         updateSpeedFromObstacles();
     }
-    publishParticles();
+//     publishParticles();
 //         initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
 //     
     initialization();
-    generateFakePointClouds();
+//     generateFakePointClouds();
 //     
 //     publishAll(pointCloud);
     END_CLOCK(totalCompute, startCompute)
@@ -307,7 +307,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     publishObstacles();
     publishObstacleCubes();
     publishROI();
-    publishFakePointCloud();
+//     publishFakePointCloud();
 //     visualizeROI2d();
     END_CLOCK(totalVis, startVis)
     
@@ -666,8 +666,8 @@ void VoxelGridTracking::filterObstacles()
 //             ((it->centerZ() + (it->sizeZ() / 2.0)) < 0.75)) {
         if (it->sizeZ() < m_minObstacleHeight) {
             it = m_obstacles.erase(it);
-        }  else if (fabs(it->centerZ() - (it->sizeZ() / 2.0) - m_minZ) > m_cellSizeZ) {
-            it = m_obstacles.erase(it);
+//         }  else if (fabs(it->centerZ() - (it->sizeZ() / 2.0) - m_minZ) > m_cellSizeZ) {
+//             it = m_obstacles.erase(it);
         } else {
             it++;
         }

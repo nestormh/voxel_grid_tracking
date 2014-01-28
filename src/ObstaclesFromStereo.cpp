@@ -148,6 +148,7 @@ void ObstaclesFromStereo::generatePointClouds(const cv::Mat& leftImg, const cv::
                 case KARLSRUHE:
                 case KARLSRUHE_V2:
                 case BAHNHOFSTRASSE:
+                case DAIMLER:
                 {
                     point.x = (((m_leftCameraParams.u0 - j) / m_leftCameraParams.ku) / norm);
 //                     point.y = (((m_leftCameraParams.v0 - i)/ m_leftCameraParams.kv) / norm)/* + 1.65*/;
@@ -357,11 +358,13 @@ void ObstaclesFromStereo::downsample(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & po
 
 void ObstaclesFromStereo::getParams(const std::string& fileName, std::vector< t_Camera_params >& params, const ObstaclesFromStereo::t_CalibrationFileType& calibrationFileType)
 {
+    cout << __FUNCTION__ << ":" << __LINE__ << endl;
     switch (calibrationFileType) {
         case DUBLIN: return getParamsFromDublinDataset(fileName, params);
         case KARLSRUHE: return getParamsFromKarlsruhe(fileName, params);
         case KARLSRUHE_V2: return getParamsFromKarlsruhe_v2(fileName, params);
         case BAHNHOFSTRASSE: return getParamsFromBahnhofstrasse(fileName, params);
+        case DAIMLER: return getParamsFromBahnhofstrasse(fileName, params);
     }
 }
 
@@ -561,6 +564,7 @@ void ObstaclesFromStereo::getParamsFromKarlsruhe_v2(const string& fileName, vect
 
 void ObstaclesFromStereo::getParamsFromBahnhofstrasseSingleFile(const string& fileName, t_Camera_params& params)
 {
+    cout << __FUNCTION__ << ":" << __LINE__ << endl;
     params.width = 640;
     params.height = 480;
     
@@ -592,7 +596,7 @@ void ObstaclesFromStereo::getParamsFromBahnhofstrasseSingleFile(const string& fi
     params.t = Eigen::MatrixXd(3, 1);
     for (uint32_t i = 0; i < 3; i++) {
         fin >> params.t(i);
-        params.t(i) /= 100.0;
+//         params.t(i) /= 100.0;
     }
         
     fin.close();
@@ -600,13 +604,16 @@ void ObstaclesFromStereo::getParamsFromBahnhofstrasseSingleFile(const string& fi
 
 void ObstaclesFromStereo::getParamsFromBahnhofstrasse(const string& fileName, vector< t_Camera_params >& params)
 {
+    cout << __FUNCTION__ << ":" << __LINE__ << endl;
     boost::filesystem3::path path(fileName);
     params.resize(2);
+    cout << __FUNCTION__ << ":" << __LINE__ << endl;
+    cout << (path / boost::filesystem3::path("cam1.cal")).string() << endl;
     getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem3::path("cam1.cal")).string(), params[0]);
     getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem3::path("cam2.cal")).string(), params[1]);
     
-    params[0].baseline = -params[1].t(0);
-    params[1].baseline = -params[1].t(0);
+        params[0].baseline = -params[1].t(0);
+        params[1].baseline = -params[1].t(0);
 }
 
 // FIXME: This test will not work properly with the new version of ObstaclesFromStereo class
@@ -880,3 +887,4 @@ vector< visualization_msgs::MarkerArray > ObstaclesFromStereo::readMarkerList(co
     
     return trackletList;
 }
+
