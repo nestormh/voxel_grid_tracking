@@ -273,13 +273,13 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 72; //260; //72; //55;
+            initialIdx = 1; //260; //72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
+//             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0015_sync");
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
-//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
+            seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
             leftImagePattern = "image_02/data/%010d.png";
             rightImagePattern = "image_03/data/%010d.png";
             
@@ -398,7 +398,7 @@ void testStereoTracking() {
         
         cv::Mat leftMask(left.size(), CV_8UC1);
         leftMask.setTo(cv::Scalar(255));
-        
+                
         if (i == initialIdx) {
             pointCloudMaker.reset(new ObstaclesFromStereo(cv::Size(left.cols, left.rows), calibrationType));
             pointCloudMaker->setCameraParams(cameraParams.at(0), cameraParams.at(1));
@@ -417,9 +417,10 @@ void testStereoTracking() {
         
         cv::imshow("imgL", left);
         cv::moveWindow("imgL", 0, 0);
+        
         //         cv::imshow("imgR", right);
 
-        pointCloudMaker->generatePointClouds(left, right, leftMask);
+//         pointCloudMaker->generatePointClouds(left, right, leftMask);
         
         // TODO: Think in the right strategy in case yaw couldn't be obtained
         double yaw, speed, deltaTime;
@@ -466,39 +467,45 @@ void testStereoTracking() {
         posTheta += yaw; 
         accTime += deltaTime;
         
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
-             it != pointCloud->end(); it++) {
-            
-            const pcl::PointXYZRGB & point = *it;
-            pcl::PointXYZRGB newPoint;
-            
-            newPoint.x = point.x;
-            newPoint.y = point.z;
-            newPoint.z = point.y;
-            newPoint.r = point.r;
-            newPoint.g = point.g;
-            newPoint.b = point.b;
-            
-            tmpPointCloud->push_back(newPoint);
-        }
+//         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
+//         pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+//         for (pcl::PointCloud<pcl::PointXYZRGB>::const_iterator it = pointCloud->begin(); 
+//              it != pointCloud->end(); it++) {
+//             
+//             const pcl::PointXYZRGB & point = *it;
+//             pcl::PointXYZRGB newPoint;
+//             
+//             newPoint.x = point.x;
+//             newPoint.y = point.z;
+//             newPoint.z = point.y;
+//             newPoint.r = point.r;
+//             newPoint.g = point.g;
+//             newPoint.b = point.b;
+//             
+//             tmpPointCloud->push_back(newPoint);
+//         }
+//         
+//         publishPointCloud(pointCloudPub, tmpPointCloud, i);
+//         publishFakePointCloud(fakePointCloudPub, radius, i);
         
-        publishPointCloud(pointCloudPub, tmpPointCloud, i);
-        publishFakePointCloud(fakePointCloudPub, radius, i);
+        rosgraph_msgs::Clock clockMsg;
+        clockMsg.clock = ros::Time(accTime);
+        clockPub.publish(clockMsg);
+        
+        ros::spinOnce();
         
         static tf::TransformBroadcaster broadcaster;
         tf::StampedTransform transform;
         // TODO: In a real application, time should be taken from the system
-        transform.stamp_ = ros::Time();
+        transform.stamp_ = ros::Time::now();
         transform.setOrigin(tf::Vector3(-posX, -posY, 0.0));
         transform.setRotation( tf::createQuaternionFromRPY(0.0, 0.0, posTheta) );
         
         sensor_msgs::Image msgLeft, msgRight;
         cv_bridge::CvImage tmpLeft(msgLeft.header, sensor_msgs::image_encodings::BGR8, left);
         cv_bridge::CvImage tmpRight(msgRight.header, sensor_msgs::image_encodings::BGR8, right);
-        leftCameraInfo.header.stamp = tmpLeft.header.stamp = ros::Time::now();
-        rightCameraInfo.header.stamp = tmpRight.header.stamp = ros::Time::now();
+        leftCameraInfo.header.stamp = tmpLeft.header.stamp = ros::Time(accTime); //ros::Time::now();
+        rightCameraInfo.header.stamp = tmpRight.header.stamp = ros::Time(accTime); //ros::Time::now();
         
         leftInfoPub.publish(leftCameraInfo);
         righttInfoPub.publish(rightCameraInfo);
@@ -519,11 +526,10 @@ void testStereoTracking() {
             markersPub.publish(markersMsg);
         }
         
-        rosgraph_msgs::Clock clockMsg;
-        clockMsg.clock = ros::Time(accTime);
-        clockPub.publish(clockMsg);
+//         rosgraph_msgs::Clock clockMsg;
+//         clockMsg.clock = ros::Time(accTime);
+//         clockPub.publish(clockMsg);
         
-        ros::spinOnce();
 //         publishPointCloud(pointCloudPub, pointCloud);
 //         broadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "/map", "/odom"));
         
@@ -536,12 +542,15 @@ void testStereoTracking() {
         
         uint8_t keycode;
 //         if (i < 15)
-            keycode = cv::waitKey(0);
+//             keycode = cv::waitKey(0);
 //         else
-//             keycode = cv::waitKey(2000);
+        cout << "deltaTime " << deltaTime << endl;
+//             keycode = cv::waitKey((uint32_t)(deltaTime * 2000));
+            keycode = cv::waitKey(0);
         if (keycode == 27) {
             break;
         }
+        ros::spinOnce();
         //         }
         
         //         if (i != initialIdx)

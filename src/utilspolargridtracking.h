@@ -29,7 +29,9 @@ using namespace std;
 #define LOG_BASE(base, x) log10(x) / log10(base)
 
 #define INIT_CLOCK(start) auto start = std::chrono::high_resolution_clock::now();
+#define RESET_CLOCK(start) start = std::chrono::high_resolution_clock::now();
 #define END_CLOCK(time, start) float time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
+#define END_CLOCK_2(time, start) time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
 
 cv::Mat getCvMatFromEigenBinary(const polar_grid_tracking::BinaryMap & map);
 cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map);
