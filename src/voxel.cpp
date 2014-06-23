@@ -27,7 +27,7 @@ using namespace std;
 namespace voxel_grid_tracking {
     
 // FIXME: Use a bigger value after implementing this stage over the GPU
-#define DISPARITY_COMPUTATION_ERROR 0.075//0.075
+#define DISPARITY_COMPUTATION_ERROR 0.075 //0.25 //0.075//0.075
 
 Voxel::Voxel() 
 {
@@ -64,15 +64,17 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
     }
     
     m_magnitude = 0.0;
+    m_neighborOcc = 0;
     
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 }
 
-void Voxel::createParticles(const uint32_t & numParticles)
+void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform)
 {
     for (uint32_t i = m_particles.size(); i < numParticles; i++)
         m_particles.push_back(Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
-                                         m_sizeX, m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ));
+                                         m_sizeX, m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ, 
+                                         pose2mapTransform));
 }
 
 void Voxel::setOccupiedPosteriorProb(const uint32_t& particlesPerVoxel)
@@ -239,6 +241,7 @@ void Voxel::reset()
 {    
     m_pointCloud->clear();
     m_obstIdx = -1;
+    m_neighborOcc = 0;
 }
 
 bool Voxel::nextTo(const Voxel& voxel) const

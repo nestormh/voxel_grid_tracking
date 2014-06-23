@@ -28,6 +28,7 @@
 #include <opencv2/opencv.hpp>
 
 #include <vector>
+#include <tiff.h>
 
 using namespace std;
 
@@ -48,7 +49,7 @@ public:
           const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
           const double & yawInterval, const double & pitchInterval);
     
-    void createParticles(const uint32_t & numParticles);
+    void createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform);
     
     void setOccupiedProb(const double & occupiedProb) { m_occupiedProb = occupiedProb; }
     void setOccupiedPosteriorProb(const uint32_t & particlesPerVoxel);
@@ -98,6 +99,10 @@ public:
     double y() const { return m_y; }
     double z() const { return m_z; }
     
+    uint32_t neighborOcc() const { return m_neighborOcc; };
+    
+    void incNeighborOcc() { m_neighborOcc++; };
+    
     double density() const { return m_density; }
     
     int32_t obstIdx() const { return m_obstIdx; }
@@ -132,6 +137,8 @@ protected:
     SpeedMethod m_speedMethod;
     
     int32_t m_obstIdx;
+    
+    uint32_t m_neighborOcc;                     // Number of neighbors containing at least one point
     
     vector <Particle3d> m_particles;
     

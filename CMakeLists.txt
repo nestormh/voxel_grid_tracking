@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf2_ros
+  tf_conversions
   cv_bridge
   image_transport
   camera_calibration_parsers

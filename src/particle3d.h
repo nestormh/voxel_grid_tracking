@@ -21,6 +21,9 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <Eigen/Core>
+#include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
+#include <opencv2/opencv.hpp>
 
 using namespace std;
 
@@ -29,11 +32,14 @@ namespace voxel_grid_tracking {
 class Particle3d
 {
 public:
+    
     Particle3d(const double & centroidX, const double & centroidY, const double & centroidZ, 
                const double & voxelSizeX, const double & voxelSizeY, const double & voxelSizeZ, 
-               const double & maxVelX, const double & maxVelY, const double & maxVelZ);
+               const double & maxVelX, const double & maxVelY, const double & maxVelZ,
+               const tf::StampedTransform & pose2mapTransform);
     Particle3d(const double & x, const double & y, const double & z, 
-               const double & vx, const double & vy, const double & vz);
+               const double & vx, const double & vy, const double & vz, 
+               const tf::StampedTransform & pose2mapTransform);
     
     Particle3d(const Particle3d & particle);
     
@@ -47,11 +53,17 @@ public:
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
     
+    void getYawPitch(double & yaw, double & pitch) const;
+    tf::Quaternion getQuaternion() const;
+    
+    tf::StampedTransform pose2mapTransform() const { return m_pose2mapTransform; }
+    
 private:
     double m_x, m_y, m_z, m_vx, m_vy, m_vz;
     
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     
+    tf::StampedTransform m_pose2mapTransform;
 };
 
 ostream& operator<<(ostream & stream, const Particle3d & in);

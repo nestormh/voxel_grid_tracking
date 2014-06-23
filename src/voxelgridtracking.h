@@ -91,6 +91,7 @@ protected:
     bool m_initialized;
     
     tf::StampedTransform m_lastMapOdomTransform;
+    tf::StampedTransform m_pose2MapTransform;
     
     typedef vector<VoxelObstacle> ObstacleList;
     ObstacleList m_obstacles;
@@ -103,7 +104,6 @@ protected:
     double m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     double m_particlesPerCell, m_threshProbForCreation;
-    string m_baseFrame;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
     uint32_t m_minVoxelsPerObstacle;
@@ -117,6 +117,11 @@ protected:
     double m_minObstacleHeight;
     double m_maxObstacleHeight;
     double m_timeIncrementForFakePointCloud;
+    
+    string m_mapFrame;
+    string m_poseFrame;
+    string m_cameraFrame;
+    string m_baseFrame;//TODO: Remove
 
     // Subscribers
     ros::Subscriber m_pointCloudSub;
@@ -125,7 +130,6 @@ protected:
     ros::Publisher m_voxelsPub;
     ros::Publisher m_pointsPerVoxelPub;
     ros::Publisher m_particlesPub;
-    ros::Publisher m_particlesPositionPub;
     ros::Publisher m_mainVectorsPub;
     ros::Publisher m_obstaclesPub;
     ros::Publisher m_obstacleCubesPub;
