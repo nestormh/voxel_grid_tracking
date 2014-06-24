@@ -80,7 +80,7 @@ VoxelGridTracking::VoxelGridTracking()
 
     m_maxVelX = 10.0;
     m_maxVelY = 10.0;
-    m_maxVelZ = 10.0;
+    m_maxVelZ = 0.0;
     
     if (m_maxVelZ != 0.0) {
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
@@ -234,7 +234,8 @@ void VoxelGridTracking::start()
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 {
-    m_deltaTime = msg->header.stamp.toSec() - m_pointCloud->header.stamp;
+    m_deltaTime = (msg->header.stamp - m_lastPointCloudTime).toSec();
+    cout << "m_deltaTime = " << msg->header.stamp << " - " << m_lastPointCloudTime << " = " << m_deltaTime << endl;
     
     pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
     cout << "Received point cloud " << msg->header.seq << " with size = " << m_pointCloud->size() << endl;
@@ -242,6 +243,9 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::copyPointCloud(*m_pointCloud, *pointCloud);
+    
+    m_lastPointCloudTime = msg->header.stamp;
+    
     compute(pointCloud);
 }
 
@@ -265,14 +269,15 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     getMeasurementModel();
     
     if (m_initialized) {
-//         prediction();
+        prediction();
 //         measurementBasedUpdate();
 //         segment();
 //         
 //         updateObstacles();
 //         filterObstacles();
 //         updateSpeedFromObstacles();
-    }
+    } 
+    publishParticles();
     initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
     
@@ -284,7 +289,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     INIT_CLOCK(startVis)
     publishVoxels();
-    publishParticles();
+//     publishParticles();
 //     publishMainVectors();
 //     publishObstacles();
 //     publishObstacleCubes();
@@ -302,8 +307,6 @@ void VoxelGridTracking::reset()
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 m_grid[x][y][z].reset();
-                // TODO: Remove particles reset
-                m_grid[x][y][z].clearParticles();
             }
         }
     }
@@ -388,6 +391,7 @@ void VoxelGridTracking::initialization()
                 // FIXME: Is it really important the fact that it is occupied or not?
                 if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
 
+                    // TODO The number of generated particles depends on the occupancy probability
                     const uint32_t numParticles = m_particlesPerCell; // * occupiedProb / 2.0;
                     voxel.createParticles(numParticles, m_pose2MapTransform);
                 }
@@ -398,12 +402,14 @@ void VoxelGridTracking::initialization()
     m_initialized = true;
 }
 
-void VoxelGridTracking::particleToVoxel(const Particle3d & particle, 
-                                        int32_t & posX, int32_t & posY, int32_t & posZ)
+inline void VoxelGridTracking::particleToVoxel(const Particle3d & particle, 
+                                               int32_t & posX, int32_t & posY, int32_t & posZ)
 {
-    const double dPosX = (particle.x() - m_minX) / m_cellSizeX;
-    const double dPosY = (particle.y() - m_minY) / m_cellSizeY;
-    const double dPosZ = (particle.z() - m_minZ) / m_cellSizeZ;
+    tf::Vector3 point = m_pose2MapTransform.inverse() * tf::Vector3(particle.x(), particle.y(), particle.z());
+    
+    const double dPosX = (point[0] - m_minX) / m_cellSizeX;
+    const double dPosY = (point[1] - m_minY) / m_cellSizeY;
+    const double dPosZ = (point[2] - m_minZ) / m_cellSizeZ;
     
     posX = (dPosX < 0.0)? -1 : dPosX;
     posY = (dPosY < 0.0)? -1 : dPosY;
@@ -412,25 +418,25 @@ void VoxelGridTracking::particleToVoxel(const Particle3d & particle,
 
 void VoxelGridTracking::prediction()
 {
-    const double speed = 0.0; //m_speed;
-    const double deltaYaw = 0.0; //m_deltaYaw;
-    const double deltaPitch = 0.0; //m_deltaPitch;
-    
-    const double dx = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
-    const double dy = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
-    const double dz = -0.0;
-    
-    Eigen::MatrixXd R(6, 6);
-    Eigen::VectorXd t(6, 1);
+//     const double speed = 0.0; //m_speed;
+//     const double deltaYaw = 0.0; //m_deltaYaw;
+//     const double deltaPitch = 0.0; //m_deltaPitch;
+//     
+//     const double dx = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
+//     const double dy = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
+//     const double dz = -0.0;
+//     
+//     Eigen::MatrixXd R(6, 6);
+//     Eigen::VectorXd t(6, 1);
     Eigen::MatrixXd stateTransition(6, 6);
-    R << cos(deltaYaw), -sin(deltaYaw), 0, 0, 0, 0,
-         sin(deltaYaw), cos(deltaYaw), 0, 0, 0, 0,
-        0, 0, 1, 0, 0, 0,
-        0, 0, 0, cos(deltaYaw), -sin(deltaYaw), 0,
-        0, 0, 0, sin(deltaYaw), cos(deltaYaw), 0,
-        0, 0, 0, 0, 0, 1;
-    
-    t << dx, dy, dz, 0, 0, 0;
+//     R << cos(deltaYaw), -sin(deltaYaw), 0, 0, 0, 0,
+//          sin(deltaYaw), cos(deltaYaw), 0, 0, 0, 0,
+//         0, 0, 1, 0, 0, 0,
+//         0, 0, 0, cos(deltaYaw), -sin(deltaYaw), 0,
+//         0, 0, 0, sin(deltaYaw), cos(deltaYaw), 0,
+//         0, 0, 0, 0, 0, 1;
+//     
+//     t << dx, dy, dz, 0, 0, 0;
     stateTransition << 1, 0, 0, m_deltaTime, 0, 0,
                         0, 1, 0, 0, m_deltaTime, 0,
                         0, 0, 1, 0, 0, m_deltaTime,
@@ -438,14 +444,14 @@ void VoxelGridTracking::prediction()
                         0, 0, 0, 0, 1, 0,
                         0, 0, 0, 0, 0, 1;
     
+    
     // TODO: Put correct values for deltaX, deltaY, deltaZ, deltaVX, deltaVY, deltaVZ in class Particle, based on the covariance matrix
     vector <Particle3d> newParticles;
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 Voxel & voxel = m_grid[x][y][z];
-                voxel.transformParticles(R, t, stateTransition, newParticles);
-                voxel.clearParticles();
+                voxel.transformParticles(stateTransition, newParticles);
             }
         }
     }

@@ -102,14 +102,12 @@ void Voxel::addParticle(const Particle3d& particle)
     m_particles.push_back(particle);
 }
     
-void Voxel::transformParticles(const Eigen::MatrixXd & R, const Eigen::VectorXd & t, 
-                               const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles)
+void Voxel::transformParticles(const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles)
 {
     BOOST_FOREACH(Particle3d & particle, m_particles) {
-        particle.transform(R, t, stateTransition);
+        particle.transform(stateTransition);
         
         newParticles.push_back(particle);
-        
     }
     m_particles.clear();
 }

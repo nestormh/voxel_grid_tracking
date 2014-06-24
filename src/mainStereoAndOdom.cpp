@@ -273,13 +273,13 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 1; //260; //72; //55;
+            initialIdx = 72; //260; //72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
-//             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
+            seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0015_sync");
 //             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0052_sync");
-            seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
+//             seqName = boost::filesystem::path("2011_09_26/2011_09_26_drive_0091_sync"); // Pedestrian area
             leftImagePattern = "image_02/data/%010d.png";
             rightImagePattern = "image_03/data/%010d.png";
             

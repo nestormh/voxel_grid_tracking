@@ -43,8 +43,7 @@ public:
     
     Particle3d(const Particle3d & particle);
     
-    void transform(const Eigen::MatrixXd & R, const Eigen::VectorXd & t,
-                   const Eigen::MatrixXd & stateTransition);
+    void transform(const Eigen::MatrixXd & stateTransition);
     
     double x() const { return m_x; }
     double y() const { return m_y; }

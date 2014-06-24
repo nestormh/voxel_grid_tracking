@@ -140,10 +140,10 @@ tf::Quaternion Particle3d::getQuaternion() const
 }
 
 
-void Particle3d::transform(const Eigen::MatrixXd & R, const Eigen::VectorXd & t, const Eigen::MatrixXd& stateTransition)
+void Particle3d::transform(const Eigen::MatrixXd& stateTransition)
 {
     Eigen::VectorXd newPosAndVel(6), oldPosAndVel(6);
-    Eigen::VectorXd tmpPosAndVel(6), deltaPosAndVel(6), finalPosAndVel(6);
+    Eigen::VectorXd deltaPosAndVel(6);
     
     oldPosAndVel << m_x, m_y, m_z, m_vx, m_vy, m_vz;
     
@@ -152,15 +152,9 @@ void Particle3d::transform(const Eigen::MatrixXd & R, const Eigen::VectorXd & t,
         
     newPosAndVel = stateTransition * oldPosAndVel + deltaPosAndVel;
     
-    finalPosAndVel = R * newPosAndVel + t;
-    
-    m_x = finalPosAndVel(0);
-    m_y = finalPosAndVel(1);
-    m_z = finalPosAndVel(2);
-    m_vx = finalPosAndVel(3);
-    m_vy = finalPosAndVel(4);
-    m_vz = finalPosAndVel(5);
-    
+    m_x = newPosAndVel(0);
+    m_y = newPosAndVel(1);
+    m_z = newPosAndVel(2);
     m_vx = newPosAndVel(3);
     m_vy = newPosAndVel(4);
     m_vz = newPosAndVel(5);
