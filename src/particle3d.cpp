@@ -49,6 +49,8 @@ Particle3d::Particle3d(const double & centroidX, const double & centroidY, const
     m_vx = m_maxVelX - 2.0 * m_maxVelX * ((double)rand() / RAND_MAX);
     m_vy = m_maxVelY - 2.0 * m_maxVelY * ((double)rand() / RAND_MAX);
     m_vz = m_maxVelZ - 2.0 * m_maxVelZ * ((double)rand() / RAND_MAX);
+    
+    m_age = 0;
 }
 
 Particle3d::Particle3d(const double& x, const double& y, const double& z, 
@@ -62,12 +64,14 @@ Particle3d::Particle3d(const double& x, const double& y, const double& z,
     m_x = point[0];
     m_y = point[1];
     m_z = point[2];
+    
+    m_age = 0;
 }
 
 Particle3d::Particle3d(const Particle3d& particle)
                             : m_x(particle.x()), m_y(particle.y()), m_z(particle.z()), 
                                 m_vx(particle.vx()), m_vy(particle.vy()), m_vz(particle.vz()),
-                                m_pose2mapTransform(particle.pose2mapTransform()) 
+                                m_pose2mapTransform(particle.pose2mapTransform()), m_age(particle.age())
 {
 }
 
@@ -158,11 +162,24 @@ void Particle3d::transform(const Eigen::MatrixXd& stateTransition)
     m_vx = newPosAndVel(3);
     m_vy = newPosAndVel(4);
     m_vz = newPosAndVel(5);
+    
+    m_age++;
 }
+
+// bool operator < (const MyStruct& str) const
+// {
+//     return (key < str.key);
+// }
+
+bool Particle3d::operator<(const Particle3d& particle) const
+{
+    return (m_age < particle.age());
+}
+
 
 ostream& operator<<(ostream & stream, const Particle3d & in) {
     stream << "[" << in.x() << ", " << in.y() << ", " << in.z() << ", " 
-           << in.vx() << ", " << in.vy() << ", " << in.vz() << "]";
+           << in.vx() << ", " << in.vy() << ", " << in.vz() << ":::age: " << in.age() << "]";
     return stream;
 }
 

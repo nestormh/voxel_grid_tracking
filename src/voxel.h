@@ -83,6 +83,8 @@ public:
     
     void update();
     
+    void sortParticles();
+    
     double centroidX() const { return m_centroidX; }
     double centroidY() const { return m_centroidY; }
     double centroidZ() const { return m_centroidZ; }

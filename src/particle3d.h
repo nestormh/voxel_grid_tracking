@@ -52,13 +52,19 @@ public:
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
     
+    uint32_t age() const { return m_age; }
+    
     void getYawPitch(double & yaw, double & pitch) const;
     tf::Quaternion getQuaternion() const;
     
     tf::StampedTransform pose2mapTransform() const { return m_pose2mapTransform; }
     
+    bool operator < (const Particle3d & particle) const;
+    
 private:
     double m_x, m_y, m_z, m_vx, m_vy, m_vz;
+    
+    uint32_t m_age;
     
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     

@@ -78,15 +78,15 @@ VoxelGridTracking::VoxelGridTracking()
     m_cellSizeY = 0.25;
     m_cellSizeZ = 0.5;
 
-    m_maxVelX = 10.0;
-    m_maxVelY = 10.0;
+    m_maxVelX = 3.0;
+    m_maxVelY = 3.0;
     m_maxVelZ = 0.0;
     
     if (m_maxVelZ != 0.0) {
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerCell = 5; //1000;
+    m_particlesPerVoxel = 20;
     m_threshProbForCreation = 0.0; //0.2;
     
     m_neighBorX = 1;
@@ -152,6 +152,16 @@ VoxelGridTracking::VoxelGridTracking()
         }
     }
     
+    m_particleColors.resize(boost::extents[MAX_PARTICLE_AGE_REPRESENTATION]);
+    m_particleColors[0] = cv::Scalar(255, 0, 0);   // Blue
+    m_particleColors[1] = cv::Scalar(0, 255, 0);   // Green
+    m_particleColors[2] = cv::Scalar(0, 0, 255);   // Red
+    m_particleColors[3] = cv::Scalar(255, 255, 0);  // Cyan
+    m_particleColors[4] = cv::Scalar(255, 0, 255);  // Magenta
+    m_particleColors[5] = cv::Scalar(0, 255, 255);   // Yellow
+    m_particleColors[6] = cv::Scalar(0, 0, 0);        // Black
+    m_particleColors[7] = cv::Scalar(255, 255, 255);    // White
+    
     m_lastMapOdomTransform.stamp_ = ros::Time(-1);
     ros::NodeHandle nh("~");
     
@@ -163,7 +173,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 0, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
     
     m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
-    m_particlesPub = nh.advertise<geometry_msgs::PoseArray> ("particles", 1);
+    m_particlesPub = nh.advertise<visualization_msgs::MarkerArray> ("particles", 1);
     m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
     m_mainVectorsPub = nh.advertise<visualization_msgs::MarkerArray>("mainVectors", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 1);
@@ -270,14 +280,14 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     if (m_initialized) {
         prediction();
-//         measurementBasedUpdate();
+        publishParticles();
+        measurementBasedUpdate();
 //         segment();
 //         
 //         updateObstacles();
 //         filterObstacles();
 //         updateSpeedFromObstacles();
     } 
-    publishParticles();
     initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
     
@@ -290,7 +300,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     INIT_CLOCK(startVis)
     publishVoxels();
 //     publishParticles();
-//     publishMainVectors();
+    publishMainVectors();
 //     publishObstacles();
 //     publishObstacleCubes();
 //     publishROI();
@@ -392,7 +402,7 @@ void VoxelGridTracking::initialization()
                 if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
 
                     // TODO The number of generated particles depends on the occupancy probability
-                    const uint32_t numParticles = m_particlesPerCell; // * occupiedProb / 2.0;
+                    const uint32_t numParticles = m_particlesPerVoxel; // * occupiedProb / 2.0;
                     voxel.createParticles(numParticles, m_pose2MapTransform);
                 }
             }
@@ -478,50 +488,47 @@ void VoxelGridTracking::measurementBasedUpdate()
                 Voxel & voxel = m_grid[x][y][z];
                 
                 if ((! voxel.empty()) && (voxel.occupied())) {
+                    voxel.sortParticles();
                     voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
                 }
             }
         }
     }
+    
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 Voxel & voxel = m_grid[x][y][z];
             
                 if ((! voxel.empty()) && (voxel.occupied())) {
-                    voxel.setOccupiedPosteriorProb(m_particlesPerCell);
-                    const double Nrc = voxel.occupiedPosteriorProb() * m_particlesPerCell;
+                    voxel.setOccupiedPosteriorProb(m_particlesPerVoxel);
+                    const double Nrc = voxel.occupiedPosteriorProb() * m_particlesPerVoxel;
                     const double fc = Nrc / voxel.numParticles();
                     
                     if (fc > 1.0) {
                         const double Fn = floor(fc);       // Integer part
                         const double Ff = fc - Fn;         // Fractional part
                         
-                        const uint32_t numParticles = voxel.numParticles();
-                        for (uint32_t i = 0; i < numParticles; i++) {
+                        for (uint32_t i = 0; i < voxel.numParticles(); i++) {
                             
                             const Particle3d & p = voxel.getParticle(i);
                             
                             for (uint32_t k = 1; k < Fn; k++)
-                                voxel.makeCopy(p);
+                                for (uint32_t n = 0; n < p.age(); n++)
+                                    voxel.makeCopy(p);
                             
                             const double r = (double)rand() / (double)RAND_MAX;
                             if (r < Ff)
                                 voxel.makeCopy(p);
                         }
                     } else if (fc < 1.0) {
-                        const uint32_t numParticles = voxel.numParticles();
-                        for (uint32_t i = 0; i < numParticles; i++) {
+                        for (uint32_t i = 0; i < voxel.numParticles(); i++) {
                             const double r = (double)rand() / (double)RAND_MAX;
                             if (r > fc)
                                 voxel.removeParticle(i);
                         }
                     }
-                    
-//                     voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
-                } /*else {
-                    voxel.reset();
-                }*/
+                }
             }
         }
     }
@@ -793,11 +800,66 @@ void VoxelGridTracking::publishVoxels()
 
 void VoxelGridTracking::publishParticles()
 {
-    geometry_msgs::PoseArray particles;
+//     geometry_msgs::PoseArray particles;
+//     
+//     particles.header.frame_id = m_mapFrame;
+//     particles.header.stamp = ros::Time();
+//         
+//     uint32_t idCount = 0;
+//     for (uint32_t x = 0; x < m_dimX; x++) {
+//         for (uint32_t y = 0; y < m_dimY; y++) {
+//             for (uint32_t z = 0; z < m_dimZ; z++) {
+//                 const Voxel & voxel = m_grid[x][y][z];
+//                 
+//                 for (uint32_t i = 0; i < voxel.numParticles(); i++) {
+//                     const Particle3d & particle = voxel.getParticle(i);
+//                     geometry_msgs::Pose pose;
+//                     
+//                     pose.position.x = particle.x();
+//                     pose.position.y = particle.y();
+//                     pose.position.z = particle.z();
+//                     
+//                     const double & vx = particle.vx();
+//                     const double & vy = particle.vy();
+//                     const double & vz = particle.vz();
+//                     
+//                     const tf::Quaternion & quat = particle.getQuaternion();
+//                     pose.orientation.w = quat.w();
+//                     pose.orientation.x = quat.x();
+//                     pose.orientation.y = quat.y();
+//                     pose.orientation.z = quat.z();
+//                     
+//                     particles.poses.push_back(pose);
+//                 }
+//             }
+//         }
+//     }
+//     
+//     m_particlesPub.publish(particles);
     
-    particles.header.frame_id = m_mapFrame;
-    particles.header.stamp = ros::Time();
-        
+    visualization_msgs::MarkerArray particlesCleaners;
+    
+    for (uint32_t i = 0; i < 1000; i++) {
+        for (uint32_t age = 0; age < MAX_PARTICLE_AGE_REPRESENTATION; age++) {
+            stringstream ss;
+            ss << "age_" << age;
+            
+            visualization_msgs::Marker voxelMarker;
+            voxelMarker.header.frame_id = m_mapFrame;
+            voxelMarker.header.stamp = ros::Time();
+            voxelMarker.id = i;
+            voxelMarker.ns = ss.str();
+            voxelMarker.type = visualization_msgs::Marker::ARROW;
+            voxelMarker.action = visualization_msgs::Marker::DELETE;
+            
+            particlesCleaners.markers.push_back(voxelMarker);
+        }
+    }
+    
+    m_particlesPub.publish(particlesCleaners);
+    
+    visualization_msgs::MarkerArray particles;
+    
     uint32_t idCount = 0;
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
@@ -806,23 +868,55 @@ void VoxelGridTracking::publishParticles()
                 
                 for (uint32_t i = 0; i < voxel.numParticles(); i++) {
                     const Particle3d & particle = voxel.getParticle(i);
-                    geometry_msgs::Pose pose;
+            
+                    uint32_t age = particle.age();
+                    if (age >= MAX_PARTICLE_AGE_REPRESENTATION)
+                        age = MAX_PARTICLE_AGE_REPRESENTATION - 1;
                     
-                    pose.position.x = particle.x();
-                    pose.position.y = particle.y();
-                    pose.position.z = particle.z();
+                    visualization_msgs::Marker particleVector;
+                    particleVector.header.frame_id = m_mapFrame;
+                    particleVector.header.stamp = ros::Time();
+                    particleVector.id = idCount++;
+                    stringstream ss;
+                    ss << "age_" << age;
+                    particleVector.ns = ss.str();
+                    particleVector.type = visualization_msgs::Marker::ARROW;
+                    particleVector.action = visualization_msgs::Marker::ADD;
                     
+                    particleVector.pose.orientation.x = 0.0;
+                    particleVector.pose.orientation.y = 0.0;
+                    particleVector.pose.orientation.z = 0.0;
+                    particleVector.pose.orientation.w = 1.0;
+                    particleVector.scale.x = 0.01;
+                    particleVector.scale.y = 0.03;
+                    particleVector.scale.z = 0.1;
+                    particleVector.color.a = 1.0;
+                    particleVector.color.r = m_obstacleColors[age][2];
+                    particleVector.color.g = m_obstacleColors[age][1];
+                    particleVector.color.b = m_obstacleColors[age][0];
+                    
+                    //         orientation.lifetime = ros::Duration(5.0);
+                    
+                    const double & x = particle.x();
+                    const double & y = particle.y();
+                    const double & z = particle.z();
                     const double & vx = particle.vx();
                     const double & vy = particle.vy();
                     const double & vz = particle.vz();
                     
-                    const tf::Quaternion & quat = particle.getQuaternion();
-                    pose.orientation.w = quat.w();
-                    pose.orientation.x = quat.x();
-                    pose.orientation.y = quat.y();
-                    pose.orientation.z = quat.z();
+                    geometry_msgs::Point origin, dest;
+                    origin.x = x;
+                    origin.y = y;
+                    origin.z = z;
                     
-                    particles.poses.push_back(pose);
+                    dest.x = x + vx * m_deltaTime;
+                    dest.y = y + vy * m_deltaTime;
+                    dest.z = z + vz * m_deltaTime;
+                    
+                    particleVector.points.push_back(origin);
+                    particleVector.points.push_back(dest);
+                    
+                    particles.markers.push_back(particleVector);
                 }
             }
         }
@@ -837,7 +931,7 @@ void VoxelGridTracking::publishMainVectors()
     
     for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
         visualization_msgs::Marker voxelMarker;
-        voxelMarker.header.frame_id = m_baseFrame;
+        voxelMarker.header.frame_id = m_mapFrame;
         voxelMarker.header.stamp = ros::Time();
         voxelMarker.id = i;
         voxelMarker.ns = "mainVectors";
@@ -859,7 +953,7 @@ void VoxelGridTracking::publishMainVectors()
                 if (! voxel.empty()) {
                     
                     visualization_msgs::Marker mainVector;
-                    mainVector.header.frame_id = "left_cam";
+                    mainVector.header.frame_id = m_poseFrame;
                     mainVector.header.stamp = ros::Time();
                     mainVector.id = idCount++;
                     mainVector.ns = "mainVectors";
@@ -899,41 +993,41 @@ void VoxelGridTracking::publishMainVectors()
     }
     
     // Ego-motion
-    visualization_msgs::Marker mainVector;
-    mainVector.header.frame_id = "left_cam";
-    mainVector.header.stamp = ros::Time();
-    mainVector.id = 0;
-    mainVector.ns = "egoMotionVector";
-    mainVector.type = visualization_msgs::Marker::ARROW;
-    mainVector.action = visualization_msgs::Marker::ADD;
-    
-    mainVector.pose.orientation.x = 0.0;
-    mainVector.pose.orientation.y = 0.0;
-    mainVector.pose.orientation.z = 0.0;
-    mainVector.pose.orientation.w = 1.0;
-    mainVector.scale.x = 0.01;
-    mainVector.scale.y = 0.03;
-    mainVector.scale.z = 0.1;
-    mainVector.color.a = 1.0;
-    mainVector.color.r = 1.0;
-    mainVector.color.g = 0.0;
-    mainVector.color.b = 0.0;
-    
-    //         orientation.lifetime = ros::Duration(5.0);
-    
-    geometry_msgs::Point origin, dest;
-    origin.x = 0.0;
-    origin.y = 0.0;
-    origin.z = 0.0;
-    
-    dest.x = m_deltaX * m_deltaTime;
-    dest.y = m_deltaY * m_deltaTime;
-    dest.z = m_deltaZ * m_deltaTime;
-    
-    mainVector.points.push_back(origin);
-    mainVector.points.push_back(dest);
-    
-    mainVectors.markers.push_back(mainVector);
+//     visualization_msgs::Marker mainVector;
+//     mainVector.header.frame_id = "left_cam";
+//     mainVector.header.stamp = ros::Time();
+//     mainVector.id = 0;
+//     mainVector.ns = "egoMotionVector";
+//     mainVector.type = visualization_msgs::Marker::ARROW;
+//     mainVector.action = visualization_msgs::Marker::ADD;
+//     
+//     mainVector.pose.orientation.x = 0.0;
+//     mainVector.pose.orientation.y = 0.0;
+//     mainVector.pose.orientation.z = 0.0;
+//     mainVector.pose.orientation.w = 1.0;
+//     mainVector.scale.x = 0.01;
+//     mainVector.scale.y = 0.03;
+//     mainVector.scale.z = 0.1;
+//     mainVector.color.a = 1.0;
+//     mainVector.color.r = 1.0;
+//     mainVector.color.g = 0.0;
+//     mainVector.color.b = 0.0;
+//     
+//     //         orientation.lifetime = ros::Duration(5.0);
+//     
+//     geometry_msgs::Point origin, dest;
+//     origin.x = 0.0;
+//     origin.y = 0.0;
+//     origin.z = 0.0;
+//     
+//     dest.x = m_deltaX * m_deltaTime;
+//     dest.y = m_deltaY * m_deltaTime;
+//     dest.z = m_deltaZ * m_deltaTime;
+//     
+//     mainVector.points.push_back(origin);
+//     mainVector.points.push_back(dest);
+//     
+//     mainVectors.markers.push_back(mainVector);
     
     m_mainVectorsPub.publish(mainVectors);
     

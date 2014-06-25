@@ -30,6 +30,7 @@
 
 #define DEFAULT_BASE_FRAME "left_cam"
 #define MAX_OBSTACLES_VISUALIZATION 10000
+#define MAX_PARTICLE_AGE_REPRESENTATION 8
 
 namespace voxel_grid_tracking {
     
@@ -86,6 +87,8 @@ protected:
     ColorMatrix m_colors;
     typedef boost::multi_array<double, 2> ColorVector;
     ColorVector m_obstacleColors;
+    typedef boost::multi_array<cv::Scalar, 1> ParticlesColorVector;
+    ParticlesColorVector m_particleColors;
     
     uint32_t m_dimX, m_dimY, m_dimZ;
     
@@ -104,7 +107,7 @@ protected:
     double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
     double m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     double m_maxVelX, m_maxVelY, m_maxVelZ;
-    double m_particlesPerCell, m_threshProbForCreation;
+    double m_particlesPerVoxel, m_threshProbForCreation;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
     uint32_t m_minVoxelsPerObstacle;

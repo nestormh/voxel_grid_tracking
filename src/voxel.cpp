@@ -112,6 +112,11 @@ void Voxel::transformParticles(const Eigen::MatrixXd & stateTransition, vector <
     m_particles.clear();
 }
 
+void Voxel::sortParticles()
+{
+    std::sort(m_particles.rbegin(), m_particles.rend());
+}
+
 void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ) {
     
     m_vx = 0.0;
@@ -151,6 +156,9 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
+            
+            // TODO: Check that I am using the correct yaw and pitch: Create function getYawPitch() in particles
+            // TODO: Try using just the first half of the ordered particles to create the main Vectors
             
             BOOST_FOREACH(Particle3d particle, m_particles) {
                 
