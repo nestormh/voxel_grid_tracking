@@ -86,7 +86,7 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerVoxel = 20;
+    m_particlesPerVoxel = 1000;
     m_threshProbForCreation = 0.0; //0.2;
     
     m_neighBorX = 1;
@@ -402,7 +402,7 @@ void VoxelGridTracking::initialization()
                 if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
 
                     // TODO The number of generated particles depends on the occupancy probability
-                    const uint32_t numParticles = m_particlesPerVoxel; // * occupiedProb / 2.0;
+                    const uint32_t numParticles = m_particlesPerVoxel * occupiedProb; // / 2.0;
                     voxel.createParticles(numParticles, m_pose2MapTransform);
                 }
             }
@@ -931,7 +931,7 @@ void VoxelGridTracking::publishMainVectors()
     
     for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
         visualization_msgs::Marker voxelMarker;
-        voxelMarker.header.frame_id = m_mapFrame;
+        voxelMarker.header.frame_id = m_poseFrame;
         voxelMarker.header.stamp = ros::Time();
         voxelMarker.id = i;
         voxelMarker.ns = "mainVectors";
@@ -946,9 +946,10 @@ void VoxelGridTracking::publishMainVectors()
     visualization_msgs::MarkerArray mainVectors;
     
     uint32_t idCount = 0;
-    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-        const vector<Voxel> & voxels = m_obstacles[i].voxels();
-        BOOST_FOREACH(const Voxel & voxel, voxels) {
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                const Voxel & voxel = m_grid[x][y][z];
                 
                 if (! voxel.empty()) {
                     
@@ -967,10 +968,20 @@ void VoxelGridTracking::publishMainVectors()
                     mainVector.scale.x = 0.01;
                     mainVector.scale.y = 0.03;
                     mainVector.scale.z = 0.1;
+                    
+                    cv::Vec3f color(voxel.vx(), voxel.vy(), voxel.vz());
+                    if (cv::norm(color) != 0.0) {
+                        color = color / cv::norm(color);
+
+                        mainVector.color.r = fabs(color[0]);
+                        mainVector.color.g = fabs(color[1]);
+                        mainVector.color.b = fabs(color[2]);
+                    } else {
+                        mainVector.color.r = m_colors[x][y][z][0];
+                        mainVector.color.g = m_colors[x][y][z][1];
+                        mainVector.color.b = m_colors[x][y][z][2];
+                    }
                     mainVector.color.a = 1.0;
-                    mainVector.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
-                    mainVector.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
-                    mainVector.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
                     
                     //         orientation.lifetime = ros::Duration(5.0);
                     
@@ -979,9 +990,9 @@ void VoxelGridTracking::publishMainVectors()
                     origin.y = voxel.centroidY();
                     origin.z = voxel.centroidZ();
                     
-                    dest.x = voxel.centroidX() + voxel.vx() * m_deltaTime;
-                    dest.y = voxel.centroidY() + voxel.vy() * m_deltaTime;
-                    dest.z = voxel.centroidZ() + voxel.vz() * m_deltaTime;
+                    dest.x = voxel.centroidX() + voxel.vx() * m_deltaTime * 3.0;
+                    dest.y = voxel.centroidY() + voxel.vy() * m_deltaTime * 3.0;
+                    dest.z = voxel.centroidZ() + voxel.vz() * m_deltaTime * 3.0;
                     
                     mainVector.points.push_back(origin);
                     mainVector.points.push_back(dest);
@@ -989,45 +1000,8 @@ void VoxelGridTracking::publishMainVectors()
                     mainVectors.markers.push_back(mainVector);
                 }
             }
-//         }
+        }
     }
-    
-    // Ego-motion
-//     visualization_msgs::Marker mainVector;
-//     mainVector.header.frame_id = "left_cam";
-//     mainVector.header.stamp = ros::Time();
-//     mainVector.id = 0;
-//     mainVector.ns = "egoMotionVector";
-//     mainVector.type = visualization_msgs::Marker::ARROW;
-//     mainVector.action = visualization_msgs::Marker::ADD;
-//     
-//     mainVector.pose.orientation.x = 0.0;
-//     mainVector.pose.orientation.y = 0.0;
-//     mainVector.pose.orientation.z = 0.0;
-//     mainVector.pose.orientation.w = 1.0;
-//     mainVector.scale.x = 0.01;
-//     mainVector.scale.y = 0.03;
-//     mainVector.scale.z = 0.1;
-//     mainVector.color.a = 1.0;
-//     mainVector.color.r = 1.0;
-//     mainVector.color.g = 0.0;
-//     mainVector.color.b = 0.0;
-//     
-//     //         orientation.lifetime = ros::Duration(5.0);
-//     
-//     geometry_msgs::Point origin, dest;
-//     origin.x = 0.0;
-//     origin.y = 0.0;
-//     origin.z = 0.0;
-//     
-//     dest.x = m_deltaX * m_deltaTime;
-//     dest.y = m_deltaY * m_deltaTime;
-//     dest.z = m_deltaZ * m_deltaTime;
-//     
-//     mainVector.points.push_back(origin);
-//     mainVector.points.push_back(dest);
-//     
-//     mainVectors.markers.push_back(mainVector);
     
     m_mainVectorsPub.publish(mainVectors);
     

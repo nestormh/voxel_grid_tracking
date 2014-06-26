@@ -75,60 +75,6 @@ Particle3d::Particle3d(const Particle3d& particle)
 {
 }
 
-void Particle3d::getYawPitch(double& yaw, double& pitch) const
-{
-    
-//     cout << "m_vx " << m_vx << endl;
-//     cout << "m_vy " << m_vy << endl;
-//     cout << "m_vz " << m_vz << endl;
-//     
-//     const cv::Vec3d zeroVec(1.0, 0.0, 0.0);
-//     
-//     cv::Vec3d currVecYaw(m_vx, m_vy, 0.0);
-//     currVecYaw /= cv::norm(currVecYaw);
-//     
-//     cv::Vec3d currVecPitch(m_vx, 0.0, m_vz);
-//     currVecPitch /= cv::norm(currVecPitch);
-//     
-//     if (cv::norm(currVecYaw) == 0.0)
-//         yaw = 0.0;
-//     else {
-//         yaw = acos(currVecYaw.dot(zeroVec));
-// //         cout << "cos " << currVecYaw.dot(zeroVec) << endl;
-// //         cout << "yaw " << yaw * 180.0 / CV_PI << endl;
-//         if (m_vy < 0.0)
-//             yaw = /*2 * CV_PI*/ - yaw;
-// //         cout << "yaw2 " << yaw * 180.0 / CV_PI  << endl;
-//     }
-//     if (cv::norm(currVecPitch) == 0.0)
-//         pitch = 0.0;
-//     else {
-//         pitch = acos(currVecPitch.dot(zeroVec));
-//         cout << "cos " << currVecPitch.dot(zeroVec) << endl;
-//         cout << "pitch " << pitch * 180.0 / CV_PI << endl;
-//         if ((m_vz < 0.0) && (m_vy >= 0.0))
-//             pitch = /*2 * CV_PI*/ - pitch;
-//         cout << "pitch " << pitch * 180.0 / CV_PI  << endl;
-//     }
-//     cv::Vec3f currVector(m_vx, m_vy, m_vz);
-//     currVector /= cv::norm(currVector);
-//     
-//     yaw = atan2(currVector[1], currVector[0]);
-//     const float padj = cv::norm(cv::Vec2f(m_vx, m_vy));
-// //     const float padj = sqrt(pow(x, 2) + pow(z, 2)); 
-//     pitch = atan2(fabs(m_x) * cos(yaw), m_z);
-    yaw = atan2(m_x, m_y);
-    pitch = 0.0;
-    
-//     if (m_y >= 0.0) {
-//         pitch = -atan2(m_x * cos(yaw), m_y );
-//     }else{
-//         pitch = atan2(m_x * cos(yaw), -m_y);
-//     }
-//     roty = Math.atan2( x * Math.cos(rotx), z )
-//     rotz = Math.atan2( Math.cos(rotx), Math.sin(rotx) * Math.sin(roty) )
-}
-
 tf::Quaternion Particle3d::getQuaternion() const
 {
     Eigen::Vector3d zeroVector, currVector;
@@ -143,6 +89,14 @@ tf::Quaternion Particle3d::getQuaternion() const
     return quat;
 }
 
+void Particle3d::getYawPitch(double & yaw, double & pitch) const
+{
+    yaw = atan2(m_vy, m_vx);
+    if (yaw < 0.0) yaw += CV_PI * 2.0;
+    
+    pitch = atan2(m_vz, m_vx);
+    if (pitch < 0.0) pitch += CV_PI * 2.0;
+}
 
 void Particle3d::transform(const Eigen::MatrixXd& stateTransition)
 {
@@ -165,11 +119,6 @@ void Particle3d::transform(const Eigen::MatrixXd& stateTransition)
     
     m_age++;
 }
-
-// bool operator < (const MyStruct& str) const
-// {
-//     return (key < str.key);
-// }
 
 bool Particle3d::operator<(const Particle3d& particle) const
 {

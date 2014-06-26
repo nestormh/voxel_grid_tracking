@@ -157,28 +157,22 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
             
-            // TODO: Check that I am using the correct yaw and pitch: Create function getYawPitch() in particles
-            // TODO: Try using just the first half of the ordered particles to create the main Vectors
-            
             BOOST_FOREACH(Particle3d particle, m_particles) {
+//             for (uint32_t i = 0; i < m_particles.size() / 2.0; i++) {
+//                 const Particle3d & particle = m_particles[i];
                 
-                    const double & normYaw = sqrt(particle.vx() * particle.vx() + particle.vy() * particle.vy());
-                    const double & normPitch = sqrt(particle.vy() * particle.vy() + particle.vz() * particle.vz());
-                    
-                    double yaw = acos(particle.vx() / normYaw);
-                    if (particle.vy() < 0)
-                        yaw = 2 * M_PI - yaw;
-                    double pitch = asin(particle.vz() / normPitch);
+                if (particle.age() != 1) {
+                
+                    double yaw, pitch;
+                    particle.getYawPitch(yaw, pitch);
                     
                     uint32_t idxYaw = yaw / m_yawInterval;
                     uint32_t idxPitch = pitch / m_pitchInterval;
                                     
                     histogram[idxPitch][idxYaw].numPoints++;
-                    histogram[idxPitch][idxYaw].magnitudeSum += sqrt(particle.vx() * particle.vx() + 
-                                                                    particle.vy() * particle.vy() + 
-                                                                    particle.vz() * particle.vz());
+                    histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle.vx(), particle.vy(), particle.vz()));
+                }
             }
-             
             
             uint32_t maxIdxPitch = 0;
             uint32_t maxIdxYaw = 0;
@@ -197,32 +191,9 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             m_pitch = maxIdxPitch * m_pitchInterval;
             m_magnitude = histogram[maxIdxPitch][maxIdxYaw].magnitudeSum / histogram[maxIdxPitch][maxIdxYaw].numPoints;
             
-//             if (((double)numVectors / m_particles.size()) < 0.25) {
-//                 m_yaw = m_pitch = m_magnitude = 0.0;
-//             }
-            
-            m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch);
-            m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch);
-            m_vz = m_magnitude * sin(m_pitch);
-            
-//             m_vx = m_magnitude * cos(m_yaw) * cos(m_pitch) + deltaEgoX;
-//             m_vy = m_magnitude * sin(m_yaw) * cos(m_pitch) + deltaEgoY;
-//             m_vz = m_magnitude * sin(m_pitch) + deltaEgoZ;
-//             
-//             // New magnitudes and angles after ego-motion compensation
-//             m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
-//             
-//             const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
-//             const double & normPitch = sqrt(m_vy * m_vy + m_vz * m_vz);
-//             
-//             m_yaw = acos(m_vx / normYaw);
-//             if (m_vy < 0)
-//                 m_yaw = -m_yaw;
-//             
-//             m_pitch = asin(m_vz / normPitch);
-//             
-//             if (m_yaw < 0) m_yaw += M_PI;
-//             if (m_pitch < 0) m_pitch += M_PI;
+            m_vx = cos(m_yaw) * m_magnitude;
+            m_vy = sin(m_yaw) * m_magnitude;
+            m_vz = sin(m_pitch) * m_magnitude;
             
             break;
         }

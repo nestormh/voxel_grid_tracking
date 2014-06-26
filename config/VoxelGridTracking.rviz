@@ -9,6 +9,7 @@ Panels:
         - /Grid1
         - /VoxelGridTracking1
         - /VoxelGridTracking1/Particles2
+        - /VoxelGridTracking1/mainVectors1
         - /VoxelGridTracking1/fakePointCloud1
         - /StereoAndOdom1
         - /StereoAndOdom1/InputCloudStereo1
@@ -165,13 +166,13 @@ Visualization Manager:
           Topic: /VoxelGridTracking/VoxelGridTracking/particles
           Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /VoxelGridTracking/VoxelGridTracking/particles
           Name: Particles
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -202,13 +203,13 @@ Visualization Manager:
           Use rainbow: true
           Value: false
         - Class: rviz/MarkerArray
-          Enabled: false
+          Enabled: true
           Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
           Name: mainVectors
           Namespaces:
             {}
           Queue Size: 100
-          Value: false
+          Value: true
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
@@ -490,17 +491,17 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.97987
+      Distance: 16.5827
       Focal Point:
         X: 7.4073
         Y: 0.0901805
         Z: -0.279969
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.394799
+      Pitch: 0.324799
       Target Frame: base_left_cam
       Value: Orbit (rviz)
-      Yaw: 2.76818
+      Yaw: 3.05818
     Saved:
       - Class: rviz/XYOrbit
         Distance: 20.0678
