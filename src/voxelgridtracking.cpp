@@ -170,7 +170,11 @@ VoxelGridTracking::VoxelGridTracking()
     nh.param<string>("camera_frame", m_cameraFrame, "/base_left_cam");
     
 // //         m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
-    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 0, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+//     m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 0, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+    
+    m_pointCloudSub.subscribe(nh, "pointCloud", 0);
+    m_tfPointCloudSync.reset(new TfPointCloudSynchronizer(m_pointCloudSub, m_tfListener, m_mapFrame, 0));
+    m_tfPointCloudSync->registerCallback( boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
     
     m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
     m_particlesPub = nh.advertise<visualization_msgs::MarkerArray> ("particles", 1);
@@ -185,67 +189,18 @@ VoxelGridTracking::VoxelGridTracking()
 //     ros::spin();
 }
 
-void VoxelGridTracking::start()
-{
-
-    tf::StampedTransform lastMapOdomTransform;
-    lastMapOdomTransform.stamp_ = ros::Time(-1);
-    
-    tf::TransformListener listener;
-
-    while (ros::ok()) {
-        ros::spinOnce();
-        try{
-            while ((! listener.waitForTransform (m_mapFrame, m_poseFrame, ros::Time(0), ros::Duration(10.0), ros::Duration(0.000001))) && (ros::ok()));
-            
-            listener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
-            
-            if (lastMapOdomTransform.stamp_ != ros::Time(-1)) {
-                if (lastMapOdomTransform.stamp_ != m_pose2MapTransform.stamp_) {
-                    double yaw, yaw1, yaw2, pitch, pitch1, pitch2, roll;
-                    tf::Matrix3x3(m_pose2MapTransform.getRotation()).getRPY(roll, pitch2, yaw2);
-                    tf::Matrix3x3(lastMapOdomTransform.getRotation()).getRPY(roll, pitch1, yaw1);
-                    yaw = yaw2 - yaw1;
-                    pitch = pitch2 - pitch1;
-                    
-                    m_deltaX = m_pose2MapTransform.getOrigin().getX() - lastMapOdomTransform.getOrigin().getX();
-                    m_deltaY = m_pose2MapTransform.getOrigin().getY() - lastMapOdomTransform.getOrigin().getY();
-                    m_deltaZ = m_pose2MapTransform.getOrigin().getZ() - lastMapOdomTransform.getOrigin().getZ();
-
-                    const double & deltaTime = m_pose2MapTransform.stamp_.toSec() - lastMapOdomTransform.stamp_.toSec();
-//                     m_deltaTime = transform.stamp_.toSec() - lastMapOdomTransform.stamp_.toSec();
-                    
-                    double deltaS = sqrt(m_deltaX * m_deltaX + m_deltaY * m_deltaY + m_deltaZ * m_deltaZ);
-                    double speed = 0.0;
-                    if (deltaS != 0.0) {
-                        speed = deltaS / m_deltaTime;
-                    }
-
-                    m_deltaX /= m_deltaTime;
-                    m_deltaY /= m_deltaTime;
-                    m_deltaZ /= m_deltaTime;
-
-                    setEgoMotion(yaw, pitch, speed, m_deltaTime);
-
-//                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-//                     pcl::copyPointCloud(*m_pointCloud, *pointCloud);
-// 
-//                     compute(pointCloud);
-                }
-            }
-            lastMapOdomTransform = m_pose2MapTransform;
-//             ros::spinOnce();
-        } catch (tf::TransformException ex){
-            ROS_ERROR("%s",ex.what());
-        }
-    }
-    
-}
-
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 {
+//     cout << "CALLBACK" << endl;
+//     cout << "Pointcloud " << msg->header.stamp << endl;
+    try {
+        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
+    } catch (tf::TransformException ex){
+        ROS_ERROR("%s",ex.what());
+    }
+//     cout << "TF " << m_pose2MapTransform.stamp_ << endl;
     m_deltaTime = (msg->header.stamp - m_lastPointCloudTime).toSec();
-    cout << "m_deltaTime = " << msg->header.stamp << " - " << m_lastPointCloudTime << " = " << m_deltaTime << endl;
+//     cout << "m_deltaTime = " << msg->header.stamp << " - " << m_lastPointCloudTime << " = " << m_deltaTime << endl;
     
     pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
     cout << "Received point cloud " << msg->header.seq << " with size = " << m_pointCloud->size() << endl;
@@ -257,17 +212,6 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     m_lastPointCloudTime = msg->header.stamp;
     
     compute(pointCloud);
-}
-
-void VoxelGridTracking::setEgoMotion(const double& deltaYaw, const double& deltaPitch, const double& speed, const double& deltaTime)
-{
-    m_deltaYaw = deltaYaw;
-    m_deltaPitch = deltaPitch;
-    m_speed = speed;
-//     m_deltaYaw = 0.0;
-//     m_deltaPitch = 0.0;
-//     m_speed = 0.0;
-    m_deltaTime = deltaTime;
 }
 
 void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)

@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   camera_calibration_parsers
   message_generation
+  message_filters
 )
 
 set(ROS_BUILD_TYPE Debug)

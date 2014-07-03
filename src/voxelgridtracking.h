@@ -20,6 +20,10 @@
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
 #include <tf/transform_datatypes.h>
+#include "tf/transform_listener.h"
+#include "tf/message_filter.h"
+
+#include <message_filters/subscriber.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -39,9 +43,14 @@ class VoxelGridTracking
 public:
     VoxelGridTracking();
     
-    void start();
-    void setEgoMotion(const double & deltaYaw, const double & deltaPitch, const double & deltaSpeed, const double & deltaTime);
 protected:
+    typedef boost::multi_array<double, 4> ColorMatrix;
+    typedef boost::multi_array<double, 2> ColorVector;
+    typedef boost::multi_array<cv::Scalar, 1> ParticlesColorVector;
+    typedef vector<VoxelObstacle> ObstacleList;
+    typedef tf::MessageFilter<sensor_msgs::PointCloud2> TfPointCloudSynchronizer;
+    typedef message_filters::Subscriber<sensor_msgs::PointCloud2> PointCloudFilteredSubscriber;
+    
     // Callbacks
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
     
@@ -83,11 +92,8 @@ protected:
     
     VoxelGrid m_grid;
     
-    typedef boost::multi_array<double, 4> ColorMatrix;
     ColorMatrix m_colors;
-    typedef boost::multi_array<double, 2> ColorVector;
     ColorVector m_obstacleColors;
-    typedef boost::multi_array<cv::Scalar, 1> ParticlesColorVector;
     ParticlesColorVector m_particleColors;
     
     uint32_t m_dimX, m_dimY, m_dimZ;
@@ -97,7 +103,6 @@ protected:
     tf::StampedTransform m_lastMapOdomTransform;
     tf::StampedTransform m_pose2MapTransform;
     
-    typedef vector<VoxelObstacle> ObstacleList;
     ObstacleList m_obstacles;
     
     uint32_t m_currentId;
@@ -127,8 +132,14 @@ protected:
     string m_cameraFrame;
     string m_baseFrame;//TODO: Remove
 
+    // Synchronizers
+    boost::shared_ptr<TfPointCloudSynchronizer> m_tfPointCloudSync;
+    
+    // Transform listeners
+    tf::TransformListener m_tfListener;
+    
     // Subscribers
-    ros::Subscriber m_pointCloudSub;
+    PointCloudFilteredSubscriber m_pointCloudSub;
     
     // Publishers
     ros::Publisher m_voxelsPub;

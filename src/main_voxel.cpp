@@ -27,7 +27,9 @@ int main(int argC, char **argV) {
     ros::init(argC, argV, "VoxelGridTracking");
     
     VoxelGridTracking vgt;
-    vgt.start();
+    
+    ros::spin();
+//     vgt.start();
     
     return 0;
 }
