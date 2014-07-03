@@ -8,14 +8,10 @@ Panels:
         - /Status1
         - /Grid1
         - /VoxelGridTracking1
-        - /VoxelGridTracking1/Particles2
-        - /VoxelGridTracking1/mainVectors1
-        - /VoxelGridTracking1/fakePointCloud1
-        - /StereoAndOdom1
+        - /VoxelGridTracking1/flowVectors1
         - /StereoAndOdom1/InputCloudStereo1
         - /StereoAndOdom1/LeftImg1
         - /StereoAndOdom1/RightImg1
-        - /LocalPlanner1
       Splitter Ratio: 0.512422
     Tree Height: 422
   - Class: rviz/Selection
@@ -130,6 +126,51 @@ Visualization Manager:
           Axis: Z
           Channel Name: intensity
           Class: rviz/PointCloud2
+          Color: 255; 0; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 4096
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: flowVectors
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 8
+          Size (m): 0.01
+          Style: Points
+          Topic: /VoxelGridTracking/flow_vectors
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /VoxelGridTracking/VoxelGridTracking/voxels
+          Name: Voxels
+          Namespaces:
+            voxels: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: false
+          Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
+          Name: Obstacles
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: false
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
@@ -150,14 +191,6 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-        - Class: rviz/MarkerArray
-          Enabled: true
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/voxels
-          Name: Voxels
-          Namespaces:
-            voxels: true
-          Queue Size: 100
-          Value: true
         - Arrow Length: 0.3
           Class: rviz/PoseArray
           Color: 255; 25; 0
@@ -207,17 +240,9 @@ Visualization Manager:
           Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
           Name: mainVectors
           Namespaces:
-            {}
+            mainVectors: true
           Queue Size: 100
           Value: true
-        - Class: rviz/MarkerArray
-          Enabled: false
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
-          Name: Obstacles
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: false
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /VoxelGridTracking/VoxelGridTracking/cubes
@@ -491,17 +516,17 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 16.5827
+      Distance: 4.53242
       Focal Point:
-        X: 7.4073
-        Y: 0.0901805
-        Z: -0.279969
+        X: 7.40854
+        Y: -0.00341646
+        Z: -0.27346
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.324799
+      Pitch: -0.070201
       Target Frame: base_left_cam
       Value: Orbit (rviz)
-      Yaw: 3.05818
+      Yaw: 3.42318
     Saved:
       - Class: rviz/XYOrbit
         Distance: 20.0678

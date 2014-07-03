@@ -31,6 +31,7 @@
 <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
     <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
     </node> 
+    
     <node pkg="grull_elas_ros" type="elas_ros" name="elas_ros" output="screen">
         <remap from="stereo" to="stereo_and_odom" />
         <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
@@ -41,9 +42,20 @@
         <remap from="base_frame_id" to="left_cam" />
         <param name="base_frame_id" value="left_cam" />
         <param name="pose_frame_id" value="base_link" />
-        
     </node>
-   
+
+   <node pkg="oflow_3d_generator" type="oflow_3d_generator" name="oflow_3d_generator" output="screen" required="true">
+       <remap from="stereo" to="stereo_and_odom" />
+       <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
+       <remap from="stereo_and_odom/disparity/$(arg namespace)/image" to="elas_ros/disparity" />
+       
+       <param name="approximate_sync" value="true" />
+       
+       <remap from="base_frame_id" to="left_cam" />
+       <param name="base_frame_id" value="left_cam" />
+       <param name="pose_frame_id" value="base_link" />
+   </node>
+    
 <!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
 <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
    <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
