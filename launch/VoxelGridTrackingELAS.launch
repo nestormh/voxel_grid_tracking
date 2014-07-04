@@ -51,9 +51,7 @@
        
        <param name="approximate_sync" value="true" />
        
-       <remap from="base_frame_id" to="left_cam" />
-       <param name="base_frame_id" value="left_cam" />
-       <param name="pose_frame_id" value="base_link" />
+       <param name="motion_frame_id" value="map" />
    </node>
     
 <!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
@@ -63,6 +61,10 @@
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
                     to="/$(arg namespace)/obstaclesPointCloud" />
+            <remap from="~/flow_vectors"
+                to="/$(arg namespace)/flow_vectors" />
+                
+            <param name="use_oflow" value="true" />
     </node>
 </group>
 

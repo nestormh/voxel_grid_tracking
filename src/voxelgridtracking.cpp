@@ -33,6 +33,7 @@
 #include <boost/graph/graph_concepts.hpp>
 
 #include <opencv2/opencv.hpp>
+#include <message_filters/synchronizer.h>
 
 #include <iostream>
 #include <queue>
@@ -46,8 +47,6 @@ namespace voxel_grid_tracking {
     
 VoxelGridTracking::VoxelGridTracking()
 {
-    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
-    m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
     // TODO: Get from params
     m_cameraParams.minX = 0.0;
@@ -169,12 +168,23 @@ VoxelGridTracking::VoxelGridTracking()
     nh.param<string>("pose_frame", m_poseFrame, "/base_footprint");
     nh.param<string>("camera_frame", m_cameraFrame, "/base_left_cam");
     
-// //         m_deltaTimeSub = nh.subscribe<std_msgs::Float64>("deltaTime", 1, boost::bind(&VoxelGridTracking::deltaTimeCallback, this, _1));    
-//     m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 0, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+    bool useOFlow;
+    nh.param("use_oflow", useOFlow, true);
     
-    m_pointCloudSub.subscribe(nh, "pointCloud", 0);
-    m_tfPointCloudSync.reset(new TfPointCloudSynchronizer(m_pointCloudSub, m_tfListener, m_mapFrame, 0));
-    m_tfPointCloudSync->registerCallback( boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+    if (useOFlow) {
+        m_pointCloudSub.subscribe(nh, "pointCloud", 10);
+        m_oFlowSub.subscribe(nh, "flow_vectors", 10);
+        m_oFlowCloud.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+        
+        m_synchronizer.reset(new ExactSync(ExactPolicy(10), m_pointCloudSub, m_oFlowSub));
+        m_synchronizer->registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1, _2));
+    } else {
+        m_pointCloudSub.subscribe(nh, "pointCloud", 10);
+        m_pointCloudSub.registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+    }
+    
+    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
     m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
     m_particlesPub = nh.advertise<visualization_msgs::MarkerArray> ("particles", 1);
@@ -189,29 +199,43 @@ VoxelGridTracking::VoxelGridTracking()
 //     ros::spin();
 }
 
-void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
+void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud) 
 {
-//     cout << "CALLBACK" << endl;
-//     cout << "Pointcloud " << msg->header.stamp << endl;
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
     } catch (tf::TransformException ex){
         ROS_ERROR("%s",ex.what());
     }
-//     cout << "TF " << m_pose2MapTransform.stamp_ << endl;
-    m_deltaTime = (msg->header.stamp - m_lastPointCloudTime).toSec();
-//     cout << "m_deltaTime = " << msg->header.stamp << " - " << m_lastPointCloudTime << " = " << m_deltaTime << endl;
     
-    pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
-    cout << "Received point cloud " << msg->header.seq << " with size = " << m_pointCloud->size() << endl;
-    m_currentId = msg->header.seq;
+    m_deltaTime = (msgPointCloud->header.stamp - m_lastPointCloudTime).toSec();
     
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::copyPointCloud(*m_pointCloud, *pointCloud);
+    pcl::fromROSMsg<pcl::PointXYZRGB>(*msgPointCloud, *m_pointCloud);
+    m_currentId = msgPointCloud->header.seq;
     
-    m_lastPointCloudTime = msg->header.stamp;
+    m_lastPointCloudTime = msgPointCloud->header.stamp;
     
-    compute(pointCloud);
+    compute(m_pointCloud);
+    
+}
+
+void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
+                                           const sensor_msgs::PointCloud2::ConstPtr& msgOFlow) 
+{
+    try {
+        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
+    } catch (tf::TransformException ex){
+        ROS_ERROR("%s",ex.what());
+    }
+    m_deltaTime = (msgPointCloud->header.stamp - m_lastPointCloudTime).toSec();
+    
+    m_currentId = msgPointCloud->header.seq;
+    
+    pcl::fromROSMsg<pcl::PointXYZRGB>(*msgPointCloud, *m_pointCloud);
+    pcl::fromROSMsg<pcl::PointXYZRGBNormal>(*msgOFlow, *m_oFlowCloud);
+    
+    m_lastPointCloudTime = msgPointCloud->header.stamp;
+    
+    compute(m_pointCloud);
 }
 
 void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)

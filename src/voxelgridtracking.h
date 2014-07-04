@@ -24,6 +24,8 @@
 #include "tf/message_filter.h"
 
 #include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/exact_time.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -49,10 +51,14 @@ protected:
     typedef boost::multi_array<cv::Scalar, 1> ParticlesColorVector;
     typedef vector<VoxelObstacle> ObstacleList;
     typedef tf::MessageFilter<sensor_msgs::PointCloud2> TfPointCloudSynchronizer;
-    typedef message_filters::Subscriber<sensor_msgs::PointCloud2> PointCloudFilteredSubscriber;
+    typedef message_filters::Subscriber<sensor_msgs::PointCloud2> PointCloudSubscriber;
+    typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> ExactPolicy;
+    typedef message_filters::Synchronizer<ExactPolicy> ExactSync;
     
     // Callbacks
-    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud);
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
+                            const sensor_msgs::PointCloud2::ConstPtr& msgOFlow);
     
     // Method functions
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
@@ -85,6 +91,7 @@ protected:
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_fakePointCloud;
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr m_oFlowCloud;
     
     double m_deltaYaw, m_deltaPitch, m_speed, m_deltaTime;
     ros::Time m_lastPointCloudTime;
@@ -102,6 +109,8 @@ protected:
     
     tf::StampedTransform m_lastMapOdomTransform;
     tf::StampedTransform m_pose2MapTransform;
+    
+    tf::TransformListener m_tfListener;
     
     ObstacleList m_obstacles;
     
@@ -134,12 +143,11 @@ protected:
 
     // Synchronizers
     boost::shared_ptr<TfPointCloudSynchronizer> m_tfPointCloudSync;
-    
-    // Transform listeners
-    tf::TransformListener m_tfListener;
+    boost::shared_ptr<ExactSync> m_synchronizer;
     
     // Subscribers
-    PointCloudFilteredSubscriber m_pointCloudSub;
+    PointCloudSubscriber m_pointCloudSub;
+    PointCloudSubscriber m_oFlowSub;
     
     // Publishers
     ros::Publisher m_voxelsPub;
