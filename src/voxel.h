@@ -50,6 +50,8 @@ public:
           const double & yawInterval, const double & pitchInterval);
     
     void createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform);
+    void createParticlesStatic(const tf::StampedTransform & pose2mapTransform);
+    void createParticlesFromOFlow(const uint32_t & numParticles);
     
     void setOccupiedProb(const double & occupiedProb) { m_occupiedProb = occupiedProb; }
     void setOccupiedPosteriorProb(const uint32_t & particlesPerVoxel);
@@ -67,9 +69,14 @@ public:
     uint32_t numParticles() const { return m_particles.size(); }
     Particle3d getParticle(const uint32_t & idx) const { return m_particles.at(idx); }
     vector <Particle3d> getParticles() { return m_particles; }
+    
+    uint32_t numOFlowParticles() const { return m_oFlowParticles.size(); }
+    vector <Particle3d> getOFlowParticles() { return m_oFlowParticles; }
+    
     bool empty() const { return m_particles.size() == 0; }
     void makeCopy(const Particle3d & particle);
     void addParticle(const Particle3d& particle);
+    void addFlowParticle(const Particle3d& particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
     void transformParticles(const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles);
     void clearParticles() { m_particles.clear(); }
@@ -84,6 +91,7 @@ public:
     void update();
     
     void sortParticles();
+    void joinParticles();
     
     double centroidX() const { return m_centroidX; }
     double centroidY() const { return m_centroidY; }
@@ -100,6 +108,8 @@ public:
     double x() const { return m_x; }
     double y() const { return m_y; }
     double z() const { return m_z; }
+    
+    uint32_t oldestParticle() { return m_oldestParticle; }
     
     uint32_t neighborOcc() const { return m_neighborOcc; };
     
@@ -136,6 +146,8 @@ protected:
     double m_yawInterval;
     double m_pitchInterval;
     
+    uint32_t m_oldestParticle;
+    
     SpeedMethod m_speedMethod;
     
     int32_t m_obstIdx;
@@ -143,6 +155,7 @@ protected:
     uint32_t m_neighborOcc;                     // Number of neighbors containing at least one point
     
     vector <Particle3d> m_particles;
+    vector <Particle3d> m_oFlowParticles;
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
 };

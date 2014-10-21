@@ -79,9 +79,12 @@ protected:
     void updateSpeedFromObstacles();
     void generateFakePointClouds();
     
+    void updateFromOFlow();
+    
     // Visualization functions
     void publishVoxels();
     void publishParticles();
+    void publishOFlow();
     void publishMainVectors();
     void publishObstacles();
     void publishObstacleCubes();
@@ -135,6 +138,7 @@ protected:
     double m_minObstacleHeight;
     double m_maxObstacleHeight;
     double m_timeIncrementForFakePointCloud;
+    bool m_useOFlow;
     
     string m_mapFrame;
     string m_poseFrame;
@@ -153,6 +157,8 @@ protected:
     ros::Publisher m_voxelsPub;
     ros::Publisher m_pointsPerVoxelPub;
     ros::Publisher m_particlesPub;
+    ros::Publisher m_particlesSimplePub;
+    ros::Publisher m_oFlowPub;
     ros::Publisher m_mainVectorsPub;
     ros::Publisher m_obstaclesPub;
     ros::Publisher m_obstacleCubesPub;

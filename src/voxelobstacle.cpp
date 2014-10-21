@@ -52,8 +52,8 @@ VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw,
 
 bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
 {
-    if (voxel.density() < m_minDensity)
-        return false;
+//     if (voxel.density() < m_minDensity)
+//         return false;
     
     if (m_voxels.size() != 0) {
         const double & diffMagnitude = fabs(m_magnitude - voxel.magnitude());

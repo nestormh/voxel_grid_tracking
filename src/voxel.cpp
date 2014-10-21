@@ -65,6 +65,7 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
     
     m_magnitude = 0.0;
     m_neighborOcc = 0;
+    m_oldestParticle = 0;
     
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 }
@@ -75,6 +76,36 @@ void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTran
         m_particles.push_back(Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
                                          m_sizeX, m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ, 
                                          pose2mapTransform));
+}
+
+void Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTransform)
+{
+    for (int32_t vx = -1; vx <= 1; vx++) {
+        for (int32_t vy = -1; vy <= 1; vy++) {
+            for (int32_t vz = -1; vz <= 1; vz++) {
+                for (double factorSpeed = 0.1; factorSpeed <= 1.0; factorSpeed += 0.1) {
+                    Particle3d particle(m_centroidX, m_centroidY, m_centroidZ, 
+                               vx * m_maxVelX * factorSpeed, 
+                               vy * m_maxVelY * factorSpeed, 
+                               vz * m_maxVelZ * factorSpeed,
+                               pose2mapTransform, true);
+                    
+                    m_particles.push_back(particle);
+                }
+            }
+        }
+        
+    }
+}
+
+
+void Voxel::createParticlesFromOFlow(const uint32_t & numParticles)
+{
+    for (uint32_t i = m_particles.size(); i < numParticles; i++) {
+        const Particle3d & particle = m_oFlowParticles[rand() % m_oFlowParticles.size()];
+        
+        m_particles.push_back(Particle3d(particle));
+    }
 }
 
 void Voxel::setOccupiedPosteriorProb(const uint32_t& particlesPerVoxel)
@@ -101,6 +132,11 @@ void Voxel::addParticle(const Particle3d& particle)
 {
     m_particles.push_back(particle);
 }
+
+void Voxel::addFlowParticle(const Particle3d& particle)
+{
+    m_oFlowParticles.push_back(particle);
+}
     
 void Voxel::transformParticles(const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles)
 {
@@ -115,6 +151,16 @@ void Voxel::transformParticles(const Eigen::MatrixXd & stateTransition, vector <
 void Voxel::sortParticles()
 {
     std::sort(m_particles.rbegin(), m_particles.rend());
+    
+    m_oldestParticle = m_particles[0].age();
+}
+
+void Voxel::joinParticles()
+{
+    if (m_oFlowParticles.size() != 0) {
+        m_particles.insert( m_particles.begin(), m_oFlowParticles.begin(), m_oFlowParticles.end() );
+//         m_particles = m_oFlowParticles;
+    }
 }
 
 void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ) {
@@ -219,6 +265,7 @@ void Voxel::reset()
     m_pointCloud->clear();
     m_obstIdx = -1;
     m_neighborOcc = 0;
+    m_oFlowParticles.clear();
 }
 
 bool Voxel::nextTo(const Voxel& voxel) const

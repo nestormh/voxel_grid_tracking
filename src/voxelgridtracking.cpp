@@ -37,6 +37,7 @@
 
 #include <iostream>
 #include <queue>
+#include <pcl-1.7/pcl/impl/point_types.hpp>
 
 #include "PolarGridTracking/roiArray.h"
 #include "utilspolargridtracking.h"
@@ -75,7 +76,7 @@ VoxelGridTracking::VoxelGridTracking()
     
     m_cellSizeX = 0.25;
     m_cellSizeY = 0.25;
-    m_cellSizeZ = 0.5;
+    m_cellSizeZ = 0.75;
 
     m_maxVelX = 3.0;
     m_maxVelY = 3.0;
@@ -85,7 +86,7 @@ VoxelGridTracking::VoxelGridTracking()
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
     }
 
-    m_particlesPerVoxel = 1000;
+    m_particlesPerVoxel = 100;
     m_threshProbForCreation = 0.0; //0.2;
     
     m_neighBorX = 1;
@@ -168,10 +169,9 @@ VoxelGridTracking::VoxelGridTracking()
     nh.param<string>("pose_frame", m_poseFrame, "/base_footprint");
     nh.param<string>("camera_frame", m_cameraFrame, "/base_left_cam");
     
-    bool useOFlow;
-    nh.param("use_oflow", useOFlow, true);
+    nh.param("use_oflow", m_useOFlow, true);
     
-    if (useOFlow) {
+    if (m_useOFlow) {
         m_pointCloudSub.subscribe(nh, "pointCloud", 10);
         m_oFlowSub.subscribe(nh, "flow_vectors", 10);
         m_oFlowCloud.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -188,6 +188,8 @@ VoxelGridTracking::VoxelGridTracking()
     
     m_voxelsPub = nh.advertise<visualization_msgs::MarkerArray>("voxels", 1);
     m_particlesPub = nh.advertise<visualization_msgs::MarkerArray> ("particles", 1);
+    m_particlesSimplePub = nh.advertise<geometry_msgs::PoseArray> ("particlesSimple", 1);
+    m_oFlowPub = nh.advertise<geometry_msgs::PoseArray> ("oflow_visualization", 1);
     m_pointsPerVoxelPub = nh.advertise<sensor_msgs::PointCloud2> ("pointPerVoxel", 1);
     m_mainVectorsPub = nh.advertise<visualization_msgs::MarkerArray>("mainVectors", 1);
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 1);
@@ -238,19 +240,32 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     compute(m_pointCloud);
 }
 
+/**
+ * Given a certain pointCloud, the frame is computed
+ * @param pointCloud: The input point cloud.
+ */
 void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
     INIT_CLOCK(startCompute)
-    // TODO: Remove particles reset
+    cout << "m_useOFlow " << m_useOFlow << endl;
+    
+    // Grid is reset
     reset();
+    
+    // Having a point cloud, the voxel grid is computed
     getVoxelGridFromPointCloud(pointCloud);
+    if(m_useOFlow)
+        updateFromOFlow();
     getMeasurementModel();
+    
+    // TODO:
+    // Improve the way in which flow vectors are computed
     
     if (m_initialized) {
         prediction();
         publishParticles();
         measurementBasedUpdate();
-//         segment();
+        segment();
 //         
 //         updateObstacles();
 //         filterObstacles();
@@ -267,10 +282,11 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     INIT_CLOCK(startVis)
     publishVoxels();
+    publishOFlow();
 //     publishParticles();
     publishMainVectors();
-//     publishObstacles();
-//     publishObstacleCubes();
+    publishObstacles();
+    publishObstacleCubes();
 //     publishROI();
 //     publishFakePointCloud();
 //     visualizeROI2d();
@@ -279,6 +295,10 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
 }
 
+
+/**
+ * The grid is emptied
+ */
 void VoxelGridTracking::reset()
 {
     for (uint32_t x = 0; x < m_dimX; x++) {
@@ -312,6 +332,38 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::P
                 Voxel & voxel = m_grid[x][y][z];
                 
                 voxel.update();
+            }
+        }
+    }
+}
+
+
+void VoxelGridTracking::updateFromOFlow()
+{
+    BOOST_FOREACH(pcl::PointXYZRGBNormal & flowVector, *m_oFlowCloud) {
+
+        
+        if (cv::norm(cv::Vec3f(flowVector.normal_x, flowVector.normal_y, flowVector.normal_z)) > 
+            cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ))) {
+            
+            continue;
+        }
+            
+        Particle3d particle(flowVector.x, flowVector.y, flowVector.z, 
+                            flowVector.normal_x, flowVector.normal_y, flowVector.normal_z, 
+                            m_pose2MapTransform);
+        
+        int32_t xPos, yPos, zPos;
+        particleToVoxel(particle, xPos, yPos, zPos);
+        
+        if ((xPos >= 0) && (xPos < m_dimX) &&
+            (yPos >= 0) && (yPos < m_dimY) &&
+            (zPos >= 0) && (zPos < m_dimZ)) {                    
+            
+            if (m_grid[xPos][yPos][zPos].occupied()) {
+                particle.setAge(m_grid[xPos][yPos][zPos].oldestParticle() + 2);
+                
+                m_grid[xPos][yPos][zPos].addFlowParticle(particle);
             }
         }
     }
@@ -366,12 +418,18 @@ void VoxelGridTracking::initialization()
                 Voxel & voxel = m_grid[x][y][z];
                 
                 const double & occupiedProb = voxel.occupiedProb();
+                
                 // FIXME: Is it really important the fact that it is occupied or not?
                 if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
-
                     // TODO The number of generated particles depends on the occupancy probability
                     const uint32_t numParticles = m_particlesPerVoxel * occupiedProb; // / 2.0;
-                    voxel.createParticles(numParticles, m_pose2MapTransform);
+                
+                    if ((! m_useOFlow) || (voxel.numOFlowParticles() == 0)) {
+//                         voxel.createParticles(numParticles, m_pose2MapTransform);
+                        voxel.createParticlesStatic(m_pose2MapTransform);               
+                    } else {
+                        voxel.createParticlesFromOFlow(numParticles);
+                    }
                 }
             }
         }
@@ -446,6 +504,18 @@ void VoxelGridTracking::prediction()
                 m_grid[xPos][yPos][zPos].addParticle(particle);
         }
     }
+    
+    if (m_useOFlow) {
+        for (uint32_t x = 0; x < m_dimX; x++) {
+            for (uint32_t y = 0; y < m_dimY; y++) {
+                for (uint32_t z = 0; z < m_dimZ; z++) {
+                    Voxel & voxel = m_grid[x][y][z];
+                    voxel.joinParticles();
+                }
+            }
+        }
+    }
+        
 }
 
 void VoxelGridTracking::measurementBasedUpdate()
@@ -766,44 +836,109 @@ void VoxelGridTracking::publishVoxels()
 //     m_pointsPerVoxelPub.publish(cloudMsg);
 }
 
+void VoxelGridTracking::publishOFlow()
+{
+    geometry_msgs::PoseArray oflowVectors;
+    
+    oflowVectors.header.frame_id = m_mapFrame;
+    oflowVectors.header.stamp = ros::Time();
+    
+    uint32_t idCount = 0;
+    for (uint32_t x = 0; x < m_dimX; x++) {
+        for (uint32_t y = 0; y < m_dimY; y++) {
+            for (uint32_t z = 0; z < m_dimZ; z++) {
+                Voxel & voxel = m_grid[x][y][z];
+                
+                const vector<Particle3d> & oflowParticles = voxel.getOFlowParticles();
+                
+                BOOST_FOREACH(const Particle3d & particle, oflowParticles) {
+                    geometry_msgs::Pose pose;
+                    
+                    pose.position.x = particle.x();
+                    pose.position.y = particle.y();
+                    pose.position.z = particle.z();
+                    
+                    const double & vx = particle.vx();
+                    const double & vy = particle.vy();
+                    const double & vz = particle.vz();
+                    
+                    const tf::Quaternion & quat = particle.getQuaternion();
+                    pose.orientation.w = quat.w();
+                    pose.orientation.x = quat.x();
+                    pose.orientation.y = quat.y();
+                    pose.orientation.z = quat.z();
+                    
+                    oflowVectors.poses.push_back(pose);
+                }
+            }
+        }
+    }
+//     BOOST_FOREACH(const pcl::PointXYZRGBNormal & point, *m_oFlowCloud) {
+//         geometry_msgs::Pose pose;
+//         
+//         pose.position.x = point.x;
+//         pose.position.y = point.y;
+//         pose.position.z = point.z;
+//         
+//         const double & vx = point.normal_x;
+//         const double & vy = point.normal_y;
+//         const double & vz = point.normal_z;
+//         
+//         const Particle3d particle(point.x, point.y, point.z, vx, vy, vz, m_pose2MapTransform);
+//         
+//         const tf::Quaternion & quat = particle.getQuaternion();
+//         pose.orientation.w = quat.w();
+//         pose.orientation.x = quat.x();
+//         pose.orientation.y = quat.y();
+//         pose.orientation.z = quat.z();
+//         
+//         oflowVectors.poses.push_back(pose);
+//     }
+    
+    m_oFlowPub.publish(oflowVectors);
+}
+
+
 void VoxelGridTracking::publishParticles()
 {
-//     geometry_msgs::PoseArray particles;
-//     
-//     particles.header.frame_id = m_mapFrame;
-//     particles.header.stamp = ros::Time();
-//         
-//     uint32_t idCount = 0;
-//     for (uint32_t x = 0; x < m_dimX; x++) {
-//         for (uint32_t y = 0; y < m_dimY; y++) {
-//             for (uint32_t z = 0; z < m_dimZ; z++) {
-//                 const Voxel & voxel = m_grid[x][y][z];
-//                 
-//                 for (uint32_t i = 0; i < voxel.numParticles(); i++) {
-//                     const Particle3d & particle = voxel.getParticle(i);
-//                     geometry_msgs::Pose pose;
-//                     
-//                     pose.position.x = particle.x();
-//                     pose.position.y = particle.y();
-//                     pose.position.z = particle.z();
-//                     
-//                     const double & vx = particle.vx();
-//                     const double & vy = particle.vy();
-//                     const double & vz = particle.vz();
-//                     
-//                     const tf::Quaternion & quat = particle.getQuaternion();
-//                     pose.orientation.w = quat.w();
-//                     pose.orientation.x = quat.x();
-//                     pose.orientation.y = quat.y();
-//                     pose.orientation.z = quat.z();
-//                     
-//                     particles.poses.push_back(pose);
-//                 }
-//             }
-//         }
-//     }
-//     
-//     m_particlesPub.publish(particles);
+    {
+        geometry_msgs::PoseArray particles;
+        
+        particles.header.frame_id = m_mapFrame;
+        particles.header.stamp = ros::Time();
+            
+        uint32_t idCount = 0;
+        for (uint32_t x = 0; x < m_dimX; x++) {
+            for (uint32_t y = 0; y < m_dimY; y++) {
+                for (uint32_t z = 0; z < m_dimZ; z++) {
+                    const Voxel & voxel = m_grid[x][y][z];
+                    
+                    for (uint32_t i = 0; i < voxel.numParticles(); i++) {
+                        const Particle3d & particle = voxel.getParticle(i);
+                        geometry_msgs::Pose pose;
+                        
+                        pose.position.x = particle.x();
+                        pose.position.y = particle.y();
+                        pose.position.z = particle.z();
+                        
+                        const double & vx = particle.vx();
+                        const double & vy = particle.vy();
+                        const double & vz = particle.vz();
+                        
+                        const tf::Quaternion & quat = particle.getQuaternion();
+                        pose.orientation.w = quat.w();
+                        pose.orientation.x = quat.x();
+                        pose.orientation.y = quat.y();
+                        pose.orientation.z = quat.z();
+                        
+                        particles.poses.push_back(pose);
+                    }
+                }
+            }
+        }
+        
+        m_particlesSimplePub.publish(particles);
+    }
     
     visualization_msgs::MarkerArray particlesCleaners;
     
@@ -838,6 +973,7 @@ void VoxelGridTracking::publishParticles()
                     const Particle3d & particle = voxel.getParticle(i);
             
                     uint32_t age = particle.age();
+                    const uint32_t & id = particle.id();
                     if (age >= MAX_PARTICLE_AGE_REPRESENTATION)
                         age = MAX_PARTICLE_AGE_REPRESENTATION - 1;
                     
@@ -859,9 +995,12 @@ void VoxelGridTracking::publishParticles()
                     particleVector.scale.y = 0.03;
                     particleVector.scale.z = 0.1;
                     particleVector.color.a = 1.0;
-                    particleVector.color.r = m_obstacleColors[age][2];
-                    particleVector.color.g = m_obstacleColors[age][1];
-                    particleVector.color.b = m_obstacleColors[age][0];
+//                     particleVector.color.r = m_obstacleColors[age][2];
+//                     particleVector.color.g = m_obstacleColors[age][1];
+//                     particleVector.color.b = m_obstacleColors[age][0];
+                    particleVector.color.r = m_obstacleColors[id][2];
+                    particleVector.color.g = m_obstacleColors[id][1];
+                    particleVector.color.b = m_obstacleColors[id][0];
                     
                     //         orientation.lifetime = ros::Duration(5.0);
                     
@@ -981,7 +1120,7 @@ void VoxelGridTracking::publishObstacles()
     
     for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
         visualization_msgs::Marker voxelMarker;
-        voxelMarker.header.frame_id = m_baseFrame;
+        voxelMarker.header.frame_id = m_poseFrame;
         voxelMarker.header.stamp = ros::Time();
         voxelMarker.id = i;
         voxelMarker.ns = "obstacles";
@@ -1005,7 +1144,7 @@ void VoxelGridTracking::publishObstacles()
         BOOST_FOREACH(const Voxel & voxel, voxels) {
 //             if (! voxel.empty()) {
                 visualization_msgs::Marker voxelMarker;
-                voxelMarker.header.frame_id = m_baseFrame;
+                voxelMarker.header.frame_id = m_poseFrame;
                 voxelMarker.header.stamp = ros::Time();
                 voxelMarker.id = idCount++;
                 voxelMarker.ns = "obstacles";

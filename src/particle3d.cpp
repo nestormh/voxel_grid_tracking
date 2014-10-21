@@ -15,6 +15,7 @@
  */
 
 #include "particle3d.h"
+#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 #include <stdlib.h>
 #include <math.h>
@@ -51,32 +52,44 @@ Particle3d::Particle3d(const double & centroidX, const double & centroidY, const
     m_vz = m_maxVelZ - 2.0 * m_maxVelZ * ((double)rand() / RAND_MAX);
     
     m_age = 0;
+    
+    m_id = (int32_t)(255 * (double)rand() / RAND_MAX);
 }
 
 Particle3d::Particle3d(const double& x, const double& y, const double& z, 
                        const double& vx, const double& vy, const double& vz, 
-                       const tf::StampedTransform & pose2mapTransform)
+                       const tf::StampedTransform & pose2mapTransform, const bool & transform)
                     : m_x(x), m_y(y), m_z(z), m_vx(vx), m_vy(vy), m_vz(vz), 
                       m_pose2mapTransform(pose2mapTransform)
 {
-    tf::Vector3 point = m_pose2mapTransform * tf::Vector3(m_x, m_y, m_z);
-    
-    m_x = point[0];
-    m_y = point[1];
-    m_z = point[2];
+    if (transform) {
+        tf::Vector3 point = m_pose2mapTransform * tf::Vector3(m_x, m_y, m_z);
+        
+        m_x = point[0];
+        m_y = point[1];
+        m_z = point[2];
+    }
     
     m_age = 0;
+    
+    m_id = (int32_t)(255 * (double)rand() / RAND_MAX);
+    
 }
 
 Particle3d::Particle3d(const Particle3d& particle)
                             : m_x(particle.x()), m_y(particle.y()), m_z(particle.z()), 
                                 m_vx(particle.vx()), m_vy(particle.vy()), m_vz(particle.vz()),
-                                m_pose2mapTransform(particle.pose2mapTransform()), m_age(particle.age())
+                                m_pose2mapTransform(particle.pose2mapTransform()), m_age(particle.age()),
+                                m_id(particle.id())
 {
 }
 
 tf::Quaternion Particle3d::getQuaternion() const
 {
+    if (m_vx == m_vy == m_vz == 0.0) {
+        return tf::Quaternion(0.0, 0.0, 0.0, 0.0);
+    }
+    
     Eigen::Vector3d zeroVector, currVector;
     zeroVector << 1.0, 0.0, 0.0;
     currVector << m_vx, m_vy, m_vz;

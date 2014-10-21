@@ -20,6 +20,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <tiff.h>
 #include <Eigen/Core>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
@@ -39,7 +40,7 @@ public:
                const tf::StampedTransform & pose2mapTransform);
     Particle3d(const double & x, const double & y, const double & z, 
                const double & vx, const double & vy, const double & vz, 
-               const tf::StampedTransform & pose2mapTransform);
+               const tf::StampedTransform & pose2mapTransform, const bool & transform = false);
     
     Particle3d(const Particle3d & particle);
     
@@ -53,6 +54,11 @@ public:
     double vz() const { return m_vz; }
     
     uint32_t age() const { return m_age; }
+    void setAge(const uint32_t & age) { m_age = age; }
+    
+    int32_t id() const { return m_id; }
+    void setId(const int32_t & id) { m_id = id; }
+    
     
     tf::Quaternion getQuaternion() const;
     void getYawPitch(double & yaw, double & pitch) const;
@@ -66,6 +72,8 @@ private:
     double m_x, m_y, m_z, m_vx, m_vy, m_vz;
     
     uint32_t m_age;
+    
+    int32_t m_id;
     
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     

@@ -47,6 +47,7 @@
    <node pkg="oflow_3d_generator" type="oflow_3d_generator" name="oflow_3d_generator" output="screen" required="true">
        <remap from="stereo" to="stereo_and_odom" />
        <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
+       <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image" />
        <remap from="stereo_and_odom/disparity/$(arg namespace)/image" to="elas_ros/disparity" />
        
        <param name="approximate_sync" value="true" />
@@ -64,7 +65,7 @@
             <remap from="~/flow_vectors"
                 to="/$(arg namespace)/flow_vectors" />
                 
-            <param name="use_oflow" value="true" />
+            <param name="use_oflow" value="false" />
     </node>
 </group>
 
@@ -123,8 +124,8 @@
     </node>
 </group>
 
-<!-- <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
-<node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+<!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
+<node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
       $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
 <!--<node pkg="rosbag" type="record"  name="rosbag"
     args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
