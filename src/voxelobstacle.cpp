@@ -286,9 +286,9 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDelt
         }
     }
     
-    m_vx += egoDeltaX;
-    m_vy += egoDeltaY;
-    m_vz += egoDeltaZ;
+//     m_vx += egoDeltaX;
+//     m_vy += egoDeltaY;
+//     m_vz += egoDeltaZ;
     
     m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
     

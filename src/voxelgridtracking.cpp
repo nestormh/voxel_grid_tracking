@@ -76,7 +76,7 @@ VoxelGridTracking::VoxelGridTracking()
     
     m_cellSizeX = 0.25;
     m_cellSizeY = 0.25;
-    m_cellSizeZ = 0.75;
+    m_cellSizeZ = 0.25; // 0.75
 
     m_maxVelX = 3.0;
     m_maxVelY = 3.0;
@@ -97,18 +97,18 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshPitch = 9999999.0; //0.0;
     m_threshMagnitude = 9999999.0;
     
-    m_minVoxelsPerObstacle = 2;
+    m_minVoxelsPerObstacle = 1; //2;
     m_minObstacleDensity = 20.0;
     m_minVoxelDensity = 10.0;
     m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
-    m_speedMethod = SPEED_METHOD_CIRC_HIST;
+    m_speedMethod = SPEED_METHOD_MEAN;
     
     m_obstacleSpeedMethod = SPEED_METHOD_MEAN;
     
     m_yawInterval = 5.0 * M_PI / 180.0;
-    m_pitchInterval = 2 * M_PI;
+    m_pitchInterval = M_PI / 4.0; //2 * M_PI;
     
     m_minObstacleHeight = 1.25;
     m_maxObstacleHeight = 2.0;
@@ -269,8 +269,8 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
 //         
 //         updateObstacles();
 //         filterObstacles();
-//         updateSpeedFromObstacles();
-    } 
+        updateSpeedFromObstacles();
+    }
     initialization();
 //     publishParticles(m_oldParticlesPub, 2.0);
     
@@ -420,7 +420,8 @@ void VoxelGridTracking::initialization()
                 const double & occupiedProb = voxel.occupiedProb();
                 
                 // FIXME: Is it really important the fact that it is occupied or not?
-                if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) {
+//                 if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) 
+                if (voxel.occupied() && occupiedProb > m_threshProbForCreation) {
                     // TODO The number of generated particles depends on the occupancy probability
                     const uint32_t numParticles = m_particlesPerVoxel * occupiedProb; // / 2.0;
                 
@@ -533,6 +534,8 @@ void VoxelGridTracking::measurementBasedUpdate()
         }
     }
     
+    return;
+    
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
@@ -610,7 +613,7 @@ void VoxelGridTracking::segment()
                             }
                         }
                         
-                        if (obst.numVoxels() > m_minVoxelsPerObstacle)
+//                         if (obst.numVoxels() > m_minVoxelsPerObstacle)
                             m_obstacles.push_back(obst);
                     }
                 }
@@ -1185,7 +1188,7 @@ void VoxelGridTracking::publishObstacleCubes()
     
     for (uint32_t i = 0; i < 1000; i++) {
         visualization_msgs::Marker obstacleCubeMarker;
-        obstacleCubeMarker.header.frame_id = m_baseFrame;
+        obstacleCubeMarker.header.frame_id = m_poseFrame;
         obstacleCubeMarker.header.stamp = ros::Time();
         obstacleCubeMarker.id = i;
         obstacleCubeMarker.ns = "obstacleCubes";
@@ -1219,7 +1222,7 @@ void VoxelGridTracking::publishObstacleCubes()
         const VoxelObstacle & obstacle = m_obstacles[i];
         
         visualization_msgs::Marker obstacleCubeMarker;
-        obstacleCubeMarker.header.frame_id = m_baseFrame;
+        obstacleCubeMarker.header.frame_id = m_poseFrame;
         obstacleCubeMarker.header.stamp = ros::Time();
         obstacleCubeMarker.id = idCount++;
         obstacleCubeMarker.ns = "obstacleCubes";
@@ -1249,7 +1252,7 @@ void VoxelGridTracking::publishObstacleCubes()
         // ********************************************************
         
         visualization_msgs::Marker speedVector;
-        speedVector.header.frame_id = m_baseFrame;
+        speedVector.header.frame_id = m_poseFrame;
         speedVector.header.stamp = ros::Time();
         speedVector.id = idCount;
         speedVector.ns = "speedVector";
@@ -1299,7 +1302,7 @@ void VoxelGridTracking::publishObstacleCubes()
         // ********************************************************
         
         visualization_msgs::Marker speedTextVector;
-        speedTextVector.header.frame_id = m_baseFrame;
+        speedTextVector.header.frame_id = m_poseFrame;
         speedTextVector.header.stamp = ros::Time();
         speedTextVector.id = idCount;
         speedTextVector.ns = "speedText";
