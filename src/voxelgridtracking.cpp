@@ -67,12 +67,20 @@ VoxelGridTracking::VoxelGridTracking()
     m_cameraParams.t = Eigen::MatrixXd(3, 1);
     m_cameraParams.t << 0.0598969, -1.00137, 0.00463762;
     
-    m_minX = 0.0;
+//     m_minX = 0.0;
+//     m_maxX = 24.0;
+//     m_minY = -8.0;
+//     m_maxY = 8.0;
+//     m_minZ = 0.0;
+//     m_maxZ = 3.5; //3.5;
+    
+    m_minX = 5.0;
     m_maxX = 24.0;
-    m_minY = -8.0;
-    m_maxY = 8.0;
-    m_minZ = 0.0;
+    m_minY = -5.0;
+    m_maxY = 5.0;
+    m_minZ = 0.25;
     m_maxZ = 3.5; //3.5;
+    
     
     m_cellSizeX = 0.25;
     m_cellSizeY = 0.25;
@@ -103,7 +111,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
-    m_speedMethod = SPEED_METHOD_MEAN;
+    m_speedMethod = SPEED_METHOD_CIRC_HIST;
     
     m_obstacleSpeedMethod = SPEED_METHOD_MEAN;
     
@@ -250,28 +258,58 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     cout << "m_useOFlow " << m_useOFlow << endl;
     
     // Grid is reset
+    INIT_CLOCK(startCompute1)
     reset();
+    END_CLOCK(totalCompute1, startCompute1)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute1);
     
     // Having a point cloud, the voxel grid is computed
+    INIT_CLOCK(startCompute2)
     getVoxelGridFromPointCloud(pointCloud);
-    if(m_useOFlow)
+    END_CLOCK(totalCompute2, startCompute2)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute2);
+    if(m_useOFlow) {
+        INIT_CLOCK(startCompute3)
         updateFromOFlow();
+        END_CLOCK(totalCompute3, startCompute3)
+        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute3);
+    }
+    INIT_CLOCK(startCompute4)
     getMeasurementModel();
+    END_CLOCK(totalCompute4, startCompute4)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute4);
     
     // TODO:
     // Improve the way in which flow vectors are computed
     
     if (m_initialized) {
+        INIT_CLOCK(startCompute5)
         prediction();
+        END_CLOCK(totalCompute5, startCompute5)
+        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
         publishParticles();
+        INIT_CLOCK(startCompute6)
         measurementBasedUpdate();
+        END_CLOCK(totalCompute6, startCompute6)
+        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
+        
+        INIT_CLOCK(startCompute7)
         segment();
+        END_CLOCK(totalCompute7, startCompute7)
+        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
 //         
 //         updateObstacles();
 //         filterObstacles();
+        INIT_CLOCK(startCompute8)
         updateSpeedFromObstacles();
+        END_CLOCK(totalCompute8, startCompute8)
+        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
+        INIT_CLOCK(startCompute2)
     }
+    INIT_CLOCK(startCompute9)
     initialization();
+    END_CLOCK(totalCompute9, startCompute9)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
 //     publishParticles(m_oldParticlesPub, 2.0);
     
 //     initialization();
@@ -529,6 +567,7 @@ void VoxelGridTracking::measurementBasedUpdate()
                 if ((! voxel.empty()) && (voxel.occupied())) {
                     voxel.sortParticles();
                     voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
+                    voxel.reduceParticles();
                 }
             }
         }
@@ -583,7 +622,7 @@ void VoxelGridTracking::segment()
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
                 Voxel & voxel = m_grid[x][y][z];
-                if (! voxel.empty()) {
+                if (! voxel.empty() && (voxel.oldestParticle() > 1)) {
                     if (! voxel.assignedToObstacle()) {
                         
                         std::deque<Voxel> voxelsQueue;

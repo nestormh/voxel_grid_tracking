@@ -92,6 +92,7 @@ public:
     
     void sortParticles();
     void joinParticles();
+    void reduceParticles();
     
     double centroidX() const { return m_centroidX; }
     double centroidY() const { return m_centroidY; }

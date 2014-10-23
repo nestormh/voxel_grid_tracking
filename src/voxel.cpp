@@ -82,7 +82,8 @@ void Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTransform)
 {
     for (int32_t vx = -1; vx <= 1; vx++) {
         for (int32_t vy = -1; vy <= 1; vy++) {
-            for (int32_t vz = -1; vz <= 1; vz++) {
+            int32_t vz = 0;
+//             for (int32_t vz = -1; vz <= 1; vz++) {
                 for (double factorSpeed = 0.1; factorSpeed <= 1.0; factorSpeed += 0.1) {
                     Particle3d particle(m_centroidX, m_centroidY, m_centroidZ, 
                                vx * m_maxVelX * factorSpeed, 
@@ -93,7 +94,7 @@ void Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTransform)
                     m_particles.push_back(particle);
                 }
             }
-        }
+//         }
         
     }
 }
@@ -163,11 +164,23 @@ void Voxel::joinParticles()
     }
 }
 
+void Voxel::reduceParticles()
+{
+    vector<Particle3d>::const_iterator first = m_particles.begin();
+    vector<Particle3d>::const_iterator last = m_particles.begin() + std::min(30, (int)m_particles.size());
+    m_particles = vector<Particle3d> (first, last);
+}
+
+
 void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ) {
     
     m_vx = 0.0;
     m_vy = 0.0;
     m_vz = 0.0;
+    
+    if (m_oldestParticle == 0) {
+        return;
+    }
     
     switch (m_speedMethod) {
         case SPEED_METHOD_MEAN: {
@@ -203,11 +216,14 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
             
+            cout << "totalPitchBins " << totalPitchBins << endl;
+            cout << "totalYawBins " << totalYawBins << endl;
+            
             BOOST_FOREACH(Particle3d particle, m_particles) {
 //             for (uint32_t i = 0; i < m_particles.size() / 2.0; i++) {
 //                 const Particle3d & particle = m_particles[i];
                 
-                if (particle.age() != 1) {
+//                 if (particle.age() != 1) {
                 
                     double yaw, pitch;
                     particle.getYawPitch(yaw, pitch);
@@ -217,7 +233,7 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
                                     
                     histogram[idxPitch][idxYaw].numPoints++;
                     histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle.vx(), particle.vy(), particle.vz()));
-                }
+//                 }
             }
             
             uint32_t maxIdxPitch = 0;
@@ -229,6 +245,10 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
                         numVectors = histogram[idxPitch][idxYaw].numPoints;
                         maxIdxPitch = idxPitch;
                         maxIdxYaw = idxYaw;
+                        
+                        if (numVectors != 0) {
+                            cout << idxYaw * m_yawInterval * 180 / CV_PI << " = " << numVectors << endl;
+                        }
                     }
                 }
             }                
@@ -241,6 +261,14 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             m_vy = sin(m_yaw) * m_magnitude;
             m_vz = sin(m_pitch) * m_magnitude;
             
+            cout << "m_yaw " << m_yaw << endl;
+            cout << "m_pitch " << m_pitch << endl;
+            cout << "m_magnitude " << m_magnitude << endl;
+            cout << "m_vx " << m_vx << endl;
+            cout << "m_vy " << m_vy << endl;
+            cout << "m_vz " << m_vz << endl;
+            
+            cout << "==============================" << endl;
             break;
         }
         default: {

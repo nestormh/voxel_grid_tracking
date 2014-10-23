@@ -55,26 +55,26 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
 //     if (voxel.density() < m_minDensity)
 //         return false;
     
-    if (m_voxels.size() != 0) {
-        const double & diffMagnitude = fabs(m_magnitude - voxel.magnitude());
-        const double & diffYaw = fabs(calculateDifferenceBetweenAngles(m_yaw, voxel.yaw()));
-        const double & diffPitch = fabs(calculateDifferenceBetweenAngles(m_pitch, voxel.pitch()));
-        
-        if ((diffMagnitude < m_threshMagnitude) && 
-            (diffYaw < m_threshYaw) && 
-            (diffPitch < m_threshPitch)) {
-            
-            voxel.assignObstacle(m_idx);
-        
-            updateWithVoxel(voxel);    
-        
-            m_voxels.push_back(voxel);
-            
-            return true;
-        } else {
-            return false;
-        }
-    } else {
+//     if (m_voxels.size() != 0) {
+//         const double & diffMagnitude = fabs(m_magnitude - voxel.magnitude());
+//         const double & diffYaw = fabs(calculateDifferenceBetweenAngles(m_yaw, voxel.yaw()));
+//         const double & diffPitch = fabs(calculateDifferenceBetweenAngles(m_pitch, voxel.pitch()));
+//         
+//         if ((diffMagnitude < m_threshMagnitude) && 
+//             (diffYaw < m_threshYaw) && 
+//             (diffPitch < m_threshPitch)) {
+//             
+//             voxel.assignObstacle(m_idx);
+//         
+//             updateWithVoxel(voxel);    
+//         
+//             m_voxels.push_back(voxel);
+//             
+//             return true;
+//         } else {
+//             return false;
+//         }
+//     } else {
         voxel.assignObstacle(m_idx);
         
         updateWithVoxel(voxel);
@@ -82,7 +82,7 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
         m_voxels.push_back(voxel);
         
         return true;
-    }
+//     }
 }
 
 void VoxelObstacle::updateWithVoxel(const Voxel& voxel)
@@ -212,12 +212,31 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDelt
                 m_vx += voxel.vx();
                 m_vy += voxel.vy();
                 m_vz += voxel.vz();
+                
+                cv::Vec3d tmpV(voxel.vx(), voxel.vy(), voxel.vz());
+                m_magnitude += cv::norm(tmpV);
+                
+//                 cout << "voxel.vx() " << voxel.vx() << endl;
+//                 cout << "voxel.vy() " << voxel.vy() << endl;
+//                 cout << "voxel.vz() " << voxel.vz() << endl;
+//                 cout << "m_vx " << m_vx << endl;
+//                 cout << "m_vy " << m_vy << endl;
+//                 cout << "m_vz " << m_vz << endl;
+//                 cout << "m_magnitude " << m_magnitude << endl;
+//                 cout << "---------------------------" << endl;
             }
             
-            m_vx /= m_voxels.size();
-            m_vy /= m_voxels.size();
-            m_vz /= m_voxels.size();
+            cv::Vec3d v(m_vx, m_vy, m_vz);
+            double norm = cv::norm(v);
             
+//             m_vx /= norm;
+//             m_vy /= norm;
+//             m_vz /= norm;
+//             
+//             m_vx *= m_magnitude;
+//             m_vy *= m_magnitude;
+//             m_vz *= m_magnitude;
+//             
             break;
         }
         case SPEED_METHOD_CIRC_HIST: {
@@ -289,7 +308,7 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDelt
 //     m_vx += egoDeltaX;
 //     m_vy += egoDeltaY;
 //     m_vz += egoDeltaZ;
-    
+
     m_magnitude = sqrt(m_vx * m_vx + m_vy * m_vy + m_vz * m_vz);
     
     const double & normYaw = sqrt(m_vx * m_vx + m_vy * m_vy);
@@ -300,6 +319,16 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDelt
         m_yaw = -m_yaw;
     
     m_pitch = asin(m_vz / normPitch);
+    
+//     cout << "size " << m_voxels.size() << endl;
+//     cout << "m_vx " << m_vx << endl;
+//     cout << "m_vy " << m_vy << endl;
+//     cout << "m_vz " << m_vz << endl;
+//     cout << "sum " << m_vx + m_vy + m_vz << endl;
+//     cout << "m_magnitude " << m_magnitude << endl;
+//     cout << "m_yaw " << m_yaw << endl;
+//     cout << "m_pitch " << m_pitch << endl;
+//     cout << "====================================" << endl;
 }
 
 }
