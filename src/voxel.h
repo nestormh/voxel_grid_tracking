@@ -68,7 +68,7 @@ public:
     
     uint32_t numParticles() const { return m_particles.size(); }
     Particle3d getParticle(const uint32_t & idx) const { return m_particles.at(idx); }
-    vector <Particle3d> getParticles() { return m_particles; }
+    vector <Particle3d> getParticles() const { return m_particles; }
     
     uint32_t numOFlowParticles() const { return m_oFlowParticles.size(); }
     vector <Particle3d> getOFlowParticles() { return m_oFlowParticles; }

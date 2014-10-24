@@ -111,12 +111,12 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
-    m_speedMethod = SPEED_METHOD_CIRC_HIST;
+    m_speedMethod = SPEED_METHOD_MEAN;
     
-    m_obstacleSpeedMethod = SPEED_METHOD_MEAN;
+    m_obstacleSpeedMethod = SPEED_METHOD_CIRC_HIST;
     
-    m_yawInterval = 5.0 * M_PI / 180.0;
-    m_pitchInterval = M_PI / 4.0; //2 * M_PI;
+    m_yawInterval = 45.0 * M_PI / 180.0;
+    m_pitchInterval = 2 * M_PI;
     
     m_minObstacleHeight = 1.25;
     m_maxObstacleHeight = 2.0;
@@ -539,8 +539,10 @@ void VoxelGridTracking::prediction()
             (yPos >= 0) && (yPos < m_dimY) &&
             (zPos >= 0) && (zPos < m_dimZ)) {                    
         
-            if (m_grid[xPos][yPos][zPos].occupied())
-                m_grid[xPos][yPos][zPos].addParticle(particle);
+            Voxel & voxel = m_grid[xPos][yPos][zPos];
+            if (voxel.occupied()) {
+                voxel.addParticle(particle);
+            }
         }
     }
     
@@ -740,8 +742,10 @@ void VoxelGridTracking::joinCommonVolumes()
 
 void VoxelGridTracking::updateSpeedFromObstacles()
 {
-    BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles)
-        obstacle.updateSpeed(m_deltaX, m_deltaY, m_deltaZ);
+    BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles) {
+//         obstacle.updateSpeed(m_deltaX, m_deltaY, m_deltaZ);
+        obstacle.updateSpeedFromParticles();
+    }
 }
 
 void VoxelGridTracking::filterObstacles()
@@ -1235,12 +1239,28 @@ void VoxelGridTracking::publishObstacleCubes()
         obstacleCubeMarker.action = visualization_msgs::Marker::DELETE;
         
         obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
+    }
+    m_obstacleCubesPub.publish(obstacleCubesCleaners);
+    obstacleCubesCleaners.markers.clear();
+    for (uint32_t i = 0; i < 1000; i++) {
+        visualization_msgs::Marker obstacleCubeMarker;
+        obstacleCubeMarker.header.frame_id = m_poseFrame;
+        obstacleCubeMarker.header.stamp = ros::Time();
+        obstacleCubeMarker.id = i;
         
         obstacleCubeMarker.ns = "speedVector";
         obstacleCubeMarker.type = visualization_msgs::Marker::ARROW;
         obstacleCubeMarker.action = visualization_msgs::Marker::DELETE;
         
         obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
+    }
+    m_obstacleCubesPub.publish(obstacleCubesCleaners);
+    obstacleCubesCleaners.markers.clear();
+    for (uint32_t i = 0; i < 1000; i++) {
+        visualization_msgs::Marker obstacleCubeMarker;
+        obstacleCubeMarker.header.frame_id = m_poseFrame;
+        obstacleCubeMarker.header.stamp = ros::Time();
+        obstacleCubeMarker.id = i;
         
         obstacleCubeMarker.ns = "speedText";
         obstacleCubeMarker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
@@ -1248,7 +1268,6 @@ void VoxelGridTracking::publishObstacleCubes()
         
         obstacleCubesCleaners.markers.push_back(obstacleCubeMarker);
     }
-    
     m_obstacleCubesPub.publish(obstacleCubesCleaners);
     
     visualization_msgs::MarkerArray obstacleCubeMarkers;
@@ -1314,7 +1333,7 @@ void VoxelGridTracking::publishObstacleCubes()
         
         geometry_msgs::Point origin, dest;
         origin.x = obstacle.centerX();
-        origin.y = obstacle.minY();
+        origin.y = obstacle.centerY();
         origin.z = obstacle.centerZ();        
 
         // NOTE: This makes vectors longer than they actually are. 
@@ -1323,9 +1342,9 @@ void VoxelGridTracking::publishObstacleCubes()
 //         dest.y = obstacle.minY() + obstacle.vy();
 //         dest.z = obstacle.centerZ() + obstacle.vz();
         
-        dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime;
-        dest.y = obstacle.minY() + obstacle.vy() * m_deltaTime;
-        dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime;
+        dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime * 20.0;
+        dest.y = obstacle.centerY() + obstacle.vy() * m_deltaTime * 20.0;
+        dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime * 20.0;
 
 //         dest.x = obstacle.centerX() + obstacle.vx() / obstacle.numVoxels() * m_deltaTime;
 //         dest.y = obstacle.minY() + obstacle.vy() / obstacle.numVoxels() * m_deltaTime;
@@ -1362,8 +1381,9 @@ void VoxelGridTracking::publishObstacleCubes()
         speedTextVector.color.g = 1.0;
         speedTextVector.color.b = 0.0;
         
+        const double speedInKmH = obstacle.magnitude() * 3.6;
         stringstream ss;
-        ss << std::setprecision(3) << obstacle.magnitude() << " m/s";
+        ss << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle.winnerNumberOfParticles();
         speedTextVector.text = ss.str();
                 
         obstacleSpeedTextMarkers.markers.push_back(speedTextVector);

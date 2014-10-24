@@ -68,8 +68,11 @@ public:
     void joinObstacles(VoxelObstacle & obstacle);
     
     void updateSpeed(const double & egoDeltaX, const double & egoDeltaY, const double & egoDeltaZ);
+    void updateSpeedFromParticles();
     
     static double commonVolume(const VoxelObstacle & obst1, const VoxelObstacle & obst2);
+    
+    string winnerNumberOfParticles() const { return m_winnerNumberOfParticles; }
     
 protected:
     void updateMotionInformation();
@@ -94,6 +97,8 @@ protected:
     double m_centerX, m_centerY, m_centerZ;
     double m_sizeX, m_sizeY, m_sizeZ;
     double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
+    
+    string m_winnerNumberOfParticles;
     
     // Params
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
