@@ -39,7 +39,7 @@
 #include <queue>
 #include <pcl-1.7/pcl/impl/point_types.hpp>
 
-#include "PolarGridTracking/roiArray.h"
+#include "polar_grid_tracking/roiArray.h"
 #include "utilspolargridtracking.h"
 
 using namespace std;
@@ -204,7 +204,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstacleCubesPub = nh.advertise<visualization_msgs::MarkerArray>("cubes", 1);
     m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
     m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
-    m_ROIPub = nh.advertise<PolarGridTracking::roiArray>("roiArray", 1);
+    m_ROIPub = nh.advertise<polar_grid_tracking::roiArray>("roiArray", 1);
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
 //     ros::spin();
 }
@@ -1396,7 +1396,7 @@ void VoxelGridTracking::publishObstacleCubes()
 
 void VoxelGridTracking::publishROI()
 {
-    PolarGridTracking::roiArray roiMsg;
+    polar_grid_tracking::roiArray roiMsg;
     roiMsg.rois3d.resize(m_obstacles.size());
     roiMsg.rois2d.resize(m_obstacles.size());
     

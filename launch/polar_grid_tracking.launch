@@ -23,8 +23,8 @@
    
 
 <group ns="$(arg namespace)">
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
-    <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
+    <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
     </node> 
 <!--    <node name="stereo_generator" pkg="stereo_image_proc" type="stereo_image_proc" output="screen" required="true" >
         <remap from="left/image_raw" to="stereo_and_odom/left/image" />
@@ -33,9 +33,9 @@
         <remap from="right/camera_info" to="stereo_and_odom/right/camera_info" />
     </node>-->
     
-<!--             <node launch-prefix="gdb &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" > -->
-    <node name="PolarGridTracking" pkg="PolarGridTracking" type="PolarGridTracking" output="screen" required="true" >
+<!--             <node launch-prefix="gdb &#45;&#45;args" name="polar_grid_tracking" pkg="polar_grid_tracking" type="polar_grid_tracking" output="screen" required="true" > -->
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="polar_grid_tracking" pkg="polar_grid_tracking" type="polar_grid_tracking" output="screen" required="true" > -->
+    <node name="polar_grid_tracking" pkg="polar_grid_tracking" type="polar_grid_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloudStereo"
@@ -80,6 +80,6 @@
 </group>
 
 <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-    $(find PolarGridTracking)/config/PolarGridTracking.rviz"/>
+    $(find polar_grid_tracking)/config/polar_grid_tracking.rviz"/>
     
 </launch>

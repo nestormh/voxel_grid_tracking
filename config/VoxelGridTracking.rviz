@@ -7,9 +7,9 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
-        - /VoxelGridTracking1
-        - /VoxelGridTracking1/OFlow1
-        - /VoxelGridTracking1/Particles1
+        - /voxel_grid_tracking1
+        - /voxel_grid_tracking1/OFlow1
+        - /voxel_grid_tracking1/Particles1
         - /StereoAndOdom1/InputCloudStereo1
         - /StereoAndOdom1/LeftImg1
         - /StereoAndOdom1/RightImg1
@@ -114,7 +114,7 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/elas_ros/point_cloud
+          Topic: /voxel_grid_tracking/elas_ros/point_cloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
@@ -143,7 +143,7 @@ Visualization Manager:
           Size (Pixels): 8
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/flow_vectors
+          Topic: /voxel_grid_tracking/flow_vectors
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
@@ -152,11 +152,11 @@ Visualization Manager:
           Color: 0; 255; 0
           Enabled: false
           Name: OFlow
-          Topic: /VoxelGridTracking/VoxelGridTracking/oflow_visualization
+          Topic: /voxel_grid_tracking/voxel_grid_tracking/oflow_visualization
           Value: false
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/voxels
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/voxels
           Name: Voxels
           Namespaces:
             {}
@@ -164,7 +164,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacles
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacles
           Name: Obstacles
           Namespaces:
             {}
@@ -195,7 +195,7 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/obstaclesPointCloud
+          Topic: /voxel_grid_tracking/obstaclesPointCloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
@@ -204,11 +204,11 @@ Visualization Manager:
           Color: 255; 25; 0
           Enabled: false
           Name: Particles
-          Topic: /VoxelGridTracking/VoxelGridTracking/particlesSimple
+          Topic: /voxel_grid_tracking/voxel_grid_tracking/particlesSimple
           Value: false
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/particles
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/particles
           Name: Particles
           Namespaces:
             {}
@@ -239,13 +239,13 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/VoxelGridTracking/particlesPosition
+          Topic: /voxel_grid_tracking/voxel_grid_tracking/particlesPosition
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/mainVectors
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/mainVectors
           Name: mainVectors
           Namespaces:
             {}
@@ -253,7 +253,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/cubes
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/cubes
           Name: ObstacleCubes
           Namespaces:
             {}
@@ -261,7 +261,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeed
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacleSpeed
           Name: ObstacleSpeed
           Namespaces:
             {}
@@ -269,7 +269,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/MarkerArray
           Enabled: true
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/obstacleSpeedText
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacleSpeedText
           Name: SpeedText
           Namespaces:
             {}
@@ -277,7 +277,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/MarkerArray
           Enabled: false
-          Marker Topic: /VoxelGridTracking/VoxelGridTracking/tracks
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/tracks
           Name: Tracks
           Namespaces:
             {}
@@ -308,12 +308,12 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/VoxelGridTracking/fakePointCloud
+          Topic: /voxel_grid_tracking/voxel_grid_tracking/fakePointCloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
       Enabled: true
-      Name: VoxelGridTracking
+      Name: voxel_grid_tracking
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -341,13 +341,13 @@ Visualization Manager:
           Size (Pixels): 2
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/pointCloudFiltered
+          Topic: /voxel_grid_tracking/pointCloudFiltered
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
         - Class: rviz/Image
           Enabled: false
-          Image Topic: /VoxelGridTracking/stereo_and_odom/left/image
+          Image Topic: /voxel_grid_tracking/stereo_and_odom/left/image
           Max Value: 1
           Median window: 5
           Min Value: 0
@@ -358,7 +358,7 @@ Visualization Manager:
           Value: false
         - Class: rviz/Image
           Enabled: false
-          Image Topic: /VoxelGridTracking/stereo_and_odom/right/image
+          Image Topic: /voxel_grid_tracking/stereo_and_odom/right/image
           Max Value: 1
           Median window: 5
           Min Value: 0
@@ -416,7 +416,7 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.01
           Style: Points
-          Topic: /VoxelGridTracking/stereo_and_odom/fakePointCloud
+          Topic: /voxel_grid_tracking/stereo_and_odom/fakePointCloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: false

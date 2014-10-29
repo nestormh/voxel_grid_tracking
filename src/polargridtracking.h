@@ -33,11 +33,11 @@ namespace polar_grid_tracking {
 
 typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> BinaryMap;
 
-class PolarGridTracking
+class polar_grid_tracking
 {
 public:
     
-    PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
+    polar_grid_tracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                       const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                       const double & particlesPerCell, const double & threshProbForCreation, 
                       const double & gridDepthFactor, const uint32_t & gridColumnFactor, const double & yawInterval,

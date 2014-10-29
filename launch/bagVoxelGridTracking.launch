@@ -1,13 +1,13 @@
 <launch>
     
-<arg name="namespace" default="VoxelGridTracking"/>
+<arg name="namespace" default="voxel_grid_tracking"/>
 <param name="use_sim_time" value="true"/>
 
 <group ns="$(arg namespace)">
 
-<!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-<!--    <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+<!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--    <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
         <remap from="~/deltaTime"
             to="/$(arg namespace)/stereo_and_odom/deltaTime" />
         <remap from="~/pointCloud"
@@ -19,29 +19,29 @@
 <!--     args="&#45;&#45;clock &#45;&#45;pause -d 0 -s 0 -r 1 $(find bags)/local/Karlsruhe_2011_09_26_drive_0091_sync_filtered.bag" /> -->
 <!--     &#45;&#45;topics \ -->
 <!--     /tf \ -->
-<!--     /VoxelGridTracking/pointCloudFiltered \ -->
+<!--     /voxel_grid_tracking/pointCloudFiltered \ -->
 <!--     /clock" /> -->
 
 <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-    $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
+    $(find polar_grid_tracking)/config/voxel_grid_tracking.rviz"/>
 
 <!--<node pkg="rosbag" type="record"  name="rosbag"
-args="/VoxelGridTracking/VoxelGridTracking/cubes \
-/VoxelGridTracking/VoxelGridTracking/mainVectors \
-/VoxelGridTracking/VoxelGridTracking/obstacleSpeed \
-/VoxelGridTracking/VoxelGridTracking/obstacleSpeedText \
-/VoxelGridTracking/VoxelGridTracking/obstacles \
-/VoxelGridTracking/VoxelGridTracking/particles \
-/VoxelGridTracking/VoxelGridTracking/particlesPosition \
-/VoxelGridTracking/VoxelGridTracking/pointPerVoxel \
-/VoxelGridTracking/VoxelGridTracking/roiArray \
-/VoxelGridTracking/VoxelGridTracking/voxels \
-/VoxelGridTracking/pointCloudFiltered \
-/VoxelGridTracking/stereo_and_odom/left/camera_info \
-/VoxelGridTracking/stereo_and_odom/left/image \
-/VoxelGridTracking/stereo_and_odom/pointCloudStereo \
-/VoxelGridTracking/stereo_and_odom/right/camera_info \
-/VoxelGridTracking/stereo_and_odom/right/image \
+args="/voxel_grid_tracking/voxel_grid_tracking/cubes \
+/voxel_grid_tracking/voxel_grid_tracking/mainVectors \
+/voxel_grid_tracking/voxel_grid_tracking/obstacleSpeed \
+/voxel_grid_tracking/voxel_grid_tracking/obstacleSpeedText \
+/voxel_grid_tracking/voxel_grid_tracking/obstacles \
+/voxel_grid_tracking/voxel_grid_tracking/particles \
+/voxel_grid_tracking/voxel_grid_tracking/particlesPosition \
+/voxel_grid_tracking/voxel_grid_tracking/pointPerVoxel \
+/voxel_grid_tracking/voxel_grid_tracking/roiArray \
+/voxel_grid_tracking/voxel_grid_tracking/voxels \
+/voxel_grid_tracking/pointCloudFiltered \
+/voxel_grid_tracking/stereo_and_odom/left/camera_info \
+/voxel_grid_tracking/stereo_and_odom/left/image \
+/voxel_grid_tracking/stereo_and_odom/pointCloudStereo \
+/voxel_grid_tracking/stereo_and_odom/right/camera_info \
+/voxel_grid_tracking/stereo_and_odom/right/image \
 /clock \
 /stereo_odometer/info \
 /stereo_odometer/odometry \

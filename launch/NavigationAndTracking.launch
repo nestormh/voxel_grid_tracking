@@ -4,8 +4,8 @@
   <arg name="namespace" default="verdino"/>
   <arg name="testname" default="parking_ETSII_vacio"/>
 
-    <!-- VoxelGridTracking -->
-    <include file="$(find PolarGridTracking)/launch/VoxelGridTracking.launch"/>
+    <!-- voxel_grid_tracking -->
+    <include file="$(find polar_grid_tracking)/launch/voxel_grid_tracking.launch"/>
     
     <!-- grull_map_to_pointcloud -->
 <!--    <include file="$(find grull_map_to_pointcloud)/launch/launch.launch">
@@ -35,9 +35,9 @@
         
         <remap from="/$(arg namespace)/odom" to="/stereo_odometer/odometry"/>
         
-        <remap from="/$(arg namespace)/filtered_point_cloud" to="/VoxelGridTracking/pointCloudFiltered" />
-        <remap from="/$(arg namespace)/clearing_point_cloud" to="/VoxelGridTracking/stereo_and_odom/fakePointCloud" />
-        <remap from="/$(arg namespace)/fake_point_cloud" to="/VoxelGridTracking/VoxelGridTracking/fakePointCloud" />
+        <remap from="/$(arg namespace)/filtered_point_cloud" to="/voxel_grid_tracking/pointCloudFiltered" />
+        <remap from="/$(arg namespace)/clearing_point_cloud" to="/voxel_grid_tracking/stereo_and_odom/fakePointCloud" />
+        <remap from="/$(arg namespace)/fake_point_cloud" to="/voxel_grid_tracking/voxel_grid_tracking/fakePointCloud" />
         
 <!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
 <!--         <remap from="/$(arg namespace)/nav_map" to="/map" /> -->
@@ -51,10 +51,10 @@
         <param name="base_local_planner" value="grull_ackermann_base_local_planner/TrajectoryPlannerROS" />
         <param name="base_global_planner" value="navfn/NavfnROS" />
 
-        <rosparam file="$(find PolarGridTracking)/params/global_costmap_common_params.yaml" command="load" ns="global_costmap" />
-        <rosparam file="$(find PolarGridTracking)/params/local_costmap_common_params.yaml" command="load" ns="local_costmap" />
-        <rosparam file="$(find PolarGridTracking)/params/local_costmap_params.yaml" command="load" />
-        <rosparam file="$(find PolarGridTracking)/params/base_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find polar_grid_tracking)/params/global_costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find polar_grid_tracking)/params/local_costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find polar_grid_tracking)/params/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find polar_grid_tracking)/params/base_local_planner_params.yaml" command="load" />
 
         <param name="~/global_costmap/robot_base_frame" value="/base_footprint" />
         <param name="~/local_costmap/robot_base_frame" value="/base_footprint" />

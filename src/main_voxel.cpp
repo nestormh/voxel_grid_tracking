@@ -24,7 +24,7 @@ using namespace voxel_grid_tracking;
 using namespace std;
 
 int main(int argC, char **argV) {
-    ros::init(argC, argV, "VoxelGridTracking");
+    ros::init(argC, argV, "voxel_grid_tracking");
     
     VoxelGridTracking vgt;
     

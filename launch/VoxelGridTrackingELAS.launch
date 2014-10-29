@@ -1,5 +1,5 @@
 <launch>
-  <arg name="namespace" default="VoxelGridTracking"/>
+  <arg name="namespace" default="voxel_grid_tracking"/>
   <param name="use_sim_time" value="true"/>
 
 <!-- <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 1.57 0 0 map odom 100" /> -->
@@ -28,14 +28,14 @@
 <group ns="$(arg namespace)">
     
     
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" > -->
-    <node name="stereo_and_odom" pkg="PolarGridTracking" type="stereo_and_odom" output="screen" required="true" >
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
+    <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
     </node> 
     
     <node pkg="grull_elas_ros" type="elas_ros" name="elas_ros" output="screen">
         <remap from="stereo" to="stereo_and_odom" />
         <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
-        <remap from="stereo_and_odom/right/VoxelGridTracking/image" to="stereo_and_odom/right/image" />
+        <remap from="stereo_and_odom/right/voxel_grid_tracking/image" to="stereo_and_odom/right/image" />
         
         <param name="approximate_sync" value="true" />
         
@@ -55,9 +55,9 @@
        <param name="motion_frame_id" value="map" />
    </node>
     
-<!--     <node launch-prefix="gdb &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" > -->
-   <node name="VoxelGridTracking" pkg="PolarGridTracking" type="VoxelGridTracking" output="screen" required="true" >
+<!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+   <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                     to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
@@ -126,7 +126,7 @@
 
 <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
 <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-      $(find PolarGridTracking)/config/VoxelGridTracking.rviz"/>
+      $(find polar_grid_tracking)/config/voxel_grid_tracking.rviz"/>
 <!--<node pkg="rosbag" type="record"  name="rosbag"
     args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     

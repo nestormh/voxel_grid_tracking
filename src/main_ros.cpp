@@ -17,7 +17,7 @@
 #include "ObstaclesFromStereo.h"
 #include "polargridtracking.h"
 #include "polargridtrackingros.h"
-#include "utils.h"
+// #include "utils.h"
 #include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 
@@ -211,7 +211,7 @@ void testStereoTracking() {
     // TODO Get it from the real measurements
     //     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
-    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
+    polar_grid_trackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
                                      cameraParams[0], particlesPerCell, threshProbForCreation, 
                                      gridDepthFactor, gridColumnFactor, yawInterval,
                                      threshYaw, threshMagnitude);
@@ -355,7 +355,7 @@ void polarTracking() {
     double threshYaw = 30.0 / 180.0 * M_PI;
     double threshMagnitude = 1.0;
     
-    PolarGridTrackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
+    polar_grid_trackingROS gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, 
                                      cameraParams[0], particlesPerCell, threshProbForCreation, 
                                      gridDepthFactor, gridColumnFactor, yawInterval,
                                      threshYaw, threshMagnitude);
@@ -363,7 +363,7 @@ void polarTracking() {
 }
 
 int main(int argC, char **argV) {
-    ros::init(argC, argV, "PolarGridTracking");
+    ros::init(argC, argV, "polar_grid_tracking");
     
     polarTracking();
 //     if (fork() == 0) {

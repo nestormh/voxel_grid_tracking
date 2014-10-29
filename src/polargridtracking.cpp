@@ -29,7 +29,7 @@ using namespace std;
 
 namespace polar_grid_tracking {
 
-PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
+polar_grid_tracking::polar_grid_tracking(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                                      const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                                      const double & particlesPerCell, const double & threshProbForCreation, 
                                      const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval,
@@ -67,14 +67,14 @@ PolarGridTracking::PolarGridTracking(const uint32_t & rows, const uint32_t & col
     
 }
 
-void PolarGridTracking::setDeltaYawSpeedAndTime(const double& deltaYaw, const double& deltaSpeed, const double& deltaTime)
+void polar_grid_tracking::setDeltaYawSpeedAndTime(const double& deltaYaw, const double& deltaSpeed, const double& deltaTime)
 {
     m_deltaYaw = deltaYaw;
     m_deltaSpeed = deltaSpeed;
     m_deltaTime = deltaTime;
 }
 
-void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud) {
+void polar_grid_tracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud) {
     getBinaryMapFromPointCloud(pointCloud);
     
     drawBinaryMap();
@@ -93,7 +93,7 @@ void PolarGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr &
     drawObstaclesMap();
 }
     
-void PolarGridTracking::getMeasurementModel()
+void polar_grid_tracking::getMeasurementModel()
 {
     
 // #pragma omp for schedule(dynamic)
@@ -118,7 +118,7 @@ void PolarGridTracking::getMeasurementModel()
     
 }
 
-void PolarGridTracking::initialization() {
+void polar_grid_tracking::initialization() {
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
             Cell & cell = m_grid(z, x);
@@ -134,7 +134,7 @@ void PolarGridTracking::initialization() {
     m_initialized = true;
 }
 
-void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_tracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
     m_map = BinaryMap::Zero(m_grid.rows(), m_grid.cols());
 
@@ -160,7 +160,7 @@ void PolarGridTracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl::P
     }
 }
 
-void PolarGridTracking::measurementBasedUpdate()
+void polar_grid_tracking::measurementBasedUpdate()
 {
     for (uint32_t z = 0; z < m_grid.rows(); z++) {
         for (uint32_t x = 0; x < m_grid.cols(); x++) {
@@ -201,7 +201,7 @@ void PolarGridTracking::measurementBasedUpdate()
     }
 }
 
-void PolarGridTracking::prediction()
+void polar_grid_tracking::prediction()
 {
     const double dx = m_deltaSpeed * m_deltaTime * cos(m_deltaYaw); // / m_cellSizeX;
     const double dz = m_deltaSpeed * m_deltaTime * sin(m_deltaYaw); // / m_cellSizeZ;
@@ -246,7 +246,7 @@ void PolarGridTracking::prediction()
     }
 }
 
-void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell)
+void polar_grid_tracking::drawGrid(const uint32_t& pixelsPerCell)
 {
     cv::Mat gridImg = cv::Mat::zeros(cv::Size(m_grid.cols() * pixelsPerCell + 1, m_grid.rows() * pixelsPerCell + 1), CV_8UC3);
     
@@ -291,7 +291,7 @@ void PolarGridTracking::drawGrid(const uint32_t& pixelsPerCell)
     cv::imshow(ss.str(), gridImg);
 }
 
-void PolarGridTracking::drawBinaryMap()
+void polar_grid_tracking::drawBinaryMap()
 {
     cv::Mat imgMap(cv::Size(m_map.cols(), m_map.rows()), CV_8UC1);
     
@@ -304,7 +304,7 @@ void PolarGridTracking::drawBinaryMap()
     cv::imshow("map", imgMap);
 }
 
-void PolarGridTracking::drawTopDownMap(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_tracking::drawTopDownMap(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
     cv::Mat imgMap = cv::Mat::zeros(cv::Size(m_grid.cols(), m_grid.rows()), CV_8UC3);
     
@@ -335,7 +335,7 @@ void PolarGridTracking::drawTopDownMap(const pcl::PointCloud< pcl::PointXYZRGB >
     cv::imshow("TopDownMap", resizedMap);
 }
 
-void PolarGridTracking::drawObstaclesMap()
+void polar_grid_tracking::drawObstaclesMap()
 {
     cv::Mat obstacleMap = cv::Mat::zeros(cv::Size(m_polarGrid.cols(), m_polarGrid.rows()), CV_8UC3);
     BOOST_FOREACH(const Obstacle & obst, m_obstacles) {
@@ -350,7 +350,7 @@ void PolarGridTracking::drawObstaclesMap()
     cv::imshow("obstacleMap", obstacleMap);
 }
 
-void PolarGridTracking::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_tracking::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
     pcl::PointCloud< PointXYZRGBDirected >::Ptr extendedPointCloud;
     resetPolarGrid();
@@ -359,7 +359,7 @@ void PolarGridTracking::reconstructObjects(const pcl::PointCloud< pcl::PointXYZR
     generateObstacles();
 }
 
-void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
+void polar_grid_tracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud, 
                                          pcl::PointCloud< PointXYZRGBDirected >::Ptr& extendedPointCloud)
 {
     extendedPointCloud.reset(new pcl::PointCloud< PointXYZRGBDirected >);
@@ -410,7 +410,7 @@ void PolarGridTracking::extendPointCloud(const pcl::PointCloud< pcl::PointXYZRGB
     }
 }
 
-void PolarGridTracking::growFromList(Obstacle & obstacle, deque<t_visitInfo> &candidates, 
+void polar_grid_tracking::growFromList(Obstacle & obstacle, deque<t_visitInfo> &candidates, 
                                      t_visitMatrix & assigned, t_visitMatrix & addedToList) 
 {
     while (candidates.size() != 0) {
@@ -440,7 +440,7 @@ void PolarGridTracking::growFromList(Obstacle & obstacle, deque<t_visitInfo> &ca
     }
 }
 
-void PolarGridTracking::generateObstacles()
+void polar_grid_tracking::generateObstacles()
 {
     for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
@@ -487,7 +487,7 @@ void PolarGridTracking::generateObstacles()
     
 }
 
-void PolarGridTracking::getPolarPositionFromCartesian(const double & z, const double & x, 
+void polar_grid_tracking::getPolarPositionFromCartesian(const double & z, const double & x, 
                                                          int32_t& row, int32_t& column)
 {
     const double z0 = (double)(m_cameraParams.ku * m_cameraParams.baseline) / m_cameraParams.width;
@@ -503,7 +503,7 @@ void PolarGridTracking::getPolarPositionFromCartesian(const double & z, const do
     column = u / m_gridColumnFactor - 1;
 }
 
-void PolarGridTracking::resetPolarGrid()
+void polar_grid_tracking::resetPolarGrid()
 {
     for (uint32_t r = 0; r < m_polarGrid.rows(); r++) {
         for (uint32_t c = 0; c < m_polarGrid.cols(); c++) {
@@ -512,7 +512,7 @@ void PolarGridTracking::resetPolarGrid()
     }
 }
 
-void PolarGridTracking::updatePolarGridWithPoint(const PointXYZRGBDirected& point)
+void polar_grid_tracking::updatePolarGridWithPoint(const PointXYZRGBDirected& point)
 {
     int32_t row, column;
     getPolarPositionFromCartesian(point.z, point.x, row, column);

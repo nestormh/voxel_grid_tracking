@@ -195,7 +195,7 @@ void testStereoTracking() {
     // TODO Get it from the real measurements
 //     double deltaTime = 0.2; //1.0 / 25.0; //0.2;
     
-    PolarGridTracking gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation);
+    polar_grid_tracking gridTracker(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams[0], particlesPerCell, threshProbForCreation);
     
     for (uint32_t i = initialIdx; i < 1000; i++) {
 //         stringstream ss;

@@ -605,12 +605,12 @@ void ObstaclesFromStereo::getParamsFromBahnhofstrasseSingleFile(const string& fi
 void ObstaclesFromStereo::getParamsFromBahnhofstrasse(const string& fileName, vector< t_Camera_params >& params)
 {
     cout << __FUNCTION__ << ":" << __LINE__ << endl;
-    boost::filesystem3::path path(fileName);
+    boost::filesystem::path path(fileName);
     params.resize(2);
     cout << __FUNCTION__ << ":" << __LINE__ << endl;
-    cout << (path / boost::filesystem3::path("cam1.cal")).string() << endl;
-    getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem3::path("cam1.cal")).string(), params[0]);
-    getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem3::path("cam2.cal")).string(), params[1]);
+    cout << (path / boost::filesystem::path("cam1.cal")).string() << endl;
+    getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem::path("cam1.cal")).string(), params[0]);
+    getParamsFromBahnhofstrasseSingleFile((path / boost::filesystem::path("cam2.cal")).string(), params[1]);
     
         params[0].baseline = -params[1].t(0);
         params[1].baseline = -params[1].t(0);
@@ -726,8 +726,8 @@ void ObstaclesFromStereo::readCurrentEgoValue(ifstream& fin, t_ego_value& egoVal
 
 void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_ego_value >& egoValues)
 {
-    boost::filesystem3::path basePath(pathName);
-    boost::filesystem3::path timestampsPath("oxts/timestamps.txt");
+    boost::filesystem::path basePath(pathName);
+    boost::filesystem::path timestampsPath("oxts/timestamps.txt");
     
     ifstream fin((basePath / timestampsPath).string().c_str());
     
@@ -762,7 +762,7 @@ void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_
         ss << setfill('0') << setw(10) << i;
         ss << ".txt";
 
-        boost::filesystem3::path filePath(ss.str());
+        boost::filesystem::path filePath(ss.str());
         fin.open((basePath / filePath).string().c_str());
         if (fin.is_open()) {
             
@@ -789,7 +789,7 @@ void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_
     egoValues[0].deltaPos = 0;
 }
 
-vector< PolarGridTracking::roiArray > ObstaclesFromStereo::readROIList(const string & trackletsPath, const uint32_t & sequenceLength)
+vector< polar_grid_tracking::roiArray > ObstaclesFromStereo::readROIList(const string & trackletsPath, const uint32_t & sequenceLength)
 {
 //     cout << "trackletsPath " << trackletsPath << endl;
 //     
@@ -799,12 +799,12 @@ vector< PolarGridTracking::roiArray > ObstaclesFromStereo::readROIList(const str
 //         exit(0);
 //     }
 // 
-//     vector< PolarGridTracking::roiArray > trackletList(sequenceLength);
-//     BOOST_FOREACH(PolarGridTracking::roiArray & roiMsg, trackletList) {
+//     vector< polar_grid_tracking::roiArray > trackletList(sequenceLength);
+//     BOOST_FOREACH(polar_grid_tracking::roiArray & roiMsg, trackletList) {
 //         roiMsg.rois2d.resize(sequenceLength);
 //         roiMsg.rois3d.resize(sequenceLength);
 //     }
-// //     PolarGridTracking::roiArray roiMsg;
+// //     polar_grid_tracking::roiArray roiMsg;
 // //     roiMsg.rois3d.resize(m_obstacles.size());
 // //     roiMsg.rois2d.resize(m_obstacles.size());
 // //     
@@ -813,7 +813,7 @@ vector< PolarGridTracking::roiArray > ObstaclesFromStereo::readROIList(const str
 // //     roiMsg.header.stamp = ros::Time::now();
 //     
 //     for (uint32_t i = 0; i < sequenceLength; i++) {
-//         PolarGridTracking::roiArray & roiMsg = trackletList[i];
+//         polar_grid_tracking::roiArray & roiMsg = trackletList[i];
 //         
 //         for (uint32_t j = 0; j < tracklets.numberOfTracklets(); j++) {
 //             Tracklets::tTracklet & tracklet =  *(tracklets.getTracklet(j));
@@ -826,7 +826,7 @@ vector< PolarGridTracking::roiArray > ObstaclesFromStereo::readROIList(const str
 // //         for (uint32_t idx = tracklet.first_frame, j = 0; j <= poses.size(); j++, idx++) {
 // //             const Tracklets::tPose & pose = poses[j];
 // //             
-// //             PolarGridTracking::roiArray & roiMsg = trackletList[idx];
+// //             polar_grid_tracking::roiArray & roiMsg = trackletList[idx];
 // //             
 // //             // TODO: Compensate the Velodyne Rt in order to reference obstacle w.r.t the left camera.
 // //             roiMsg.rois3d.resize(tracklets.s);

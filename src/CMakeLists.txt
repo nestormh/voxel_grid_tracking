@@ -9,7 +9,7 @@ set(VISO_FILES
     libviso2/viso_stereo.cpp
 )
 
-add_executable(PolarGridTracking 
+add_executable(polar_grid_tracking 
 #     main.cpp
     obstacle.cpp 
     polarcell.cpp 
@@ -25,24 +25,25 @@ add_executable(PolarGridTracking
     main_ros.cpp
 )
 
-include_directories(PolarGridTracking
+include_directories(polar_grid_tracking
 #     GPULibSVM
 #     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}/pcl-1.7
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${LIBELAS_INCLUDE_DIRS}
-    /opt/ros/hydro/include
+    /opt/ros/indigo/include
 #     emon.a
 #     ${CUDA_INCLUDE_DIRS}
 #     /usr/local/dislin
 )
 
-# link_directories(PolarGridTracking
-#     /usr/local/dislin/lib
-# )
+link_directories(polar_grid_tracking
+    /usr/local/lib
+    /usr/lib/x86_64-linux-gnu/
+)
 
-target_link_libraries(PolarGridTracking
+target_link_libraries(polar_grid_tracking
   ${EIGEN3_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
@@ -91,12 +92,13 @@ include_directories(stereo_and_odom
     ${OpenCV_INCLUDE_DIR}
     ${LIBELAS_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIR}
-    /opt/ros/hydro/include
+    /opt/ros/indigo/include
 )
 
-# link_directories(PolarGridTracking
-#     /usr/local/dislin/lib
-# )
+link_directories(stereo_and_odom
+    /usr/local/lib
+    /usr/lib/x86_64-linux-gnu/
+)
 
 target_link_libraries(stereo_and_odom
   ${EIGEN3_LIBRARIES}
@@ -106,36 +108,10 @@ target_link_libraries(stereo_and_odom
   ${catkin_LIBRARIES}
 )
 
-#################################################################
-# stixels_publisher
-#################################################################
-add_executable(stixels_publisher
-    ${STIXEL_WORLD_SRC}
-    stixelsapplicationros.cpp
-    mainStixels.cpp
-)
-
-include_directories(stixels_publisher
-    ${PCL_INCLUDE_DIRS}/pcl-1.7
-    ${OpenCV_INCLUDE_DIR}
-    ${Boost_INCLUDE_DIR}
-    ${STIXEL_WORLD_INCLUDE_DIRS}
-    /opt/ros/hydro/include
-)
-
-target_link_libraries(stixels_publisher
-  ${EIGEN3_LIBRARIES}
-  ${PCL_LIBRARIES}
-  ${OpenCV_LIBS}
-  ${Boost_LIBRARIES}
-  ${STIXEL_WORLD_LIBRARIES}
-  ${catkin_LIBRARIES}
-)
-
 ###########################################################
-# VoxelGridTracking
+# voxel_grid_tracking
 ###########################################################
-add_executable(VoxelGridTracking 
+add_executable(voxel_grid_tracking 
     voxelobstacle.cpp 
     utilspolargridtracking.cpp
     voxel.cpp 
@@ -144,26 +120,27 @@ add_executable(VoxelGridTracking
     main_voxel.cpp
 )
 
-include_directories(VoxelGridTracking
+include_directories(voxel_grid_tracking
 #     GPULibSVM
 #     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${OCTOMAP_INCLUDE_DIRS}
-    /opt/ros/hydro/include
-    /home/nestor/Dropbox/ros/hydro/nestormh/devel/include
-    /home/nestor/Dropbox/ros/hydro/nestormh/src/octomap_msgs/include
+    /opt/ros/indigo/include
+    /home/nestor/Dropbox/ros/indigo/nestormh/devel/include
+    /home/nestor/Dropbox/ros/indigo/nestormh/src/octomap_msgs/include
 #     emon.a
 #     ${CUDA_INCLUDE_DIRS}
 #     /usr/local/dislin
 )
 
-# link_directories(PolarGridTracking
-#     /usr/local/dislin/lib
-# )
+link_directories(voxel_grid_tracking
+    /usr/local/lib
+    /usr/lib/x86_64-linux-gnu/
+)
 
-target_link_libraries(VoxelGridTracking
+target_link_libraries(voxel_grid_tracking
   ${EIGEN3_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}

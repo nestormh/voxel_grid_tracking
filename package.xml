@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>PolarGridTracking</name>
+  <name>polar_grid_tracking</name>
   <version>0.0.1</version>
   <description>Wrapper for the Polar Grid Tracking method described in the paper "Particle grid tracking system for stereovision based environment perception", by Danescu, R. ; Comput. Sci. Dept., Tech. Univ. of Cluj-Napoca, Cluj-Napoca, Romania ; Oniga, F. ; Nedevschi, S.</description>
 
@@ -12,7 +12,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <url type="repository">https://github.com/nestormh/PolarGridTracking</url>
+  <url type="repository">https://github.com/nestormh/polar_grid_tracking</url>
   <url type="website">http://nmorales.webs.ull.es</url>
   <url type="website">http://verdino.webs.ull.es</url>
 
@@ -41,6 +41,7 @@
   <build_depend>camera_calibration_parsers</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>tf_conversions</build_depend>
+  <build_depend>cmake_modules</build_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>tf2_ros</run_depend>

@@ -31,19 +31,19 @@
 
 #include "utilspolargridtracking.h"
 
-#include "utils.h"
+// #include "utils.h"
 
 #include <boost/foreach.hpp>
 
 namespace polar_grid_tracking {
     
-PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t& cols, const double& cellSizeX, 
+polar_grid_trackingROS::polar_grid_trackingROS(const uint32_t& rows, const uint32_t& cols, const double& cellSizeX, 
                                            const double& cellSizeZ, const double& maxVelX, const double& maxVelZ, 
                                            const t_Camera_params& cameraParams, const double& particlesPerCell, 
                                            const double& threshProbForCreation, 
                                            const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval,
                                            const double & threshYaw, const double & threshMagnitude): 
-                                            PolarGridTracking(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams, 
+                                            polar_grid_tracking(rows, cols, cellSizeX, cellSizeZ, maxVelX, maxVelZ, cameraParams, 
                                                               particlesPerCell, threshProbForCreation, 
                                                               gridDepthFactor, gridColumnFactor, yawInterval,
                                                               threshYaw, threshMagnitude)
@@ -83,10 +83,10 @@ PolarGridTrackingROS::PolarGridTrackingROS(const uint32_t& rows, const uint32_t&
     m_pointCloudInObstaclePub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudInObstacle", 1);
     
     m_lastMapOdomTransform.stamp_ = ros::Time(-1);
-    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloudStereo", 0, boost::bind(&PolarGridTrackingROS::pointCloudCallback, this, _1));
+    m_pointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloudStereo", 0, boost::bind(&polar_grid_trackingROS::pointCloudCallback, this, _1));
 }
 
-void PolarGridTrackingROS::start()
+void polar_grid_trackingROS::start()
 {
     tf::StampedTransform lastMapOdomTransform;
     lastMapOdomTransform.stamp_ = ros::Time(-1);
@@ -205,7 +205,7 @@ void PolarGridTrackingROS::start()
 //     ros::spin();
 }
 
-void PolarGridTrackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
+void polar_grid_trackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) 
 {
     m_currentId = msg->header.seq;
 //     pcl::fromROSMsg<pcl::PointXYZRGB>(*msg, *m_pointCloud);
@@ -233,9 +233,9 @@ void PolarGridTrackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::Co
     }
 }
 
-void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_trackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
-//     PolarGridTracking::compute(pointCloud);
+//     polar_grid_tracking::compute(pointCloud);
     getBinaryMapFromPointCloud(pointCloud);
     
 //     drawBinaryMap(map);
@@ -261,7 +261,7 @@ void PolarGridTrackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Pt
     publishAll(pointCloud);
 }
 
-void PolarGridTrackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_trackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
         publishPointCloud(pointCloud);
         publishBinaryMap();
@@ -269,7 +269,7 @@ void PolarGridTrackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >:
         publishColumnAverage(0.5);
 }
 
-void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_trackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     
@@ -301,7 +301,7 @@ void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< pcl::PointXY
 }
 
 
-void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
+void polar_grid_trackingROS::publishPointCloud(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -332,7 +332,7 @@ void PolarGridTrackingROS::publishPointCloud(const pcl::PointCloud< PointXYZRGBD
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::publishPointCloudOrientation(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
+void polar_grid_trackingROS::publishPointCloudOrientation(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
 {
 //     ros::Publisher & particlesPub, const double & zPlane
     geometry_msgs::PoseArray poses;
@@ -369,7 +369,7 @@ void PolarGridTrackingROS::publishPointCloudOrientation(const pcl::PointCloud< P
 
 
 
-void PolarGridTrackingROS::publishBinaryMap()
+void polar_grid_trackingROS::publishBinaryMap()
 {
     nav_msgs::GridCells gridCells;
     gridCells.header.frame_id = "left_cam";
@@ -404,7 +404,7 @@ void PolarGridTrackingROS::publishBinaryMap()
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::publishParticles(ros::Publisher & particlesPub, const double & zPlane)
+void polar_grid_trackingROS::publishParticles(ros::Publisher & particlesPub, const double & zPlane)
 {
     geometry_msgs::PoseArray particles;
     
@@ -450,7 +450,7 @@ void PolarGridTrackingROS::publishParticles(ros::Publisher & particlesPub, const
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
+void polar_grid_trackingROS::publishColumnAverage(const double & zPlane)
 {
     geometry_msgs::PoseArray colAverages;
     
@@ -501,7 +501,7 @@ void PolarGridTrackingROS::publishColumnAverage(const double & zPlane)
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void polar_grid_trackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {   
     pcl::PointCloud< PointXYZRGBDirected >::Ptr extendedPointCloud;
     resetPolarGrid();
@@ -521,7 +521,7 @@ void PolarGridTrackingROS::reconstructObjects(const pcl::PointCloud< pcl::PointX
 //     visualizeROI2d();
 }
 
-void PolarGridTrackingROS::publishPolarGrid()
+void polar_grid_trackingROS::publishPolarGrid()
 {
     visualization_msgs::Marker line_list;
     line_list.header.frame_id = "left_cam";
@@ -585,7 +585,7 @@ void PolarGridTrackingROS::publishPolarGrid()
     
 }
 
-void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
+void polar_grid_trackingROS::publishPolarCellYaw(const double & zPlane)
 {
     geometry_msgs::PoseArray polarCellYaw;
     
@@ -629,7 +629,7 @@ void PolarGridTrackingROS::publishPolarCellYaw(const double & zPlane)
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::publishObstacles()
+void polar_grid_trackingROS::publishObstacles()
 {
     visualization_msgs::MarkerArray obstacles;
     
@@ -713,7 +713,7 @@ void PolarGridTrackingROS::publishObstacles()
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::publishROIs()
+void polar_grid_trackingROS::publishROIs()
 {
      visualization_msgs::MarkerArray obstaclesROI;
      
@@ -915,7 +915,7 @@ void PolarGridTrackingROS::publishROIs()
      ros::spinOnce();
 }
 
-void PolarGridTrackingROS::clearObstaclesAndROIs()
+void polar_grid_trackingROS::clearObstaclesAndROIs()
 {
     visualization_msgs::MarkerArray obstacles;
     visualization_msgs::MarkerArray obstaclesROI;
@@ -966,7 +966,7 @@ void PolarGridTrackingROS::clearObstaclesAndROIs()
     m_obstaclesPub.publish(obstacles);
 }
 
-void PolarGridTrackingROS::publishPointCloudInObstacles(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
+void polar_grid_trackingROS::publishPointCloudInObstacles(const pcl::PointCloud< PointXYZRGBDirected >::Ptr & pointCloud)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -1012,7 +1012,7 @@ void PolarGridTrackingROS::publishPointCloudInObstacles(const pcl::PointCloud< P
     ros::spinOnce();
 }
 
-void PolarGridTrackingROS::visualizeROI2d()
+void polar_grid_trackingROS::visualizeROI2d()
 {
     
     string imgPattern = "/local/imaged/Karlsruhe/2011_09_28/2011_09_28_drive_0038_sync/image_02/data/%010d.png";

@@ -1,0 +1,3 @@
+[Project]
+Manager=KDevCMakeManager
+Name=polar_grid_tracking

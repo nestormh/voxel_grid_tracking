@@ -27,10 +27,10 @@
 
 namespace polar_grid_tracking {
 
-class PolarGridTrackingROS : public PolarGridTracking
+class polar_grid_trackingROS : public polar_grid_tracking
 {
 public:
-    PolarGridTrackingROS(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
+    polar_grid_trackingROS(const uint32_t & rows, const uint32_t & cols, const double & cellSizeX, const double & cellSizeZ, 
                          const double & maxVelX, const double & maxVelZ, const t_Camera_params & cameraParams, 
                          const double & particlesPerCell, const double & threshProbForCreation, 
                          const double & gridDepthFactor, const uint32_t &  gridColumnFactor, const double & yawInterval,

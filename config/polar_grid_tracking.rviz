@@ -120,7 +120,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.01
       Style: Points
-      Topic: /testGridTracking/PolarGridTracking/pointCloudStereo
+      Topic: /testGridTracking/polar_grid_tracking/pointCloudStereo
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
@@ -143,32 +143,32 @@ Visualization Manager:
       Color: 25; 255; 0
       Enabled: false
       Name: GridCells
-      Topic: /testGridTracking/PolarGridTracking/binaryMap
+      Topic: /testGridTracking/polar_grid_tracking/binaryMap
       Value: false
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 255; 25; 0
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/PolarGridTracking/oldParticles
+      Topic: /testGridTracking/polar_grid_tracking/oldParticles
       Value: false
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 255; 255; 0
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/PolarGridTracking/particles
+      Topic: /testGridTracking/polar_grid_tracking/particles
       Value: false
     - Arrow Length: 1
       Class: rviz/PoseArray
       Color: 0; 255; 255
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/PolarGridTracking/colAvg
+      Topic: /testGridTracking/polar_grid_tracking/colAvg
       Value: false
     - Class: rviz/Marker
       Enabled: false
-      Marker Topic: /testGridTracking/PolarGridTracking/polarGrid
+      Marker Topic: /testGridTracking/polar_grid_tracking/polarGrid
       Name: Marker
       Namespaces:
         {}
@@ -179,18 +179,18 @@ Visualization Manager:
       Color: 255; 255; 0
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/PolarGridTracking/pointCloudOrientation
+      Topic: /testGridTracking/polar_grid_tracking/pointCloudOrientation
       Value: false
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 0; 255; 255
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/PolarGridTracking/polarCellYaw
+      Topic: /testGridTracking/polar_grid_tracking/polarCellYaw
       Value: false
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /testGridTracking/PolarGridTracking/obstacles
+      Marker Topic: /testGridTracking/polar_grid_tracking/obstacles
       Name: MarkerArray
       Namespaces:
         {}
@@ -198,7 +198,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /testGridTracking/PolarGridTracking/obstaclesROI
+      Marker Topic: /testGridTracking/polar_grid_tracking/obstaclesROI
       Name: MarkerArray
       Namespaces:
         {}
@@ -229,7 +229,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.01
       Style: Points
-      Topic: /testGridTracking/PolarGridTracking/pointCloudInObstacle
+      Topic: /testGridTracking/polar_grid_tracking/pointCloudInObstacle
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
