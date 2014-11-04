@@ -466,6 +466,10 @@ void testStereoTracking() {
         posY += speed * deltaTime * -cos(yaw);
         posTheta += yaw; 
         accTime += deltaTime;
+        cout << "yaw " << yaw << endl;
+        cout << "speed " << speed << endl;
+        cout << "accTime " << accTime << endl;
+        cout << "deltaTime " << deltaTime << endl;
         
 //         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud = pointCloudMaker->getPointCloud();
 //         pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);

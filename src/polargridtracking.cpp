@@ -428,7 +428,10 @@ void polar_grid_tracking::growFromList(Obstacle & obstacle, deque<t_visitInfo> &
                         if (m_polarGrid(r1, c1).getNumVectors() != 0) {
                             if ((! addedToList(r1, c1)) && (! assigned(r1, c1))) {
 //                                 if (m_polarGrid(r1, c1).obstIdx() == -1) {
-                                    candidates.push_back({r1, c1});
+                                    t_visitInfo vi;
+                                    vi.row = r1;
+                                    vi.col = c1;
+                                    candidates.push_back(vi);
                                     addedToList(r1, c1) = true;
 //                                 }
                             }
@@ -470,7 +473,10 @@ void polar_grid_tracking::generateObstacles()
                             uint32_t obstIdx = m_obstacles.size();
                             Obstacle obstacle(obstIdx, m_threshYaw, m_threshMagnitude);
                             
-                            candidates.push_back({r, c});
+                            t_visitInfo vi;
+                            vi.row = r;
+                            vi.col = c;
+                            candidates.push_back(vi);
                             addedToList(r, c) = true;
                             
                             growFromList(obstacle, candidates, assigned, addedToList);

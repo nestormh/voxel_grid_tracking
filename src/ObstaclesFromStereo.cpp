@@ -40,7 +40,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include "elas.h"
+#include <elas/elas.h>
 
 using namespace std;
 
@@ -714,14 +714,17 @@ void ObstaclesFromStereo::showCameraParams(const t_Camera_params& params)
     cout << "t " << endl << params.t << endl;
 }
 
-void ObstaclesFromStereo::readCurrentEgoValue(ifstream& fin, t_ego_value& egoValue)
+t_ego_value ObstaclesFromStereo::readCurrentEgoValue(ifstream& fin)
 {
+    t_ego_value egoValue;
     double values[8];
     for (uint32_t i = 0; i <= 8; i++) {
         fin >> values[i];
     }
     egoValue.deltaYaw = values[5];
     egoValue.speed = values[8];
+    
+    return egoValue;
 }
 
 void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_ego_value >& egoValues)
@@ -766,7 +769,9 @@ void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_
         fin.open((basePath / filePath).string().c_str());
         if (fin.is_open()) {
             
-            readCurrentEgoValue(fin, egoValues[i]);
+            const double deltaTime = egoValues[i].deltaTime;
+            egoValues[i] = readCurrentEgoValue(fin);
+            egoValues[i].deltaTime = deltaTime;
             
             fin.close();
         } else {

@@ -79,7 +79,7 @@ private:
     void filterMasked(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & inputCloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & outputCloud);
     void removeGround(pcl::PointCloud<pcl::PointXYZRGBL>::Ptr & pointCloud);
     void downsample(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
-    static void readCurrentEgoValue(ifstream & fin, t_ego_value & egoValue);
+    static t_ego_value readCurrentEgoValue(ifstream & fin);
     static void getParamsFromKarlsruhe_v2(ifstream& fin, t_Camera_params & params);
     
     t_Camera_params m_leftCameraParams;

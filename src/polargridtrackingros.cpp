@@ -751,14 +751,14 @@ void polar_grid_trackingROS::publishROIs()
         
         vector<geometry_msgs::Point> points(8);
         geometry_msgs::Point centroid;
-        for (uint32_t i = 0; i < 8; i++) {
-            points[i].x = roi->at(i).x;
-            points[i].y = roi->at(i).y;
-            points[i].z = roi->at(i).z;
+        for (uint32_t j = 0; j < 8; j++) {
+            points[j].x = roi->at(j).x;
+            points[j].y = roi->at(j).y;
+            points[j].z = roi->at(j).z;
             
-            centroid.x += roi->at(i).x;
-            centroid.y += roi->at(i).y;
-            centroid.z += roi->at(i).z;
+            centroid.x += roi->at(j).x;
+            centroid.y += roi->at(j).y;
+            centroid.z += roi->at(j).z;
         }
         
         centroid.x /= roi->size();

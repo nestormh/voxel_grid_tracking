@@ -20,7 +20,9 @@
 
 #include <opencv2/opencv.hpp>
 #include <Eigen/Core>
-#include <chrono>
+// #include <chrono>
+#include <time.h>
+// clock_t uptime = clock() / (CLOCKS_PER_SEC / 1000);
 
 #include "polargridtracking.h"
 
@@ -28,10 +30,15 @@ using namespace std;
 
 #define LOG_BASE(base, x) log10(x) / log10(base)
 
-#define INIT_CLOCK(start) auto start = std::chrono::high_resolution_clock::now();
-#define RESET_CLOCK(start) start = std::chrono::high_resolution_clock::now();
-#define END_CLOCK(time, start) float time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
-#define END_CLOCK_2(time, start) time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
+#define INIT_CLOCK(start) clock_t start = clock();
+#define RESET_CLOCK(start) start = clock();
+#define END_CLOCK(time, start) float time = (clock() - start) / (float)(CLOCKS_PER_SEC);
+#define END_CLOCK_2(time, start) time = (clock() - start) / (float)(CLOCKS_PER_SEC);
+
+// #define INIT_CLOCK(start) auto start = std::chrono::high_resolution_clock::now();
+// #define RESET_CLOCK(start) start = std::chrono::high_resolution_clock::now();
+// #define END_CLOCK(time, start) float time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
+// #define END_CLOCK_2(time, start) time = std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now()-start).count();
 
 cv::Mat getCvMatFromEigenBinary(const polar_grid_tracking::BinaryMap & map);
 cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map);

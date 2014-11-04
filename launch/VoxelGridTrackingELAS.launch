@@ -1,133 +1,133 @@
 <launch>
-  <arg name="namespace" default="voxel_grid_tracking"/>
-  <param name="use_sim_time" value="true"/>
-
-<!-- <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 1.57 0 0 map odom 100" /> -->
-<node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 100" />
-<!-- <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 100" /> -->
-<node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 -1.57 0 0 base_footprint base_link 100" />
-<node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.45 0 0 -1.57079632679489661923 base_link base_left_cam 100" />
-<!-- <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.65 0 0 -1.57 base_link base_left_cam 100" /> -->
-<!-- <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" /> -->
-
-<!--<include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
+    <arg name="namespace" default="voxel_grid_tracking"/>
+    <param name="use_sim_time" value="true"/>
+    
+    <!-- <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 1.57 0 0 map odom 100" /> -->
+    <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 100" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 100" /> -->
+    <node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 -1.57 0 0 base_footprint base_link 100" />
+    <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.45 0 0 -1.57079632679489661923 base_link base_left_cam 100" />
+    <!-- <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.65 0 0 -1.57 base_link base_left_cam 100" /> -->
+    <!-- <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" /> -->
+    
+    <!--<include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
     <arg name="manager" value="$(arg namespace)/point_cloud2" />
     <arg name="respawn" value="false" />
     <arg name="left" value="left" />
     <arg name="right" value="right" />
-</include>-->
-
-<node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
-    <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
-    <param name="base_link_frame_id" value="base_footprint" />
-    <param name="odom_frame_id" value="odom" />
-
-<!--     <remap from="image" to="image_rect"/> -->
-</node>
-   
-<group ns="$(arg namespace)">
+    </include>-->
     
-    
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
-    <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
-    </node> 
-    
-    <node pkg="grull_elas_ros" type="elas_ros" name="elas_ros" output="screen">
-        <remap from="stereo" to="stereo_and_odom" />
-        <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
-        <remap from="stereo_and_odom/right/voxel_grid_tracking/image" to="stereo_and_odom/right/image" />
+    <node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
+        <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
+        <param name="base_link_frame_id" value="base_footprint" />
+        <param name="odom_frame_id" value="odom" />
         
-        <param name="approximate_sync" value="true" />
-        
-        <remap from="base_frame_id" to="left_cam" />
-        <param name="base_frame_id" value="left_cam" />
-        <param name="pose_frame_id" value="base_link" />
+        <!--     <remap from="image" to="image_rect"/> -->
     </node>
-
-   <node pkg="oflow_3d_generator" type="oflow_3d_generator" name="oflow_3d_generator" output="screen" required="true">
-       <remap from="stereo" to="stereo_and_odom" />
-       <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
-       <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image" />
-       <remap from="stereo_and_odom/disparity/$(arg namespace)/image" to="elas_ros/disparity" />
-       
-       <param name="approximate_sync" value="true" />
-       
-       <param name="motion_frame_id" value="map" />
-   </node>
     
-<!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-   <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
+    <group ns="$(arg namespace)">
+        
+        
+        <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
+        <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
+        </node> 
+        
+        <node pkg="grull_elas_ros" type="elas_ros" name="elas_ros" output="screen">
+            <remap from="stereo" to="stereo_and_odom" />
+            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
+            <remap from="stereo_and_odom/right/voxel_grid_tracking/image" to="stereo_and_odom/right/image" />
+            
+            <param name="approximate_sync" value="true" />
+            
+            <remap from="base_frame_id" to="left_cam" />
+            <param name="base_frame_id" value="left_cam" />
+            <param name="pose_frame_id" value="base_link" />
+        </node>
+        
+        <node pkg="oflow_3d_generator" type="oflow_3d_generator" name="oflow_3d_generator" output="screen" required="true">
+            <remap from="stereo" to="stereo_and_odom" />
+            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
+            <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image" />
+            <remap from="stereo_and_odom/disparity/$(arg namespace)/image" to="elas_ros/disparity" />
+            
+            <param name="approximate_sync" value="true" />
+            
+            <param name="motion_frame_id" value="map" />
+        </node>
+        
+        <!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+        <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+        <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
-                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />
+                   to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
-                    to="/$(arg namespace)/obstaclesPointCloud" />
+                   to="/$(arg namespace)/obstaclesPointCloud" />
             <remap from="~/flow_vectors"
-                to="/$(arg namespace)/flow_vectors" />
-                
+                   to="/$(arg namespace)/flow_vectors" />
+            
             <param name="use_oflow" value="false" />
-    </node>
-</group>
-
-<group ns="filters">
-    <!-- PCL Manager -->
-     <node pkg="nodelet" type="nodelet" name="box_filter_manager" args="manager" output="screen"/>
-     
-     <!-- Run a passthrough filter to delimit in x direction -->
-     <!--<node pkg="nodelet" type="nodelet" name="psx" args="load pcl/PassThrough box_filter_manager" output="screen">
+        </node>
+    </group>
+    
+    <group ns="filters">
+        <!-- PCL Manager -->
+        <node pkg="nodelet" type="nodelet" name="box_filter_manager" args="manager" output="screen"/>
+        
+        <!-- Run a passthrough filter to delimit in x direction -->
+        <!--<node pkg="nodelet" type="nodelet" name="psx" args="load pcl/PassThrough box_filter_manager" output="screen">
         <remap from="~input" to="/$(arg namespace)/elas_ros/point_cloud" />
         <rosparam>
-            filter_field_name: x
-            filter_limit_min: -4.0
-            filter_limit_max: 4.0
+        filter_field_name: x
+        filter_limit_min: -4.0
+        filter_limit_max: 4.0
         </rosparam>
-    </node>-->
-
-    <!-- Run a passthrough filter to delimit in y direction -->
-    <!--<node pkg="nodelet" type="nodelet" name="psy" args="load pcl/PassThrough box_filter_manager" output="screen">
+        </node>-->
+        
+        <!-- Run a passthrough filter to delimit in y direction -->
+        <!--<node pkg="nodelet" type="nodelet" name="psy" args="load pcl/PassThrough box_filter_manager" output="screen">
         <remap from="~input" to="psx/output" />
         <rosparam>
-            filter_field_name: y
-            filter_limit_min: 0.0
-            filter_limit_max: 24.0
+        filter_field_name: y
+        filter_limit_min: 0.0
+        filter_limit_max: 24.0
         </rosparam>
-    </node>-->
-
-    <!-- Run a passthrough filter to delimit in z direction -->
-    <!--<node pkg="nodelet" type="nodelet" name="psz" args="load pcl/PassThrough box_filter_manager" output="screen">
+        </node>-->
+        
+        <!-- Run a passthrough filter to delimit in z direction -->
+        <!--<node pkg="nodelet" type="nodelet" name="psz" args="load pcl/PassThrough box_filter_manager" output="screen">
         <remap from="~input" to="psy/output" />
         <remap from="~output" to="/$(arg namespace)/pointCloudFiltered" />
         <rosparam>
-            filter_field_name: z
-            filter_limit_min: -0.1
-            filter_limit_max: 13.5
+        filter_field_name: z
+        filter_limit_min: -0.1
+        filter_limit_max: 13.5
         </rosparam>
-    </node>-->
-    
-<!--     <node pkg="nodelet" type="nodelet" name="EXAMPLE_MANAGER" args="manager"/> -->
-    
-    <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
-        <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" />
-<!--         <arg name="input_topic"     value="/$(arg namespace)/pointCloudFiltered"/> -->
-        <arg name="output_topic"    value="/$(arg namespace)/pointCloudFilteredAndTransformed"/>
-        <arg name="target_frame"    value="base_footprint"/>
-        <arg name="nodelet_manager" value="box_filter_manager"/>
-    </include>
-    
-    <node pkg="nodelet" type="nodelet" name="heightmap_nodelet"
-        args="load velodyne_height_map/HeightMapNodelet box_filter_manager">
+        </node>-->
+        
+        <!--     <node pkg="nodelet" type="nodelet" name="EXAMPLE_MANAGER" args="manager"/> -->
+        
+        <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
+            <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" />
+            <!--         <arg name="input_topic"     value="/$(arg namespace)/pointCloudFiltered"/> -->
+            <arg name="output_topic"    value="/$(arg namespace)/pointCloudFilteredAndTransformed"/>
+            <arg name="target_frame"    value="base_footprint"/>
+            <arg name="nodelet_manager" value="box_filter_manager"/>
+        </include>
+        
+        <node pkg="nodelet" type="nodelet" name="heightmap_nodelet"
+              args="load velodyne_height_map/HeightMapNodelet box_filter_manager">
             <param name="cell_size" value="0.1"/>
             <param name="full_clouds" value="true"/>
             
             <remap from="velodyne_points" to="/$(arg namespace)/pointCloudFilteredAndTransformed"/>
             <remap from="velodyne_obstacles" to="/$(arg namespace)/obstaclesPointCloud"/>
-    </node>
-</group>
-
-<!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
-<node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-      $(find polar_grid_tracking)/config/voxel_grid_tracking.rviz"/>
-<!--<node pkg="rosbag" type="record"  name="rosbag"
+        </node>
+    </group>
+    
+    <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
+    <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+          $(find polar_grid_tracking)/config/VoxelGridTracking.rviz"/>
+    <!--<node pkg="rosbag" type="record"  name="rosbag"
     args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     
-</launch>
+    </launch>
