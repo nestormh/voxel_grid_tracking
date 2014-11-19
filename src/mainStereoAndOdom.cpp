@@ -211,6 +211,9 @@ void testStereoTracking() {
     cv::namedWindow("imgL");
 //     cv::waitKey(0);
     
+    // Just for debugging. If repeatFrame != -1, the frame number repeatFrame will be shown again and again
+    int32_t repeatFrame = 27;
+    
     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
     
     ros::NodeHandle nh("~");
@@ -273,7 +276,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 2; //55; //260; //72; //55;
+            initialIdx = 25; //55; //260; //72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus
@@ -384,11 +387,20 @@ void testStereoTracking() {
         //         stringstream ss2;
         //         ss2 << i;
         char imgNameL[1024], imgNameR[1024];
-        sprintf(imgNameL, leftImagePattern.c_str(), i);
-        sprintf(imgNameR, rightImagePattern.c_str(), i);
+        if (repeatFrame == -1) {
+            sprintf(imgNameL, leftImagePattern.c_str(), i);
+            sprintf(imgNameR, rightImagePattern.c_str(), i);
+        } else {
+            sprintf(imgNameL, leftImagePattern.c_str(), repeatFrame);
+            sprintf(imgNameR, rightImagePattern.c_str(), repeatFrame);
+        }
         
+    
+
         boost::filesystem::path leftPath = correspondencesPath / seqName / boost::filesystem::path(imgNameL);
         boost::filesystem::path rightPath = correspondencesPath / seqName / boost::filesystem::path(imgNameR);
+        
+        
         
         cout << leftPath << endl;
         cout << rightPath << endl;
@@ -508,6 +520,8 @@ void testStereoTracking() {
         sensor_msgs::Image msgLeft, msgRight;
         cv_bridge::CvImage tmpLeft(msgLeft.header, sensor_msgs::image_encodings::BGR8, left);
         cv_bridge::CvImage tmpRight(msgRight.header, sensor_msgs::image_encodings::BGR8, right);
+        tmpLeft.header.frame_id = CAMERA_FRAME_ID;
+        tmpRight.header.frame_id = CAMERA_FRAME_ID;
         leftCameraInfo.header.stamp = tmpLeft.header.stamp = ros::Time(accTime); //ros::Time::now();
         rightCameraInfo.header.stamp = tmpRight.header.stamp = ros::Time(accTime); //ros::Time::now();
         

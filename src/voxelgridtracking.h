@@ -63,6 +63,7 @@ protected:
     // Method functions
     void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
     void reset();
+    void constructOctomapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
     void getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
     void getMeasurementModel();
     void initialization();
@@ -166,6 +167,7 @@ protected:
     ros::Publisher m_obstacleSpeedTextPub;
     ros::Publisher m_ROIPub;
     ros::Publisher m_fakePointCloudPub;
+    ros::Publisher m_segmentedPointCloudPub;
 };
 
 }

@@ -1,0 +1,12 @@
+.kdev4/
+Unknown/
+build/
+launchAndKill.sh
+launchWithROS.h
+launchWithROS.sh
+libs/cyphy-elas-ros/
+libs/libelas/
+matlab/
+paper/
+papers/
+

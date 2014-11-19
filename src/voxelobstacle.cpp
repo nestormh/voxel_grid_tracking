@@ -452,8 +452,7 @@ void VoxelObstacle::updateSpeedFromParticles()
                     }
                 }
             }
-            cout << endl;
-            
+
             stringstream ss;
             ss << numVectors;
             m_winnerNumberOfParticles = ss.str();

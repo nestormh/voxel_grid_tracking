@@ -18,6 +18,8 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   message_filters
   elas
+  octomap
+  octomap_ros
 )
 
 set(ROS_BUILD_TYPE Release)
@@ -35,7 +37,7 @@ find_package(cmake_modules REQUIRED)
 # set(Boost_USE_STATIC_LIBS OFF) 
 # set(Boost_USE_MULTITHREADED ON)  
 # set(Boost_USE_STATIC_RUNTIME OFF) 
-find_package(Boost 1.55.0 COMPONENTS filesystem system)
+find_package(Boost COMPONENTS filesystem system)
 # find_package(Boost 1.49.0)
 # find_package(CUDA 5.0 REQUIRED)
 # find_package( Eigen3    REQUIRED )
