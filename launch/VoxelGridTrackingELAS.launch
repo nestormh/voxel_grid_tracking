@@ -134,7 +134,7 @@
             <arg name="input_topic"     value="/filters/depth_registered/points" />-->
 <!--             <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" /> -->
             <arg name="output_topic"    value="/$(arg namespace)/pointCloudTransformed"/>
-            <arg name="target_frame"    value="base_footprint"/>
+            <arg name="target_frame"    value="map"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
         </include>
         

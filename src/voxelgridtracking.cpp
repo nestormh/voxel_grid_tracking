@@ -239,6 +239,7 @@ VoxelGridTracking::VoxelGridTracking()
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud) 
 {
+    cout << "Frame " << msgPointCloud->header.frame_id << endl;
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
     } catch (tf::TransformException ex){
@@ -293,7 +294,7 @@ void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& 
     
     // Having a point cloud, the voxel grid is computed
     INIT_CLOCK(startCompute2)
-    constructOctomapFromPointCloud(pointCloud);
+//     constructOctomapFromPointCloud(pointCloud);
     getVoxelGridFromPointCloud(pointCloud);
     END_CLOCK(totalCompute2, startCompute2)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute2);
