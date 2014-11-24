@@ -26,6 +26,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
+#include <sensor_msgs/CameraInfo.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -55,16 +56,21 @@ protected:
     typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> ExactPolicy;
     typedef message_filters::Synchronizer<ExactPolicy> ExactSync;
     
+    typedef pcl::PointXYZRGB PointType;
+    typedef pcl::PointCloud< PointType > PointCloud;
+    typedef PointCloud::Ptr PointCloudPtr;
+    
     // Callbacks
+    void getCameraInfo(const sensor_msgs::CameraInfoConstPtr& cameraInfoMsg);
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud);
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
                             const sensor_msgs::PointCloud2::ConstPtr& msgOFlow);
     
     // Method functions
-    void compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr & pointCloud);
+    void compute(const PointCloudPtr & pointCloud);
     void reset();
-    void constructOctomapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
-    void getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud);
+    void constructOctomapFromPointCloud(const PointCloudPtr& pointCloud);
+    void getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud);
     void getMeasurementModel();
     void initialization();
     void particleToVoxel(const Particle3d & particle, 
@@ -113,6 +119,7 @@ protected:
     
     tf::StampedTransform m_lastMapOdomTransform;
     tf::StampedTransform m_pose2MapTransform;
+    tf::StampedTransform m_map2CamTransform;
     
     tf::TransformListener m_tfListener;
     
@@ -124,6 +131,7 @@ protected:
     polar_grid_tracking::t_Camera_params m_cameraParams;
     double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
     double m_cellSizeX, m_cellSizeY, m_cellSizeZ;
+    float m_voxelSize;
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     double m_particlesPerVoxel, m_threshProbForCreation;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
@@ -141,10 +149,14 @@ protected:
     double m_timeIncrementForFakePointCloud;
     bool m_useOFlow;
     
+    float m_focalX, m_focalY, m_centerX, m_centerY;
+    
     string m_mapFrame;
     string m_poseFrame;
     string m_cameraFrame;
     string m_baseFrame;//TODO: Remove
+    
+    sensor_msgs::CameraInfoConstPtr m_cameraInfo;
 
     // Synchronizers
     boost::shared_ptr<TfPointCloudSynchronizer> m_tfPointCloudSync;
@@ -153,6 +165,8 @@ protected:
     // Subscribers
     PointCloudSubscriber m_pointCloudSub;
     PointCloudSubscriber m_oFlowSub;
+    typedef message_filters::Subscriber<sensor_msgs::CameraInfo> InfoSubscriber;
+    InfoSubscriber m_cameraInfoSub;
     
     // Publishers
     ros::Publisher m_voxelsPub;
@@ -168,6 +182,7 @@ protected:
     ros::Publisher m_ROIPub;
     ros::Publisher m_fakePointCloudPub;
     ros::Publisher m_segmentedPointCloudPub;
+    ros::Publisher m_debugPointCloudPub;
 };
 
 }

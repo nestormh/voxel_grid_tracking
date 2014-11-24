@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   elas
   octomap
   octomap_ros
+  pcl_ros
 )
 
 set(ROS_BUILD_TYPE Release)

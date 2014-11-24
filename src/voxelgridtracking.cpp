@@ -28,6 +28,8 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl_ros/filters/voxel_grid.h>
 
 #include <boost/foreach.hpp>
 #include <boost/graph/graph_concepts.hpp>
@@ -107,10 +109,16 @@ VoxelGridTracking::VoxelGridTracking()
     m_minZ = 0.25;
     m_maxZ = 3.5; //3.5;
     
+    m_focalX = 956.948;
+    m_focalY = 952.235;
+    m_centerX = 693.977;
+    m_centerY = 238.608;
     
-    m_cellSizeX = 0.25;
-    m_cellSizeY = 0.25;
-    m_cellSizeZ = 0.25; // 0.75
+    
+    m_cellSizeX = 0.5; //0.25;
+    m_cellSizeY = 0.5; //0.25;
+    m_cellSizeZ = 0.5; //0.25; // 0.75
+    m_voxelSize = 0.5;
 
     m_maxVelX = 3.0;
     m_maxVelY = 3.0;
@@ -217,6 +225,12 @@ VoxelGridTracking::VoxelGridTracking()
         m_pointCloudSub.registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
     }
     
+//     m_cameraInfoSub.subscribe(nh, "camera_info", NULL, &VoxelGridTracking::getCameraInfo);
+// //     ros::NodeHandle&, const string&, uint32_t, const ros::TransportHints&, ros::CallbackQueueInterface*
+//     m_cameraInfoSub.registerCallback<sensor_msgs::CameraInfo>(&VoxelGridTracking::getCameraInfo, this);
+    m_cameraInfoSub.subscribe(nh, "camera_info", 1);
+    m_cameraInfoSub.registerCallback(boost::bind(&VoxelGridTracking::getCameraInfo, this, _1));
+    
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
@@ -234,14 +248,28 @@ VoxelGridTracking::VoxelGridTracking()
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
     
     m_segmentedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("segmentedPointCloud", 1);
+    m_debugPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("debugPointCloud", 1);
 //     ros::spin();
+}
+
+void VoxelGridTracking::getCameraInfo(const sensor_msgs::CameraInfoConstPtr& cameraInfoMsg)
+{
+    m_focalX = cameraInfoMsg->K.at(0);
+    m_focalY = cameraInfoMsg->K.at(4);
+    m_centerX = cameraInfoMsg->K.at(2);
+    m_centerY = cameraInfoMsg->K.at(5);
+
+    cout << "m_focalX " << m_focalX << endl;
+    cout << "m_focalY " << m_focalY << endl;
+    cout << "m_centerX " << m_centerX << endl;
+    cout << "m_centerY " << m_centerY << endl;
 }
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud) 
 {
-    cout << "Frame " << msgPointCloud->header.frame_id << endl;
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
+        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, ros::Time(0), m_map2CamTransform);
     } catch (tf::TransformException ex){
         ROS_ERROR("%s",ex.what());
     }
@@ -281,7 +309,7 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
  * Given a certain pointCloud, the frame is computed
  * @param pointCloud: The input point cloud.
  */
-void VoxelGridTracking::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 {
     INIT_CLOCK(startCompute)
     cout << "m_useOFlow " << m_useOFlow << endl;
@@ -417,7 +445,8 @@ void VoxelGridTracking::reset()
 //     return (false);
 // }
 
-void VoxelGridTracking::constructOctomapFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+// TODO: Use this for segmenting voxels?
+void VoxelGridTracking::constructOctomapFromPointCloud(const PointCloudPtr& pointCloud)
 {
 
     typedef pcl::PointXYZRGB PointTypeIO;
@@ -529,8 +558,82 @@ void VoxelGridTracking::constructOctomapFromPointCloud(const pcl::PointCloud< pc
    m_segmentedPointCloudPub.publish(cloudMsg);
 }
 
-void VoxelGridTracking::getVoxelGridFromPointCloud(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
+void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud)
 {
+    // TODO: Improve times (maybe using octomap instead of a VoxelGrid?)
+    INIT_CLOCK(startCompute)
+    
+    PointCloudPtr filteredCloud(new PointCloud);
+    
+    // TODO: Try getting min-max and divide by cellSizes
+    // Create the filtering object
+    pcl::VoxelGrid<PointType> filter;
+    filter.setInputCloud (pointCloud);
+    filter.setLeafSize (m_cellSizeX, m_cellSizeY, m_cellSizeZ);
+    filter.filter (*filteredCloud);
+    
+    // Create the Kd-Tree
+    pcl::KdTreeFLANN<PointType> kdtree;
+    kdtree.setInputCloud (pointCloud);
+    
+    END_CLOCK(totalCompute, startCompute)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
+    
+    RESET_CLOCK(startCompute)
+    std::vector<int> pointIdxRadiusSearch;
+    std::vector<float> pointRadiusSquaredDistance;
+    
+    BOOST_FOREACH(PointType & searchPoint, *filteredCloud) {
+
+        const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize, 
+                                                        pointIdxRadiusSearch, pointRadiusSquaredDistance);
+        
+        // TODO: Do the pointcloud transformation in advance:
+//         std::string target_frame;
+//         tf::TransformListener listener;
+//         void callback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+//             sensor_msgs::PointCloud2 output;
+//             if (pcl_ros::transformPointCloud(target_frame, *msg, output, listener))
+//                 pub.publish(output);
+//         }
+        tf::Vector3 point = m_map2CamTransform * tf::Vector3(searchPoint.x, searchPoint.y, searchPoint.z);
+        const float & X = point[0];
+        const float & Y = point[1];
+        const float & Z = point[2];
+        
+        const float & fX_Z = m_focalX / Z;
+        const float & u0 = (X - m_cellSizeX) * fX_Z;
+        const float & u1 = (X + m_cellSizeX) * fX_Z;
+        const float & sigmaX = 2 * (u1 - u0) + 1;
+        
+        const float & fY_Z = m_focalY / Z;
+        const float & v0 = (Y - m_cellSizeY) * fY_Z;
+        const float & v1 = (Y + m_cellSizeY) * fY_Z;
+        const float & sigmaY = 2 * (v1 - v0) + 1;
+        
+        const float & prob = neighbours / sqrt(sigmaX * sigmaY);
+            
+        if (prob > 0.9) {
+            // TODO: At this point, voxels should be introduced in the list.
+            searchPoint.r = 255;
+            searchPoint.g = 0;
+            searchPoint.b = 0;
+        } else {
+            searchPoint.a = 0;
+        }
+    }
+    
+    END_CLOCK_2(totalCompute, startCompute)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*filteredCloud, cloudMsg);
+    cloudMsg.header.frame_id = m_mapFrame;
+    cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = rand() / RAND_MAX;
+    
+    m_debugPointCloudPub.publish(cloudMsg);
+    
     BOOST_FOREACH(pcl::PointXYZRGB& point, *pointCloud) {
         
         const uint32_t xPos = (point.x - m_minX) / m_cellSizeX;

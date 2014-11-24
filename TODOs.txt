@@ -1,0 +1,4 @@
+Connect with ELAS and see the differences.
+Optimize times in getVoxelGridFromPointCloud().
+Visualize voxels using the generated list.
+Continue the transformation of the code to be used in just map coordinates.

@@ -96,6 +96,8 @@
                    to="/$(arg namespace)/obstaclesPointCloud" />
             <remap from="~/flow_vectors"
                    to="/$(arg namespace)/flow_vectors" />
+            <remap from="~/camera_info"
+                   to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
             
             <param name="use_oflow" value="false" />
         </node>
@@ -153,7 +155,7 @@
         
         <node pkg="nodelet" type="nodelet" name="heightmap_nodelet"
               args="load velodyne_height_map/HeightMapNodelet box_filter_manager">
-            <param name="cell_size" value="0.1"/>
+            <param name="cell_size" value="0.25"/>
             <param name="full_clouds" value="true"/>
             
 <!--             <remap from="velodyne_points" to="/$(arg namespace)/pointCloudFilteredAndTransformed"/> -->
