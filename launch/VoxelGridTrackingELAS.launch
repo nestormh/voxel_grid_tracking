@@ -130,29 +130,55 @@
 <!--     <group ns="filters"> -->
         <!-- PCL Manager -->
         <node pkg="nodelet" type="nodelet" name="box_filter_manager" args="manager" output="screen"/>
-        <node pkg="nodelet" type="nodelet" name="pcl_manager"        args="manager" output="screen" />
         
         <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
-            <arg name="input_topic"     value="/filters/depth_registered/points" />-->
+            <arg name="nodelet_name"     value="cam2footprint_pc_transform" />
+            <arg name="input_topic"     value="/filters/depth_registered/points" />
+<!--             <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" /> -->
+            <arg name="output_topic"    value="/$(arg namespace)/point_cloud_footprint"/>
+            <arg name="target_frame"    value="base_footprint"/>
+            <arg name="nodelet_manager" value="box_filter_manager"/>
+        </include>
+        
+        <!-- Run a passthrough filter to delimit in x direction -->
+        <node pkg="nodelet" type="nodelet" name="psx" args="load pcl/PassThrough box_filter_manager" output="screen">
+            <remap from="~input" to="/$(arg namespace)/point_cloud_footprint" />
+            <rosparam>
+                filter_field_name: x
+                filter_limit_min: 5.0
+                filter_limit_max: 25.0
+            </rosparam>
+        </node>
+        
+        <!-- Run a passthrough filter to delimit in y direction -->
+           <node pkg="nodelet" type="nodelet" name="psy" args="load pcl/PassThrough box_filter_manager" output="screen">
+            <remap from="~input" to="psx/output" />
+            <rosparam>
+            filter_field_name: y
+            filter_limit_min: -5.0
+            filter_limit_max: 5.0
+            </rosparam>
+        </node>
+        
+        <!-- Run a passthrough filter to delimit in z direction -->
+        <node pkg="nodelet" type="nodelet" name="psz" args="load pcl/PassThrough box_filter_manager" output="screen">
+            <remap from="~input" to="psy/output" />
+            <rosparam>
+                filter_field_name: z
+                filter_limit_min: 0.0
+                filter_limit_max: 4.0
+            </rosparam>
+        </node>
+        
+        <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
+            <arg name="nodelet_name"     value="footprint2map_pc_transform" />
+            <arg name="input_topic"     value="psz/output" />
 <!--             <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" /> -->
             <arg name="output_topic"    value="/$(arg namespace)/pointCloudTransformed"/>
             <arg name="target_frame"    value="map"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
         </include>
-        
-<!--        <node pkg="nodelet" type="nodelet" name="voxel_grid" 
-              args="load pcl/VoxelGrid pcl_manager" output="screen" required="true">
-            <remap from="~input" to="/$(arg namespace)/pointCloudTransformed" />
-            <remap from="~output" to="/$(arg namespace)/pointCloudFilteredAndTransformed" />
-            <rosparam>
-                filter_field_name: z
-                filter_limit_min: -20.0
-                filter_limit_max: 20.0
-                filter_limit_negative: False
-                leaf_size: 0.25
-            </rosparam>
-        </node>-->
-        
+                
         <node pkg="nodelet" type="nodelet" name="heightmap_nodelet"
               args="load velodyne_height_map/HeightMapNodelet box_filter_manager">
             <param name="cell_size" value="0.25"/>

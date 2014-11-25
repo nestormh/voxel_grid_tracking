@@ -30,6 +30,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_ros/filters/voxel_grid.h>
+#include <pcl-1.7/pcl/common/common.h>
 
 #include <boost/foreach.hpp>
 #include <boost/graph/graph_concepts.hpp>
@@ -55,7 +56,7 @@
 // #include <pcl/point_types.h>
 // #include <pcl/io/pcd_io.h>
 // #include <pcl/search/search.h>
-// #include <pcl/search/kdtree.h>
+#include <pcl-1.7/pcl/search/kdtree.h>
 // #include <pcl/features/normal_3d.h>
 // #include <pcl/visualization/cloud_viewer.h>
 // #include <pcl/filters/passthrough.h>
@@ -119,6 +120,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_cellSizeY = 0.5; //0.25;
     m_cellSizeZ = 0.5; //0.25; // 0.75
     m_voxelSize = 0.5;
+    
+    m_threads = 8;
 
     m_maxVelX = 3.0;
     m_maxVelY = 3.0;
@@ -130,6 +133,8 @@ VoxelGridTracking::VoxelGridTracking()
 
     m_particlesPerVoxel = 100;
     m_threshProbForCreation = 0.0; //0.2;
+    
+    m_threshOccupancyProb = 0.9;
     
     m_neighBorX = 1;
     m_neighBorY = 1;
@@ -165,27 +170,6 @@ VoxelGridTracking::VoxelGridTracking()
     m_dimX = (m_maxX - m_minX) / m_cellSizeX;
     m_dimY = (m_maxY - m_minY) / m_cellSizeY;
     m_dimZ = (m_maxZ - m_minZ) / m_cellSizeZ;
-    
-    m_grid.resize(boost::extents[m_dimX][m_dimY][m_dimZ]);
-    m_colors.resize(boost::extents[m_dimX][m_dimY][m_dimZ][3]);
-    
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                m_grid[x][y][z] = Voxel(x, y, z, 
-                                        (x + 0.5) * m_cellSizeX + m_minX,
-                                        (y + 0.5) * m_cellSizeY + m_minY,
-                                        (z + 0.5) * m_cellSizeZ + m_minZ,
-                                        m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
-                                        m_maxVelX, m_maxVelY, m_maxVelZ, 
-                                        m_cameraParams, m_speedMethod,
-                                        m_yawInterval, m_pitchInterval);
-                for (uint32_t c = 0; c < 3; c++) {
-                    m_colors[x][y][z][c] = (double)rand() / RAND_MAX;
-                }
-            }
-        }
-    }
     
     m_obstacleColors.resize(boost::extents[MAX_OBSTACLES_VISUALIZATION][3]);
     for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION; i++) {
@@ -316,7 +300,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     
     // Grid is reset
     INIT_CLOCK(startCompute1)
-    reset();
+//     reset();
     END_CLOCK(totalCompute1, startCompute1)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute1);
     
@@ -560,103 +544,135 @@ void VoxelGridTracking::constructOctomapFromPointCloud(const PointCloudPtr& poin
 
 void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud)
 {
-    // TODO: Improve times (maybe using octomap instead of a VoxelGrid?)
     INIT_CLOCK(startCompute)
     
-    PointCloudPtr filteredCloud(new PointCloud);
+    PointType minPoint, maxPoint;
     
-    // TODO: Try getting min-max and divide by cellSizes
-    // Create the filtering object
-    pcl::VoxelGrid<PointType> filter;
-    filter.setInputCloud (pointCloud);
-    filter.setLeafSize (m_cellSizeX, m_cellSizeY, m_cellSizeZ);
-    filter.filter (*filteredCloud);
+    if (m_threads >= 3) {
+        // This way is twice faster than pcl::getMinMax3D implementation
+        minPoint = pointCloud->at(0);
+        maxPoint = pointCloud->at(0);
+        
+        #pragma omp parallel num_threads(3) 
+        {
+            #pragma omp sections nowait 
+            {
+                #pragma omp section 
+                {
+                    // X
+                    for (uint32_t i = 0; i < pointCloud->size(); i++) {
+                        if (minPoint.x > pointCloud->at(i).x) minPoint.x = pointCloud->at(i).x;
+                        if (maxPoint.x < pointCloud->at(i).x) maxPoint.x = pointCloud->at(i).x;
+                    }
+                }
+                #pragma omp section 
+                {
+                    // Y
+                    for (uint32_t i = 0; i < pointCloud->size(); i++) {
+                        if (minPoint.y > pointCloud->at(i).y) minPoint.y = pointCloud->at(i).y;
+                        if (maxPoint.y < pointCloud->at(i).y) maxPoint.y = pointCloud->at(i).y;
+                    }
+                }
+                #pragma omp section 
+                {
+                    // Z
+                    for (uint32_t i = 0; i < pointCloud->size(); i++) {
+                        if (minPoint.z > pointCloud->at(i).z) minPoint.z = pointCloud->at(i).z;
+                        if (maxPoint.z < pointCloud->at(i).z) maxPoint.z = pointCloud->at(i).z;
+                    }
+                }
+            }
+        }
+    } else {
+        pcl::getMinMax3D(*pointCloud, minPoint, maxPoint);
+    }
+
+    const float halfSizeX = m_cellSizeX / 2.0f;
+    const float halfSizeY = m_cellSizeY / 2.0f;
+    const float halfSizeZ = m_cellSizeZ / 2.0f;
     
-    // Create the Kd-Tree
-    pcl::KdTreeFLANN<PointType> kdtree;
-    kdtree.setInputCloud (pointCloud);
+    m_minX = floor(minPoint.x / halfSizeX) * halfSizeX;
+    m_minY = floor(minPoint.y / halfSizeY) * halfSizeY;
+    m_minZ = floor(minPoint.z / halfSizeZ) * halfSizeZ;
+    
+    m_maxX = ceil(maxPoint.x / halfSizeX) * halfSizeX;
+    m_maxY = ceil(maxPoint.y / halfSizeY) * halfSizeY;
+    m_maxZ = ceil(maxPoint.z / halfSizeZ) * halfSizeZ;
+    
+    m_dimX = (m_maxX - m_minX) / m_cellSizeX;
+    m_dimY = (m_maxY - m_minY) / m_cellSizeY;
+    m_dimZ = (m_maxZ - m_minZ) / m_cellSizeZ;
+    
+    m_grid.resize(boost::extents[0][0][0]);
+    m_grid.resize(boost::extents[m_dimX][m_dimY][m_dimZ]);
     
     END_CLOCK(totalCompute, startCompute)
+    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
+    
+    RESET_CLOCK(startCompute)
+    
+    // Create the Kd-Tree
+    pcl::search::KdTree<PointType> kdtree;
+    kdtree.setSortedResults(false);
+    kdtree.setEpsilon(std::min(halfSizeX, std::min(halfSizeY, halfSizeZ)));
+    kdtree.setInputCloud (pointCloud);
+    
+    END_CLOCK_2(totalCompute, startCompute)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
     
     RESET_CLOCK(startCompute)
     std::vector<int> pointIdxRadiusSearch;
     std::vector<float> pointRadiusSquaredDistance;
     
-    BOOST_FOREACH(PointType & searchPoint, *filteredCloud) {
+    PointType searchPoint;
+    for (searchPoint.x = minPoint.x + halfSizeX; searchPoint.x < maxPoint.x; searchPoint.x += m_cellSizeX) {
+        for (searchPoint.y = minPoint.y + halfSizeY; searchPoint.y < maxPoint.y; searchPoint.y += m_cellSizeY) {
+            for (searchPoint.z = minPoint.z + halfSizeZ; searchPoint.z < maxPoint.z; searchPoint.z += m_cellSizeZ) {
 
-        const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize, 
-                                                        pointIdxRadiusSearch, pointRadiusSquaredDistance);
-        
-        // TODO: Do the pointcloud transformation in advance:
-//         std::string target_frame;
-//         tf::TransformListener listener;
-//         void callback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
-//             sensor_msgs::PointCloud2 output;
-//             if (pcl_ros::transformPointCloud(target_frame, *msg, output, listener))
-//                 pub.publish(output);
-//         }
-        tf::Vector3 point = m_map2CamTransform * tf::Vector3(searchPoint.x, searchPoint.y, searchPoint.z);
-        const float & X = point[0];
-        const float & Y = point[1];
-        const float & Z = point[2];
-        
-        const float & fX_Z = m_focalX / Z;
-        const float & u0 = (X - m_cellSizeX) * fX_Z;
-        const float & u1 = (X + m_cellSizeX) * fX_Z;
-        const float & sigmaX = 2 * (u1 - u0) + 1;
-        
-        const float & fY_Z = m_focalY / Z;
-        const float & v0 = (Y - m_cellSizeY) * fY_Z;
-        const float & v1 = (Y + m_cellSizeY) * fY_Z;
-        const float & sigmaY = 2 * (v1 - v0) + 1;
-        
-        const float & prob = neighbours / sqrt(sigmaX * sigmaY);
-            
-        if (prob > 0.9) {
-            // TODO: At this point, voxels should be introduced in the list.
-            searchPoint.r = 255;
-            searchPoint.g = 0;
-            searchPoint.b = 0;
-        } else {
-            searchPoint.a = 0;
+                const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize, 
+                                                                pointIdxRadiusSearch, pointRadiusSquaredDistance);
+                
+                if (neighbours == 0)
+                    continue;
+                
+                tf::Vector3 point = m_map2CamTransform * tf::Vector3(searchPoint.x, searchPoint.y, searchPoint.z);
+                const float & X = point[0];
+                const float & Y = point[1];
+                const float & Z = point[2];
+                
+                const float & fX_Z = m_focalX / Z;
+                const float & u = X * fX_Z;
+                const float & u0 = (X - m_cellSizeX) * fX_Z;
+                const float & u1 = (X + m_cellSizeX) * fX_Z;
+                const float & sigmaX = 2 * (u1 - u0) + 1;
+                
+                const float & fY_Z = m_focalY / Z;
+                const float & v = Y * fY_Z;
+                const float & v0 = (Y - m_cellSizeY) * fY_Z;
+                const float & v1 = (Y + m_cellSizeY) * fY_Z;
+                const float & sigmaY = 2 * (v1 - v0) + 1;
+                
+                const float & prob = neighbours / sqrt(sigmaX * sigmaY);
+                
+                // Just voxels with enough probability are added to the list
+                if (prob > m_threshOccupancyProb) {
+                    const float & x = floor((searchPoint.x - minPoint.x) / m_cellSizeX);
+                    const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
+                    const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
+                    
+                    m_grid[x][y][z] = Voxel(x, y, z, 
+                                            searchPoint.x, searchPoint.y, searchPoint.z, 
+                                            m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
+                                            m_maxVelX, m_maxVelY, m_maxVelZ, 
+                                            m_cameraParams, m_speedMethod,
+                                            m_yawInterval, m_pitchInterval);
+                }
+            }
         }
     }
     
     END_CLOCK_2(totalCompute, startCompute)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
-    
-    sensor_msgs::PointCloud2 cloudMsg;
-    pcl::toROSMsg (*filteredCloud, cloudMsg);
-    cloudMsg.header.frame_id = m_mapFrame;
-    cloudMsg.header.stamp = ros::Time::now();
-    cloudMsg.header.seq = rand() / RAND_MAX;
-    
-    m_debugPointCloudPub.publish(cloudMsg);
-    
-    BOOST_FOREACH(pcl::PointXYZRGB& point, *pointCloud) {
-        
-        const uint32_t xPos = (point.x - m_minX) / m_cellSizeX;
-        const uint32_t yPos = (point.y - m_minY) / m_cellSizeY;
-        const uint32_t zPos = (point.z - m_minZ) / m_cellSizeZ;
-        
-        if ((xPos >= 0) && (xPos < m_dimX) &&
-            (yPos >= 0) && (yPos < m_dimY) && 
-            (zPos >= 0) && (zPos < m_dimZ)) {
-
-            m_grid[xPos][yPos][zPos].addPoint(point);
-        }
-    }
-    
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
-                
-                voxel.update();
-            }
-        }
-    }
 }
 
 
@@ -1060,39 +1076,39 @@ void VoxelGridTracking::generateFakePointClouds()
 {
     m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
-    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-        const VoxelObstacle & obstacle = m_obstacles[i];
-        
-        if ((obstacle.minZ() - (m_cellSizeZ / 2.0)) == m_minZ) {
-            
-//             const double & tColission = min(obstacle.centerX() / (m_deltaX - obstacle.vx()), 1.5);
-//             const double deltaTime = tColission / m_timeIncrementForFakePointCloud;
-
-            const double tColission = 1.0;
-            const double deltaTime = 0.3;
-            
-            BOOST_FOREACH(const Voxel & voxel, obstacle.voxels()) {
-                BOOST_FOREACH(const pcl::PointXYZRGB & point, voxel.getPoints()->points) {
-                    for (double t = 0; t <= tColission; t += deltaTime) {
-    //                     double t = 1.0;
-                    
-                        pcl::PointXYZRGB newPoint;
-                        newPoint.x = point.x - obstacle.vx() * t;
-                        newPoint.y = point.y + obstacle.vy() * t;
-                        newPoint.z = point.z + obstacle.vz() * t;
-    //                     newPoint.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0] * 255;
-    //                     newPoint.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1] * 255;
-    //                     newPoint.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2] * 255;
-                        newPoint.r = point.r;
-                        newPoint.g = point.g;
-                        newPoint.b = point.b;
-                        
-                        m_fakePointCloud->push_back(newPoint);                        
-                    }
-                }
-            }
-        }
-    }
+//     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+//         const VoxelObstacle & obstacle = m_obstacles[i];
+//         
+//         if ((obstacle.minZ() - (m_cellSizeZ / 2.0)) == m_minZ) {
+//             
+// //             const double & tColission = min(obstacle.centerX() / (m_deltaX - obstacle.vx()), 1.5);
+// //             const double deltaTime = tColission / m_timeIncrementForFakePointCloud;
+// 
+//             const double tColission = 1.0;
+//             const double deltaTime = 0.3;
+//             
+//             BOOST_FOREACH(const Voxel & voxel, obstacle.voxels()) {
+//                 BOOST_FOREACH(const pcl::PointXYZRGB & point, voxel.getPoints()->points) {
+//                     for (double t = 0; t <= tColission; t += deltaTime) {
+//     //                     double t = 1.0;
+//                     
+//                         pcl::PointXYZRGB newPoint;
+//                         newPoint.x = point.x - obstacle.vx() * t;
+//                         newPoint.y = point.y + obstacle.vy() * t;
+//                         newPoint.z = point.z + obstacle.vz() * t;
+//     //                     newPoint.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0] * 255;
+//     //                     newPoint.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1] * 255;
+//     //                     newPoint.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2] * 255;
+//                         newPoint.r = point.r;
+//                         newPoint.g = point.g;
+//                         newPoint.b = point.b;
+//                         
+//                         m_fakePointCloud->push_back(newPoint);                        
+//                     }
+//                 }
+//             }
+//         }
+//     }
 }
 
 void VoxelGridTracking::publishVoxels()
@@ -1109,7 +1125,7 @@ void VoxelGridTracking::publishVoxels()
                 
                 if (voxel.occupiedProb() > 0.0) {
                     visualization_msgs::Marker voxelMarker;
-                    voxelMarker.header.frame_id = m_poseFrame;
+                    voxelMarker.header.frame_id = m_mapFrame;
                     voxelMarker.header.stamp = ros::Time();
                     voxelMarker.id = idCount++;
                     voxelMarker.ns = "voxels";
@@ -1127,9 +1143,9 @@ void VoxelGridTracking::publishVoxels()
                     voxelMarker.scale.x = m_cellSizeX;
                     voxelMarker.scale.y = m_cellSizeY;
                     voxelMarker.scale.z = m_cellSizeZ;
-                    voxelMarker.color.r = m_colors[x][y][z][0];
-                    voxelMarker.color.g = m_colors[x][y][z][1];
-                    voxelMarker.color.b = m_colors[x][y][z][2];
+                    voxelMarker.color.r = (double)rand() / RAND_MAX;
+                    voxelMarker.color.g = (double)rand() / RAND_MAX;
+                    voxelMarker.color.b = (double)rand() / RAND_MAX;
 //                     voxelMarker.color.a = 0.2;
 //                     voxelMarker.color.r = 255;
 //                     voxelMarker.color.g = 0;
@@ -1415,9 +1431,9 @@ void VoxelGridTracking::publishMainVectors()
                         mainVector.color.g = fabs(color[1]);
                         mainVector.color.b = fabs(color[2]);
                     } else {
-                        mainVector.color.r = m_colors[x][y][z][0];
-                        mainVector.color.g = m_colors[x][y][z][1];
-                        mainVector.color.b = m_colors[x][y][z][2];
+                        mainVector.color.r = (double)rand() / RAND_MAX;
+                        mainVector.color.g = (double)rand() / RAND_MAX;
+                        mainVector.color.b = (double)rand() / RAND_MAX;
                     }
                     mainVector.color.a = 1.0;
                     

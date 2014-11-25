@@ -37,6 +37,7 @@
 
 #define DEFAULT_BASE_FRAME "left_cam"
 #define MAX_OBSTACLES_VISUALIZATION 10000
+#define MAX_GRID_DIMENSION 500
 #define MAX_PARTICLE_AGE_REPRESENTATION 8
 
 namespace voxel_grid_tracking {
@@ -108,8 +109,8 @@ protected:
     double m_deltaX, m_deltaY, m_deltaZ;
     
     VoxelGrid m_grid;
+    VoxelList m_voxelList;
     
-    ColorMatrix m_colors;
     ColorVector m_obstacleColors;
     ParticlesColorVector m_particleColors;
     
@@ -129,8 +130,8 @@ protected:
     
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
-    double m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
-    double m_cellSizeX, m_cellSizeY, m_cellSizeZ;
+    float m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
+    float m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     float m_voxelSize;
     double m_maxVelX, m_maxVelY, m_maxVelZ;
     double m_particlesPerVoxel, m_threshProbForCreation;
@@ -148,6 +149,9 @@ protected:
     double m_maxObstacleHeight;
     double m_timeIncrementForFakePointCloud;
     bool m_useOFlow;
+    float m_threshOccupancyProb;
+    
+    uint32_t m_threads;
     
     float m_focalX, m_focalY, m_centerX, m_centerY;
     

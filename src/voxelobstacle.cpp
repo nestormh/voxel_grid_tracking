@@ -91,7 +91,6 @@ void VoxelObstacle::updateWithVoxel(const Voxel& voxel)
         m_vx += voxel.vx();
         m_vy += voxel.vy();
         m_vz += voxel.vz();
-        m_density += voxel.density();
 
         m_minX = min(m_minX, voxel.centroidX());
         m_maxX = max(m_maxX, voxel.centroidX());
@@ -108,7 +107,6 @@ void VoxelObstacle::updateWithVoxel(const Voxel& voxel)
         m_vx = voxel.vx();
         m_vy = voxel.vy();
         m_vz = voxel.vz();
-        m_density = voxel.density();
         
         m_minX = voxel.centroidX();
         m_maxX = voxel.centroidX();
@@ -138,8 +136,6 @@ void VoxelObstacle::updateMotionInformation()
     m_pitch = asin(vz / normPitch);
     if (vy < 0)
         m_pitch = -m_pitch;
-    
-    m_density /= (double)m_voxels.size();    
 }
 
 bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)

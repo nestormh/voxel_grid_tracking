@@ -18,7 +18,6 @@
 
 #include <iostream>
 #include <boost/foreach.hpp>
-#include <pcl_ros/point_cloud.h>
 #include <pcl/common/impl/centroid.hpp>
 
 
@@ -31,7 +30,7 @@ namespace voxel_grid_tracking {
 
 Voxel::Voxel() 
 {
-    
+    m_occupied = false;
 }
 Voxel::Voxel(const double & x, const double & y, const double & z, 
              const double & centroidX, const double & centroidY, const double & centroidZ,
@@ -67,7 +66,7 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
     m_neighborOcc = 0;
     m_oldestParticle = 0;
     
-    m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
+    m_occupied = true;
 }
 
 void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform)
@@ -278,22 +277,12 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
     }
 }
 
-void Voxel::addPoint(const pcl::PointXYZRGB& point)
-{
-    m_pointCloud->push_back(point);
-}
-
-void Voxel::update()
-{
-    m_density = (double)m_pointCloud->size()/* / (m_sizeX * m_sizeY * m_sizeZ)*/;
-}
-
 void Voxel::reset()
 {    
-    m_pointCloud->clear();
     m_obstIdx = -1;
     m_neighborOcc = 0;
     m_oFlowParticles.clear();
+    m_occupied = false;
 }
 
 bool Voxel::nextTo(const Voxel& voxel) const
@@ -301,6 +290,12 @@ bool Voxel::nextTo(const Voxel& voxel) const
     return (abs(m_x - voxel.x()) <= 1) &&
            (abs(m_y - voxel.y()) <= 1) &&
            (abs(m_z - voxel.z()) <= 1);
+}
+
+ostream& operator<<(ostream & stream, const Voxel & in) {
+    stream << "Voxel = [" << in.x() << ", " << in.y() << ", " << in.z() << ", " 
+    << in.vx() << ", " << in.vy() << ", " << in.vz() << "]";
+    return stream;
 }
 
 }

@@ -1,4 +1,4 @@
-Connect with ELAS and see the differences.
+Visualize voxels using the generated list, try using m_voxelList.resize() to update the size of the list after creation.
 Optimize times in getVoxelGridFromPointCloud().
-Visualize voxels using the generated list.
+Connect with ELAS and see the differences.
 Continue the transformation of the code to be used in just map coordinates.

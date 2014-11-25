@@ -36,6 +36,7 @@ namespace voxel_grid_tracking {
 
 class Voxel;
 typedef boost::multi_array<Voxel, 3> VoxelGrid;
+typedef boost::array<Voxel, 1> VoxelList;
 typedef VoxelGrid::index voxelIdx;
     
 class Voxel
@@ -86,7 +87,7 @@ public:
     void getMainVectors(double & vx, double & vy, double & vz) const { vx = m_vx; vy = m_vy; vz = m_vz; }
     
     void addPoint(const pcl::PointXYZRGB & point);
-    bool occupied() const { return m_pointCloud->size() > 0; }
+    bool occupied() const { return m_occupied; }
     
     void update();
     
@@ -116,16 +117,14 @@ public:
     
     void incNeighborOcc() { m_neighborOcc++; };
     
-    double density() const { return m_density; }
-    
     int32_t obstIdx() const { return m_obstIdx; }
+    
+    bool m_occupied;
     
     bool assignedToObstacle() { return m_obstIdx != -1; }
     
     void assignObstacle(const int32_t & obstIdx) { m_obstIdx = obstIdx; }
     
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr getPoints() const { return m_pointCloud; }
-        
     void reset();
     
 protected:
@@ -136,8 +135,6 @@ protected:
     
     double m_occupiedProb;
     double m_occupiedPosteriorProb;
-    
-    double m_density;
     
     double m_vx, m_vy, m_vz;
     double m_centroidX, m_centroidY, m_centroidZ;
@@ -157,9 +154,9 @@ protected:
     
     vector <Particle3d> m_particles;
     vector <Particle3d> m_oFlowParticles;
-    
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
 };
+
+ostream& operator<<(ostream & stream, const Voxel & in);
 
 }
 #endif // CELL_H
