@@ -320,38 +320,38 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     getMeasurementModel();
     END_CLOCK(totalCompute4, startCompute4)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute4);
-    
-    // TODO:
-    // Improve the way in which flow vectors are computed
-    
-    if (m_initialized) {
-        INIT_CLOCK(startCompute5)
-        prediction();
-        END_CLOCK(totalCompute5, startCompute5)
-        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
-        publishParticles();
-        INIT_CLOCK(startCompute6)
-        measurementBasedUpdate();
-        END_CLOCK(totalCompute6, startCompute6)
-        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
-        
-        INIT_CLOCK(startCompute7)
-        segment();
-        END_CLOCK(totalCompute7, startCompute7)
-        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
+//     
+//     // TODO:
+//     // Improve the way in which flow vectors are computed
+//     
+//     if (m_initialized) {
+//         INIT_CLOCK(startCompute5)
+//         prediction();
+//         END_CLOCK(totalCompute5, startCompute5)
+//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
+//         publishParticles();
+//         INIT_CLOCK(startCompute6)
+//         measurementBasedUpdate();
+//         END_CLOCK(totalCompute6, startCompute6)
+//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
 //         
-//         updateObstacles();
-//         filterObstacles();
-        INIT_CLOCK(startCompute8)
-        updateSpeedFromObstacles();
-        END_CLOCK(totalCompute8, startCompute8)
-        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
-        INIT_CLOCK(startCompute2)
-    }
-    INIT_CLOCK(startCompute9)
-    initialization();
-    END_CLOCK(totalCompute9, startCompute9)
-    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
+//         INIT_CLOCK(startCompute7)
+//         segment();
+//         END_CLOCK(totalCompute7, startCompute7)
+//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
+// //         
+// //         updateObstacles();
+// //         filterObstacles();
+//         INIT_CLOCK(startCompute8)
+//         updateSpeedFromObstacles();
+//         END_CLOCK(totalCompute8, startCompute8)
+//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
+//         INIT_CLOCK(startCompute2)
+//     }
+//     INIT_CLOCK(startCompute9)
+//     initialization();
+//     END_CLOCK(totalCompute9, startCompute9)
+//     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
 //     publishParticles(m_oldParticlesPub, 2.0);
     
 //     initialization();
@@ -606,6 +606,9 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
     m_grid.resize(boost::extents[0][0][0]);
     m_grid.resize(boost::extents[m_dimX][m_dimY][m_dimZ]);
     
+    m_voxelList.clear();
+    m_voxelList.reserve(m_dimX * m_dimY * m_dimZ);
+    
     END_CLOCK(totalCompute, startCompute)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
     
@@ -660,12 +663,15 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                     const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
                     const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
                     
-                    m_grid[x][y][z] = Voxel(x, y, z, 
-                                            searchPoint.x, searchPoint.y, searchPoint.z, 
-                                            m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
-                                            m_maxVelX, m_maxVelY, m_maxVelZ, 
-                                            m_cameraParams, m_speedMethod,
-                                            m_yawInterval, m_pitchInterval);
+                    const Voxel & voxel = Voxel(x, y, z, 
+                                                searchPoint.x, searchPoint.y, searchPoint.z, 
+                                                m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
+                                                m_maxVelX, m_maxVelY, m_maxVelZ, 
+                                                m_cameraParams, m_speedMethod,
+                                                m_yawInterval, m_pitchInterval);
+                    
+                    m_voxelList.push_back(voxel);
+                    m_grid[x][y][z] = voxel;
                 }
             }
         }
@@ -1118,12 +1124,14 @@ void VoxelGridTracking::publishVoxels()
 //     pcl::PointCloud<pcl::PointXYZRGB>::Ptr vizPointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     
     uint32_t idCount = 0;
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                const Voxel & voxel = m_grid[x][y][z];
-                
-                if (voxel.occupiedProb() > 0.0) {
+//     for (uint32_t x = 0; x < m_dimX; x++) {
+//         for (uint32_t y = 0; y < m_dimY; y++) {
+//             for (uint32_t z = 0; z < m_dimZ; z++) {
+//                 const Voxel & voxel = m_grid[x][y][z];
+    
+    BOOST_FOREACH(const Voxel & voxel, m_voxelList) {
+
+//                 if (voxel.occupiedProb() > 0.0) {
                     visualization_msgs::Marker voxelMarker;
                     voxelMarker.header.frame_id = m_mapFrame;
                     voxelMarker.header.stamp = ros::Time();
@@ -1146,11 +1154,12 @@ void VoxelGridTracking::publishVoxels()
                     voxelMarker.color.r = (double)rand() / RAND_MAX;
                     voxelMarker.color.g = (double)rand() / RAND_MAX;
                     voxelMarker.color.b = (double)rand() / RAND_MAX;
+                    voxelMarker.color.a = 0.5;
 //                     voxelMarker.color.a = 0.2;
 //                     voxelMarker.color.r = 255;
 //                     voxelMarker.color.g = 0;
 //                     voxelMarker.color.b = 0;
-                    voxelMarker.color.a = voxel.occupiedProb();
+//                     voxelMarker.color.a = voxel.occupiedProb();
                     
 //                     BOOST_FOREACH(const pcl::PointXYZRGB & point, voxel.getPoints()->points) {
 //                         pcl::PointXYZRGB tmpPoint;
@@ -1168,9 +1177,9 @@ void VoxelGridTracking::publishVoxels()
 //                         vizPointCloud->push_back(tmpPoint);
 //                     }
                     voxelMarkers.markers.push_back(voxelMarker);
-                }
-            }
-        }
+//                 }
+//             }
+//         }
     }
 
     m_voxelsPub.publish(voxelMarkers);

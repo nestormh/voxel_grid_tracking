@@ -11,13 +11,6 @@
     <!-- <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.65 0 0 -1.57 base_link base_left_cam 100" /> -->
     <!-- <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" /> -->
     
-    <!--<include file="$(find stereo_image_proc)/launch/stereo_image_proc.launch" ns="$(arg namespace)">
-    <arg name="manager" value="$(arg namespace)/point_cloud2" />
-    <arg name="respawn" value="false" />
-    <arg name="left" value="left" />
-    <arg name="right" value="right" />
-    </include>-->
-    
 <!--    <node pkg="octomap_server" type="octomap_server_node" name="octomap_server" output="screen" required="true">
         <remap from="cloud_in" to="/$(arg namespace)/pointCloudFilteredAndTransformed" />
         
@@ -41,7 +34,6 @@
     
     <group ns="$(arg namespace)">
         
-        
         <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
         <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
         </node> 
@@ -56,14 +48,6 @@
             <remap from="base_frame_id" to="left_cam" />
             <param name="base_frame_id" value="left_cam" />
             <param name="pose_frame_id" value="base_link" />
-        </node>-->
-        
-<!--        <node pkg="rsgm_ros" type="rsgm_ros" name="rsgm_ros" output="screen" required="true">
-            <remap from="stereo" to="stereo_and_odom" />
-            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
-            <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image" />
-            
-            <rosparam file="$(find rsgm_ros)/params/rsgm_ros_params.yaml" command="load" ns="" />
         </node>-->
         
         <node pkg="rsgm_ros" type="rsgm_ros" name="rsgm_ros" output="screen" required="true">

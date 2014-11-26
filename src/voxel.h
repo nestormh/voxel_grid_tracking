@@ -36,7 +36,7 @@ namespace voxel_grid_tracking {
 
 class Voxel;
 typedef boost::multi_array<Voxel, 3> VoxelGrid;
-typedef boost::array<Voxel, 1> VoxelList;
+typedef std::vector<Voxel> VoxelList;
 typedef VoxelGrid::index voxelIdx;
     
 class Voxel

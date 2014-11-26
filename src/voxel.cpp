@@ -293,8 +293,9 @@ bool Voxel::nextTo(const Voxel& voxel) const
 }
 
 ostream& operator<<(ostream & stream, const Voxel & in) {
-    stream << "Voxel = [" << in.x() << ", " << in.y() << ", " << in.z() << ", " 
-    << in.vx() << ", " << in.vy() << ", " << in.vz() << "]";
+    stream << "[ gridPos " << cv::Vec3f(in.x(), in.y(), in.z()) << ", "
+    << "centroid " << cv::Vec3f(in.centroidX(), in.centroidY(), in.centroidZ()) << ", " 
+    << "speed " << cv::Vec3f(in.vx(), in.vy(), in.vz()) << "]";
     return stream;
 }
 
