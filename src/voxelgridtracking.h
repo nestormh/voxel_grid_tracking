@@ -74,7 +74,7 @@ protected:
     void getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud);
     void getMeasurementModel();
     void initialization();
-    void particleToVoxel(const Particle3d & particle, 
+    void particleToVoxel(const ParticlePtr & particle, 
                          int32_t & posX, int32_t & posY, int32_t & posZ);
     void prediction();
     void measurementBasedUpdate();
@@ -110,6 +110,7 @@ protected:
     
     VoxelGrid m_grid;
     VoxelList m_voxelList;
+    ParticleList m_particles;
     
     ColorVector m_obstacleColors;
     ParticlesColorVector m_particleColors;
@@ -150,6 +151,7 @@ protected:
     double m_timeIncrementForFakePointCloud;
     bool m_useOFlow;
     float m_threshOccupancyProb;
+    uint32_t m_maxNumberOfParticles;
     
     uint32_t m_threads;
     

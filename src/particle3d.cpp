@@ -39,7 +39,7 @@ Particle3d::Particle3d(const double & centroidX, const double & centroidY, const
     m_y = centroidY;// + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeY;
     m_z = centroidZ;// + (((double)rand() / RAND_MAX) - 0.5) * voxelSizeZ;
     
-    tf::Vector3 point = m_pose2mapTransform * tf::Vector3(m_x, m_y, m_z);
+    tf::Vector3 point = /*m_pose2mapTransform * */tf::Vector3(m_x, m_y, m_z);
     
     m_x = point[0];
     m_y = point[1];
@@ -63,7 +63,7 @@ Particle3d::Particle3d(const double& x, const double& y, const double& z,
                       m_pose2mapTransform(pose2mapTransform)
 {
     if (transform) {
-        tf::Vector3 point = m_pose2mapTransform * tf::Vector3(m_x, m_y, m_z);
+        tf::Vector3 point = /*m_pose2mapTransform * */tf::Vector3(m_x, m_y, m_z);
         
         m_x = point[0];
         m_y = point[1];
@@ -111,24 +111,19 @@ void Particle3d::getYawPitch(double & yaw, double & pitch) const
     if (pitch < 0.0) pitch += CV_PI * 2.0;
 }
 
-void Particle3d::transform(const Eigen::MatrixXd& stateTransition)
+void Particle3d::transform(const float & t)
 {
-    Eigen::VectorXd newPosAndVel(6), oldPosAndVel(6);
-    Eigen::VectorXd deltaPosAndVel(6);
-    
-    oldPosAndVel << m_x, m_y, m_z, m_vx, m_vy, m_vz;
-    
+
     // TODO: Fill with Q covariance, as indicated in the paper
-    deltaPosAndVel << 0, 0, 0, 0, 0, 0;
-        
-    newPosAndVel = stateTransition * oldPosAndVel + deltaPosAndVel;
+    float deltaX, deltaY, deltaZ, deltaVx, deltaVy, deltaVz;
+    deltaX = deltaY = deltaZ = deltaVx = deltaVy = deltaVz = 0.0;
     
-    m_x = newPosAndVel(0);
-    m_y = newPosAndVel(1);
-    m_z = newPosAndVel(2);
-    m_vx = newPosAndVel(3);
-    m_vy = newPosAndVel(4);
-    m_vz = newPosAndVel(5);
+    m_x += m_vx * t + deltaX;
+    m_y += m_vy * t + deltaY;
+    m_z += m_vz * t + deltaZ;
+    m_vx += deltaVx;
+    m_vy += deltaVy;
+    m_vz += deltaVz;
     
     m_age++;
 }

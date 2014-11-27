@@ -35,9 +35,13 @@ using namespace std;
 namespace voxel_grid_tracking {
 
 class Voxel;
-typedef boost::multi_array<Voxel, 3> VoxelGrid;
-typedef std::vector<Voxel> VoxelList;
+typedef boost::shared_ptr<Voxel> VoxelPtr;
+typedef boost::multi_array<VoxelPtr, 3> VoxelGrid;
+typedef std::vector< VoxelPtr > VoxelList;
 typedef VoxelGrid::index voxelIdx;
+
+typedef boost::shared_ptr<Particle3d> ParticlePtr;
+typedef vector <ParticlePtr> ParticleList;
     
 class Voxel
 {
@@ -51,8 +55,8 @@ public:
           const double & yawInterval, const double & pitchInterval);
     
     void createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform);
-    void createParticlesStatic(const tf::StampedTransform & pose2mapTransform);
-    void createParticlesFromOFlow(const uint32_t & numParticles);
+    ParticleList createParticlesStatic(const tf::StampedTransform & pose2mapTransform);
+    ParticleList createParticlesFromOFlow(const uint32_t & numParticles);
     
     void setOccupiedProb(const double & occupiedProb) { m_occupiedProb = occupiedProb; }
     void setOccupiedPosteriorProb(const uint32_t & particlesPerVoxel);
@@ -68,20 +72,20 @@ public:
     double freeProb() { return 1.0 - m_occupiedProb; }
     
     uint32_t numParticles() const { return m_particles.size(); }
-    Particle3d getParticle(const uint32_t & idx) const { return m_particles.at(idx); }
-    vector <Particle3d> getParticles() const { return m_particles; }
+    ParticlePtr getParticle(const uint32_t & idx) const { return m_particles.at(idx); }
+    ParticleList getParticles() const { return m_particles; }
     
     uint32_t numOFlowParticles() const { return m_oFlowParticles.size(); }
-    vector <Particle3d> getOFlowParticles() { return m_oFlowParticles; }
+    ParticleList getOFlowParticles() { return m_oFlowParticles; }
     
     bool empty() const { return m_particles.size() == 0; }
-    void makeCopy(const Particle3d & particle);
-    void addParticle(const Particle3d& particle);
-    void addFlowParticle(const Particle3d& particle);
+    void makeCopy(const ParticlePtr & particle);
+    void addParticle(const ParticlePtr & particle);
+    void addFlowParticle(const ParticlePtr& particle);
     void removeParticle(const uint32_t & idx) { m_particles.erase(m_particles.begin() + idx); }
-    void transformParticles(const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles);
+    void transformParticles(const Eigen::MatrixXd & stateTransition, ParticleList & newParticles);
     void clearParticles() { m_particles.clear(); }
-    void setParticles(const vector <Particle3d> & particles) { m_particles = particles; }
+    void setParticles(const ParticleList & particles) { m_particles = particles; }
     
     void setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ);
     void getMainVectors(double & vx, double & vy, double & vz) const { vx = m_vx; vy = m_vy; vz = m_vz; }
@@ -93,7 +97,7 @@ public:
     
     void sortParticles();
     void joinParticles();
-    void reduceParticles();
+    void reduceParticles(const uint32_t & maxNumberOfParticles);
     
     double centroidX() const { return m_centroidX; }
     double centroidY() const { return m_centroidY; }
@@ -152,8 +156,8 @@ protected:
     
     uint32_t m_neighborOcc;                     // Number of neighbors containing at least one point
     
-    vector <Particle3d> m_particles;
-    vector <Particle3d> m_oFlowParticles;
+    ParticleList m_particles;
+    ParticleList m_oFlowParticles;
 };
 
 ostream& operator<<(ostream & stream, const Voxel & in);

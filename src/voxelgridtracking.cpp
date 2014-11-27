@@ -121,6 +121,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_cellSizeZ = 0.5; //0.25; // 0.75
     m_voxelSize = 0.5;
     
+    m_maxNumberOfParticles = 30;
+    
     m_threads = 8;
 
     m_maxVelX = 3.0;
@@ -302,56 +304,57 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     INIT_CLOCK(startCompute1)
 //     reset();
     END_CLOCK(totalCompute1, startCompute1)
-    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute1);
+    ROS_INFO("[%s] %d, reset: %f seconds", __FUNCTION__, __LINE__, totalCompute1);
     
     // Having a point cloud, the voxel grid is computed
     INIT_CLOCK(startCompute2)
 //     constructOctomapFromPointCloud(pointCloud);
     getVoxelGridFromPointCloud(pointCloud);
     END_CLOCK(totalCompute2, startCompute2)
-    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute2);
+    ROS_INFO("[%s] %d, getVoxelGridFromPointCloud: %f seconds", __FUNCTION__, __LINE__, totalCompute2);
     if(m_useOFlow) {
         INIT_CLOCK(startCompute3)
         updateFromOFlow();
         END_CLOCK(totalCompute3, startCompute3)
-        ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute3);
+        ROS_INFO("[%s] %d, updateFromOFlow: %f seconds", __FUNCTION__, __LINE__, totalCompute3);
     }
     INIT_CLOCK(startCompute4)
     getMeasurementModel();
     END_CLOCK(totalCompute4, startCompute4)
-    ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute4);
-//     
-//     // TODO:
-//     // Improve the way in which flow vectors are computed
-//     
-//     if (m_initialized) {
-//         INIT_CLOCK(startCompute5)
-//         prediction();
-//         END_CLOCK(totalCompute5, startCompute5)
-//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
-//         publishParticles();
-//         INIT_CLOCK(startCompute6)
-//         measurementBasedUpdate();
-//         END_CLOCK(totalCompute6, startCompute6)
-//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
+    ROS_INFO("[%s] %d, getMeasurementModel: %f seconds", __FUNCTION__, __LINE__, totalCompute4);
+    
+    // TODO:
+    // Improve the way in which flow vectors are computed
+    
+    if (m_initialized) {
+        INIT_CLOCK(startCompute5)
+        prediction();
+        END_CLOCK(totalCompute5, startCompute5)
+        ROS_INFO("[%s] %d, prediction: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
+        publishParticles();
+        ROS_ERROR("ERROR: I am not sorting particles anymore. Ensure that particles are inserted in the order they were inserted!!!");
+        INIT_CLOCK(startCompute6)
+        measurementBasedUpdate();
+        END_CLOCK(totalCompute6, startCompute6)
+        ROS_INFO("[%s] %d, measurementBasedUpdate: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
+        
+        INIT_CLOCK(startCompute7)
+        segment();
+        END_CLOCK(totalCompute7, startCompute7)
+        ROS_INFO("[%s] %d, segment: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
 //         
-//         INIT_CLOCK(startCompute7)
-//         segment();
-//         END_CLOCK(totalCompute7, startCompute7)
-//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
-// //         
-// //         updateObstacles();
-// //         filterObstacles();
-//         INIT_CLOCK(startCompute8)
-//         updateSpeedFromObstacles();
-//         END_CLOCK(totalCompute8, startCompute8)
-//         ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
-//         INIT_CLOCK(startCompute2)
-//     }
-//     INIT_CLOCK(startCompute9)
-//     initialization();
-//     END_CLOCK(totalCompute9, startCompute9)
-//     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
+//         updateObstacles();
+//         filterObstacles();
+        INIT_CLOCK(startCompute8)
+        updateSpeedFromObstacles();
+        END_CLOCK(totalCompute8, startCompute8)
+        ROS_INFO("[%s] %d, updateSpeedFromObstacles: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
+        INIT_CLOCK(startCompute2)
+    }
+    INIT_CLOCK(startCompute9)
+    initialization();
+    END_CLOCK(totalCompute9, startCompute9)
+    ROS_INFO("[%s] %d, initialization: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
 //     publishParticles(m_oldParticlesPub, 2.0);
     
 //     initialization();
@@ -361,12 +364,18 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     ROS_INFO("[%s] Total time: %f seconds", __FUNCTION__, totalCompute);
     
     INIT_CLOCK(startVis)
+    cout << __FILE__ << ":" << __LINE__ << endl;
     publishVoxels();
+    cout << __FILE__ << ":" << __LINE__ << endl;
     publishOFlow();
+    cout << __FILE__ << ":" << __LINE__ << endl;
 //     publishParticles();
     publishMainVectors();
+    cout << __FILE__ << ":" << __LINE__ << endl;
     publishObstacles();
+    cout << __FILE__ << ":" << __LINE__ << endl;
     publishObstacleCubes();
+    cout << __FILE__ << ":" << __LINE__ << endl;
 //     publishROI();
 //     publishFakePointCloud();
 //     visualizeROI2d();
@@ -384,7 +393,7 @@ void VoxelGridTracking::reset()
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                m_grid[x][y][z].reset();
+                m_grid[x][y][z]->reset();
             }
         }
     }
@@ -663,15 +672,15 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                     const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
                     const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
                     
-                    const Voxel & voxel = Voxel(x, y, z, 
-                                                searchPoint.x, searchPoint.y, searchPoint.z, 
-                                                m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
-                                                m_maxVelX, m_maxVelY, m_maxVelZ, 
-                                                m_cameraParams, m_speedMethod,
-                                                m_yawInterval, m_pitchInterval);
+                    VoxelPtr voxelPtr( new Voxel(x, y, z, 
+                                        searchPoint.x, searchPoint.y, searchPoint.z, 
+                                        m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
+                                        m_maxVelX, m_maxVelY, m_maxVelZ, 
+                                        m_cameraParams, m_speedMethod,
+                                        m_yawInterval, m_pitchInterval));
                     
-                    m_voxelList.push_back(voxel);
-                    m_grid[x][y][z] = voxel;
+                    m_voxelList.push_back(voxelPtr);
+                    m_grid[x][y][z] = voxelPtr;
                 }
             }
         }
@@ -693,9 +702,9 @@ void VoxelGridTracking::updateFromOFlow()
             continue;
         }
             
-        Particle3d particle(flowVector.x, flowVector.y, flowVector.z, 
-                            flowVector.normal_x, flowVector.normal_y, flowVector.normal_z, 
-                            m_pose2MapTransform);
+        ParticlePtr particle(new Particle3d(flowVector.x, flowVector.y, flowVector.z, 
+                                    flowVector.normal_x, flowVector.normal_y, flowVector.normal_z, 
+                                    m_pose2MapTransform));
         
         int32_t xPos, yPos, zPos;
         particleToVoxel(particle, xPos, yPos, zPos);
@@ -704,32 +713,33 @@ void VoxelGridTracking::updateFromOFlow()
             (yPos >= 0) && (yPos < m_dimY) &&
             (zPos >= 0) && (zPos < m_dimZ)) {                    
             
-            if (m_grid[xPos][yPos][zPos].occupied()) {
-                particle.setAge(m_grid[xPos][yPos][zPos].oldestParticle() + 2);
+            if (m_grid[xPos][yPos][zPos]->occupied()) {
+                particle->setAge(m_grid[xPos][yPos][zPos]->oldestParticle() + 2);
                 
-                m_grid[xPos][yPos][zPos].addFlowParticle(particle);
+                m_grid[xPos][yPos][zPos]->addFlowParticle(particle);
             }
         }
     }
 }
 
+// TODO: This part is not meant to be used in the future. I leave it for compatibility, but 
+// it will dissappear in the future.
 void VoxelGridTracking::getMeasurementModel()
 {
-    // #pragma omp for schedule(dynamic)
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
-                                
-                const int & sigmaX = voxel.sigmaX();
-                const int & sigmaY = voxel.sigmaY();
-                const int & sigmaZ = voxel.sigmaZ();
+                VoxelPtr & voxel = m_grid[x][y][z];
                 
-                if (voxel.occupied()) {
+                if (voxel) {
+                    const int & sigmaX = voxel->sigmaX();
+                    const int & sigmaY = voxel->sigmaY();
+                    const int & sigmaZ = voxel->sigmaZ();
+                    
                     for (uint32_t x1 = max(0, (int)(x - sigmaX)); x1 <= min((int)(m_dimX - 1), (int)(x + sigmaX)); x1++) {
                         for (uint32_t y1 = max(0, (int)(y - sigmaY)); y1 <= min((int)(m_dimY - 1), (int)(y + sigmaY)); y1++) {
                             for (uint32_t z1 = max(0, (int)(z - sigmaZ)); z1 <= min((int)(m_dimZ - 1), (int)(z + sigmaZ)); z1++) {
-                                m_grid[x1][y1][z1].incNeighborOcc();
+                                m_grid[x1][y1][z1]->incNeighborOcc();
                             }
                         }
                     }
@@ -737,18 +747,22 @@ void VoxelGridTracking::getMeasurementModel()
             }
         }
     }
-       
+    
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
-                const int & sigmaX = voxel.sigmaX();
-                const int & sigmaY = voxel.sigmaY();
-                const int & sigmaZ = voxel.sigmaZ();
+                VoxelPtr & voxel = m_grid[x][y][z];
+
+                if (voxel) {
+                    const int & sigmaX = voxel->sigmaX();
+                    const int & sigmaY = voxel->sigmaY();
+                    const int & sigmaZ = voxel->sigmaZ();
                 
-                // p(m(x,z) | occupied)
-                const double occupiedProb = (double)voxel.neighborOcc() / ((2.0 * (double)sigmaX + 1.0) + (2.0 * (double)sigmaY + 1.0) + (2.0 * (double)sigmaZ + 1.0));
-                voxel.setOccupiedProb(occupiedProb);
+                    // p(m(x,z) | occupied)
+                    const double occupiedProb = (double)voxel->neighborOcc() / 
+                                ((2.0 * (double)sigmaX + 1.0) + (2.0 * (double)sigmaY + 1.0) + (2.0 * (double)sigmaZ + 1.0));
+                    voxel->setOccupiedProb(occupiedProb);
+                }
             }
         }
     }
@@ -756,42 +770,45 @@ void VoxelGridTracking::getMeasurementModel()
 
 void VoxelGridTracking::initialization()
 {
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
+    BOOST_FOREACH (VoxelPtr & voxel, m_voxelList) {
+//     for (uint32_t x = 0; x < m_dimX; x++) {
+//         for (uint32_t y = 0; y < m_dimY; y++) {
+//             for (uint32_t z = 0; z < m_dimZ; z++) {
+//                 Voxel & voxel = m_grid[x][y][z];
                 
-                const double & occupiedProb = voxel.occupiedProb();
+                const double & occupiedProb = voxel->occupiedProb();
                 
                 // FIXME: Is it really important the fact that it is occupied or not?
-//                 if (voxel.occupied() && voxel.empty() && (occupiedProb > m_threshProbForCreation)) 
-                if (voxel.occupied() && occupiedProb > m_threshProbForCreation) {
+//                 if (voxel->occupied() && occupiedProb > m_threshProbForCreation) {
                     // TODO The number of generated particles depends on the occupancy probability
                     const uint32_t numParticles = m_particlesPerVoxel * occupiedProb; // / 2.0;
                 
-                    if ((! m_useOFlow) || (voxel.numOFlowParticles() == 0)) {
+                    if ((! m_useOFlow) || (voxel->numOFlowParticles() == 0)) {
 //                         voxel.createParticles(numParticles, m_pose2MapTransform);
-                        voxel.createParticlesStatic(m_pose2MapTransform);               
+                        ParticleList newParticles = voxel->createParticlesStatic(m_pose2MapTransform);
+                        m_particles.reserve(m_particles.size() + newParticles.size());
+                        m_particles.insert(m_particles.end(), newParticles.begin(), newParticles.end());
                     } else {
-                        voxel.createParticlesFromOFlow(numParticles);
+                        ParticleList newParticles = voxel->createParticlesFromOFlow(numParticles);
+                        m_particles.reserve(m_particles.size() + newParticles.size());
+                        m_particles.insert(m_particles.end(), newParticles.begin(), newParticles.end());
                     }
-                }
-            }
-        }
+//                 }
+//             }
+//         }
     }
     
     m_initialized = true;
 }
 
-inline void VoxelGridTracking::particleToVoxel(const Particle3d & particle, 
+inline void VoxelGridTracking::particleToVoxel(const ParticlePtr & particle, 
                                                int32_t & posX, int32_t & posY, int32_t & posZ)
 {
-    tf::Vector3 point = m_pose2MapTransform.inverse() * tf::Vector3(particle.x(), particle.y(), particle.z());
-    
-    const double dPosX = (point[0] - m_minX) / m_cellSizeX;
-    const double dPosY = (point[1] - m_minY) / m_cellSizeY;
-    const double dPosZ = (point[2] - m_minZ) / m_cellSizeZ;
-    
+    const double dPosX = (particle->x() - m_minX) / m_cellSizeX;
+    const double dPosY = (particle->y() - m_minY) / m_cellSizeY;
+    const double dPosZ = (particle->z() - m_minZ) / m_cellSizeZ;
+
+    // This check is needed to avoid truncating to 0 the case (-0.***)
     posX = (dPosX < 0.0)? -1 : dPosX;
     posY = (dPosY < 0.0)? -1 : dPosY;
     posZ = (dPosZ < 0.0)? -1 : dPosZ;
@@ -799,45 +816,13 @@ inline void VoxelGridTracking::particleToVoxel(const Particle3d & particle,
 
 void VoxelGridTracking::prediction()
 {
-//     const double speed = 0.0; //m_speed;
-//     const double deltaYaw = 0.0; //m_deltaYaw;
-//     const double deltaPitch = 0.0; //m_deltaPitch;
-//     
-//     const double dx = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
-//     const double dy = -speed * m_deltaTime * cos(deltaYaw); // / m_cellSizeX;
-//     const double dz = -0.0;
-//     
-//     Eigen::MatrixXd R(6, 6);
-//     Eigen::VectorXd t(6, 1);
-    Eigen::MatrixXd stateTransition(6, 6);
-//     R << cos(deltaYaw), -sin(deltaYaw), 0, 0, 0, 0,
-//          sin(deltaYaw), cos(deltaYaw), 0, 0, 0, 0,
-//         0, 0, 1, 0, 0, 0,
-//         0, 0, 0, cos(deltaYaw), -sin(deltaYaw), 0,
-//         0, 0, 0, sin(deltaYaw), cos(deltaYaw), 0,
-//         0, 0, 0, 0, 0, 1;
-//     
-//     t << dx, dy, dz, 0, 0, 0;
-    stateTransition << 1, 0, 0, m_deltaTime, 0, 0,
-                        0, 1, 0, 0, m_deltaTime, 0,
-                        0, 0, 1, 0, 0, m_deltaTime,
-                        0, 0, 0, 1, 0, 0,
-                        0, 0, 0, 0, 1, 0,
-                        0, 0, 0, 0, 0, 1;
-    
-    
-    // TODO: Put correct values for deltaX, deltaY, deltaZ, deltaVX, deltaVY, deltaVZ in class Particle, based on the covariance matrix
-    vector <Particle3d> newParticles;
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
-                voxel.transformParticles(stateTransition, newParticles);
-            }
-        }
-    }
-    
-    BOOST_FOREACH(const Particle3d & particle, newParticles) {
+    // TODO: Put correct values for deltaX, deltaY, deltaZ, deltaVX, deltaVY, deltaVZ in class Particle,
+    // based on the covariance matrix
+    ParticleList newParticles;
+    newParticles.reserve(m_particles.size());
+    BOOST_FOREACH(ParticlePtr & particle, m_particles) {
+        particle->transform(m_deltaTime);
+        
         int32_t xPos, yPos, zPos;
         particleToVoxel(particle, xPos, yPos, zPos);
         
@@ -845,9 +830,10 @@ void VoxelGridTracking::prediction()
             (yPos >= 0) && (yPos < m_dimY) &&
             (zPos >= 0) && (zPos < m_dimZ)) {                    
         
-            Voxel & voxel = m_grid[xPos][yPos][zPos];
-            if (voxel.occupied()) {
-                voxel.addParticle(particle);
+            VoxelPtr & voxel = m_grid[xPos][yPos][zPos];
+            if (voxel) {
+                voxel->addParticle(particle);
+                newParticles.push_back(particle);
             }
         }
     }
@@ -856,12 +842,15 @@ void VoxelGridTracking::prediction()
         for (uint32_t x = 0; x < m_dimX; x++) {
             for (uint32_t y = 0; y < m_dimY; y++) {
                 for (uint32_t z = 0; z < m_dimZ; z++) {
-                    Voxel & voxel = m_grid[x][y][z];
-                    voxel.joinParticles();
+                    VoxelPtr & voxel = m_grid[x][y][z];
+                    if (voxel)
+                        voxel->joinParticles();
                 }
             }
         }
     }
+    
+    m_particles.swap(newParticles);
         
 }
 
@@ -870,12 +859,12 @@ void VoxelGridTracking::measurementBasedUpdate()
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
+                VoxelPtr & voxel = m_grid[x][y][z];
                 
-                if ((! voxel.empty()) && (voxel.occupied())) {
-                    voxel.sortParticles();
-                    voxel.setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
-                    voxel.reduceParticles();
+                if ((voxel) && (! voxel->empty()) && (voxel->occupied())) {
+                    voxel->sortParticles();
+                    voxel->setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
+                    voxel->reduceParticles(m_maxNumberOfParticles);
                 }
             }
         }
@@ -886,34 +875,34 @@ void VoxelGridTracking::measurementBasedUpdate()
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
+                VoxelPtr & voxel = m_grid[x][y][z];
             
-                if ((! voxel.empty()) && (voxel.occupied())) {
-                    voxel.setOccupiedPosteriorProb(m_particlesPerVoxel);
-                    const double Nrc = voxel.occupiedPosteriorProb() * m_particlesPerVoxel;
-                    const double fc = Nrc / voxel.numParticles();
+                if ((! voxel->empty()) && (voxel->occupied())) {
+                    voxel->setOccupiedPosteriorProb(m_particlesPerVoxel);
+                    const double Nrc = voxel->occupiedPosteriorProb() * m_particlesPerVoxel;
+                    const double fc = Nrc / voxel->numParticles();
                     
                     if (fc > 1.0) {
                         const double Fn = floor(fc);       // Integer part
                         const double Ff = fc - Fn;         // Fractional part
                         
-                        for (uint32_t i = 0; i < voxel.numParticles(); i++) {
+                        for (uint32_t i = 0; i < voxel->numParticles(); i++) {
                             
-                            const Particle3d & p = voxel.getParticle(i);
+                            const ParticlePtr & p = voxel->getParticle(i);
                             
                             for (uint32_t k = 1; k < Fn; k++)
-                                for (uint32_t n = 0; n < p.age(); n++)
-                                    voxel.makeCopy(p);
+                                for (uint32_t n = 0; n < p->age(); n++)
+                                    voxel->makeCopy(p);
                             
                             const double r = (double)rand() / (double)RAND_MAX;
                             if (r < Ff)
-                                voxel.makeCopy(p);
+                                voxel->makeCopy(p);
                         }
                     } else if (fc < 1.0) {
-                        for (uint32_t i = 0; i < voxel.numParticles(); i++) {
+                        for (uint32_t i = 0; i < voxel->numParticles(); i++) {
                             const double r = (double)rand() / (double)RAND_MAX;
                             if (r > fc)
-                                voxel.removeParticle(i);
+                                voxel->removeParticle(i);
                         }
                     }
                 }
@@ -930,17 +919,18 @@ void VoxelGridTracking::segment()
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
-                if (! voxel.empty() && (voxel.oldestParticle() > 1)) {
-                    if (! voxel.assignedToObstacle()) {
+                VoxelPtr & voxel = m_grid[x][y][z];
+                
+                if (voxel && (! voxel->empty()) && (voxel->oldestParticle() > 1)) {
+                    if (! voxel->assignedToObstacle()) {
                         
                         std::deque<Voxel> voxelsQueue;
                         
                         VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_obstacleSpeedMethod, m_yawInterval, m_pitchInterval);
-                        if (! obst.addVoxelToObstacle(voxel))
+                        if (! obst.addVoxelToObstacle(*voxel))
                             continue;
                         
-                        voxelsQueue.push_back(voxel);
+                        voxelsQueue.push_back(*voxel);
                         
                         while (! voxelsQueue.empty()) {
 
@@ -950,11 +940,11 @@ void VoxelGridTracking::segment()
                             for (uint32_t x1 = max(0, (int)(currVoxel.x() - m_neighBorX)); x1 <= min(m_dimX - 1, (int)currVoxel.x() + m_neighBorX); x1++) {
                                 for (uint32_t y1 = max(0, (int)(currVoxel.y() - m_neighBorY)); y1 <= min(m_dimY - 1, (int)currVoxel.y() + m_neighBorY); y1++) {
                                     for (uint32_t z1 = max(0, (int)(currVoxel.z() - m_neighBorZ)); z1 <= min(m_dimZ - 1, (int)currVoxel.z() + m_neighBorZ); z1++) {
-                                        Voxel & newVoxel = m_grid[x1][y1][z1];
-                                        if ((! newVoxel.assignedToObstacle()) && (! newVoxel.empty())) {
+                                        VoxelPtr & newVoxel = m_grid[x1][y1][z1];
+                                        if ((newVoxel) && (! newVoxel->assignedToObstacle()) && (! newVoxel->empty())) {
                                             
-                                            if (obst.addVoxelToObstacle(newVoxel))
-                                                voxelsQueue.push_back(newVoxel);
+                                            if (obst.addVoxelToObstacle(*newVoxel))
+                                                voxelsQueue.push_back(*newVoxel);
                                         }
                                     }
                                 }
@@ -1129,7 +1119,7 @@ void VoxelGridTracking::publishVoxels()
 //             for (uint32_t z = 0; z < m_dimZ; z++) {
 //                 const Voxel & voxel = m_grid[x][y][z];
     
-    BOOST_FOREACH(const Voxel & voxel, m_voxelList) {
+    BOOST_FOREACH(const VoxelPtr & voxel, m_voxelList) {
 
 //                 if (voxel.occupiedProb() > 0.0) {
                     visualization_msgs::Marker voxelMarker;
@@ -1140,9 +1130,9 @@ void VoxelGridTracking::publishVoxels()
                     voxelMarker.type = visualization_msgs::Marker::CUBE;
                     voxelMarker.action = visualization_msgs::Marker::ADD;
 
-                    voxelMarker.pose.position.x = voxel.centroidX();
-                    voxelMarker.pose.position.y = voxel.centroidY();
-                    voxelMarker.pose.position.z = voxel.centroidZ();
+                    voxelMarker.pose.position.x = voxel->centroidX();
+                    voxelMarker.pose.position.y = voxel->centroidY();
+                    voxelMarker.pose.position.z = voxel->centroidZ();
                     
                     voxelMarker.pose.orientation.x = 0.0;
                     voxelMarker.pose.orientation.y = 0.0;
@@ -1203,28 +1193,31 @@ void VoxelGridTracking::publishOFlow()
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                Voxel & voxel = m_grid[x][y][z];
+                VoxelPtr & voxel = m_grid[x][y][z];
                 
-                const vector<Particle3d> & oflowParticles = voxel.getOFlowParticles();
+                if (voxel) {
                 
-                BOOST_FOREACH(const Particle3d & particle, oflowParticles) {
-                    geometry_msgs::Pose pose;
+                    const ParticleList & oflowParticles = voxel->getOFlowParticles();
                     
-                    pose.position.x = particle.x();
-                    pose.position.y = particle.y();
-                    pose.position.z = particle.z();
-                    
-                    const double & vx = particle.vx();
-                    const double & vy = particle.vy();
-                    const double & vz = particle.vz();
-                    
-                    const tf::Quaternion & quat = particle.getQuaternion();
-                    pose.orientation.w = quat.w();
-                    pose.orientation.x = quat.x();
-                    pose.orientation.y = quat.y();
-                    pose.orientation.z = quat.z();
-                    
-                    oflowVectors.poses.push_back(pose);
+                    BOOST_FOREACH(const ParticlePtr & particle, oflowParticles) {
+                        geometry_msgs::Pose pose;
+                        
+                        pose.position.x = particle->x();
+                        pose.position.y = particle->y();
+                        pose.position.z = particle->z();
+                        
+                        const double & vx = particle->vx();
+                        const double & vy = particle->vy();
+                        const double & vz = particle->vz();
+                        
+                        const tf::Quaternion & quat = particle->getQuaternion();
+                        pose.orientation.w = quat.w();
+                        pose.orientation.x = quat.x();
+                        pose.orientation.y = quat.y();
+                        pose.orientation.z = quat.z();
+                        
+                        oflowVectors.poses.push_back(pose);
+                    }
                 }
             }
         }
@@ -1263,34 +1256,36 @@ void VoxelGridTracking::publishParticles()
         particles.header.frame_id = m_mapFrame;
         particles.header.stamp = ros::Time();
             
-        uint32_t idCount = 0;
-        for (uint32_t x = 0; x < m_dimX; x++) {
-            for (uint32_t y = 0; y < m_dimY; y++) {
-                for (uint32_t z = 0; z < m_dimZ; z++) {
-                    const Voxel & voxel = m_grid[x][y][z];
+        BOOST_FOREACH(const ParticlePtr & particle, m_particles) {
+//         for (uint32_t x = 0; x < m_dimX; x++) {
+//             for (uint32_t y = 0; y < m_dimY; y++) {
+//                 for (uint32_t z = 0; z < m_dimZ; z++) {
+//                     const VoxelPtr & voxel = m_grid[x][y][z];
                     
-                    for (uint32_t i = 0; i < voxel.numParticles(); i++) {
-                        const Particle3d & particle = voxel.getParticle(i);
-                        geometry_msgs::Pose pose;
-                        
-                        pose.position.x = particle.x();
-                        pose.position.y = particle.y();
-                        pose.position.z = particle.z();
-                        
-                        const double & vx = particle.vx();
-                        const double & vy = particle.vy();
-                        const double & vz = particle.vz();
-                        
-                        const tf::Quaternion & quat = particle.getQuaternion();
-                        pose.orientation.w = quat.w();
-                        pose.orientation.x = quat.x();
-                        pose.orientation.y = quat.y();
-                        pose.orientation.z = quat.z();
-                        
-                        particles.poses.push_back(pose);
-                    }
-                }
-            }
+//                     if (voxel) {
+//                         for (uint32_t i = 0; i < voxel->numParticles(); i++) {
+//                             const Particle3d & particle = voxel->getParticle(i);
+                            geometry_msgs::Pose pose;
+                            
+                            pose.position.x = particle->x();
+                            pose.position.y = particle->y();
+                            pose.position.z = particle->z();
+                            
+                            const double & vx = particle->vx();
+                            const double & vy = particle->vy();
+                            const double & vz = particle->vz();
+                            
+                            const tf::Quaternion & quat = particle->getQuaternion();
+                            pose.orientation.w = quat.w();
+                            pose.orientation.x = quat.x();
+                            pose.orientation.y = quat.y();
+                            pose.orientation.z = quat.z();
+                            
+                            particles.poses.push_back(pose);
+//                         }
+//                     }
+//                 }
+//             }
         }
         
         m_particlesSimplePub.publish(particles);
@@ -1320,69 +1315,72 @@ void VoxelGridTracking::publishParticles()
     visualization_msgs::MarkerArray particles;
     
     uint32_t idCount = 0;
-    for (uint32_t x = 0; x < m_dimX; x++) {
-        for (uint32_t y = 0; y < m_dimY; y++) {
-            for (uint32_t z = 0; z < m_dimZ; z++) {
-                const Voxel & voxel = m_grid[x][y][z];
+    BOOST_FOREACH(const ParticlePtr & particle, m_particles) {
+//         for (uint32_t x = 0; x < m_dimX; x++) {
+//             for (uint32_t y = 0; y < m_dimY; y++) {
+//                 for (uint32_t z = 0; z < m_dimZ; z++) {
+//                     const VoxelPtr & voxel = m_grid[x][y][z];
+
+//                     if (voxel) {
+//                         for (uint32_t i = 0; i < voxel->numParticles(); i++) {
+//                             const Particle3d & particle = voxel->getParticle(i);
                 
-                for (uint32_t i = 0; i < voxel.numParticles(); i++) {
-                    const Particle3d & particle = voxel.getParticle(i);
-            
-                    uint32_t age = particle.age();
-                    const uint32_t & id = particle.id();
-                    if (age >= MAX_PARTICLE_AGE_REPRESENTATION)
-                        age = MAX_PARTICLE_AGE_REPRESENTATION - 1;
-                    
-                    visualization_msgs::Marker particleVector;
-                    particleVector.header.frame_id = m_mapFrame;
-                    particleVector.header.stamp = ros::Time();
-                    particleVector.id = idCount++;
-                    stringstream ss;
-                    ss << "age_" << age;
-                    particleVector.ns = ss.str();
-                    particleVector.type = visualization_msgs::Marker::ARROW;
-                    particleVector.action = visualization_msgs::Marker::ADD;
-                    
-                    particleVector.pose.orientation.x = 0.0;
-                    particleVector.pose.orientation.y = 0.0;
-                    particleVector.pose.orientation.z = 0.0;
-                    particleVector.pose.orientation.w = 1.0;
-                    particleVector.scale.x = 0.01;
-                    particleVector.scale.y = 0.03;
-                    particleVector.scale.z = 0.1;
-                    particleVector.color.a = 1.0;
-//                     particleVector.color.r = m_obstacleColors[age][2];
-//                     particleVector.color.g = m_obstacleColors[age][1];
-//                     particleVector.color.b = m_obstacleColors[age][0];
-                    particleVector.color.r = m_obstacleColors[id][2];
-                    particleVector.color.g = m_obstacleColors[id][1];
-                    particleVector.color.b = m_obstacleColors[id][0];
-                    
-                    //         orientation.lifetime = ros::Duration(5.0);
-                    
-                    const double & x = particle.x();
-                    const double & y = particle.y();
-                    const double & z = particle.z();
-                    const double & vx = particle.vx();
-                    const double & vy = particle.vy();
-                    const double & vz = particle.vz();
-                    
-                    geometry_msgs::Point origin, dest;
-                    origin.x = x;
-                    origin.y = y;
-                    origin.z = z;
-                    
-                    dest.x = x + vx * m_deltaTime;
-                    dest.y = y + vy * m_deltaTime;
-                    dest.z = z + vz * m_deltaTime;
-                    
-                    particleVector.points.push_back(origin);
-                    particleVector.points.push_back(dest);
-                    
-                    particles.markers.push_back(particleVector);
-                }
-            }
-        }
+                        uint32_t age = particle->age();
+                        const uint32_t & id = particle->id();
+                        if (age >= MAX_PARTICLE_AGE_REPRESENTATION)
+                            age = MAX_PARTICLE_AGE_REPRESENTATION - 1;
+                        
+                        visualization_msgs::Marker particleVector;
+                        particleVector.header.frame_id = m_mapFrame;
+                        particleVector.header.stamp = ros::Time();
+                        particleVector.id = idCount++;
+                        stringstream ss;
+                        ss << "age_" << age;
+                        particleVector.ns = ss.str();
+                        particleVector.type = visualization_msgs::Marker::ARROW;
+                        particleVector.action = visualization_msgs::Marker::ADD;
+                        
+                        particleVector.pose.orientation.x = 0.0;
+                        particleVector.pose.orientation.y = 0.0;
+                        particleVector.pose.orientation.z = 0.0;
+                        particleVector.pose.orientation.w = 1.0;
+                        particleVector.scale.x = 0.01;
+                        particleVector.scale.y = 0.03;
+                        particleVector.scale.z = 0.1;
+                        particleVector.color.a = 1.0;
+    //                     particleVector.color.r = m_obstacleColors[age][2];
+    //                     particleVector.color.g = m_obstacleColors[age][1];
+    //                     particleVector.color.b = m_obstacleColors[age][0];
+                        particleVector.color.r = m_obstacleColors[id][2];
+                        particleVector.color.g = m_obstacleColors[id][1];
+                        particleVector.color.b = m_obstacleColors[id][0];
+                        
+                        //         orientation.lifetime = ros::Duration(5.0);
+                        
+                        const double & x = particle->x();
+                        const double & y = particle->y();
+                        const double & z = particle->z();
+                        const double & vx = particle->vx();
+                        const double & vy = particle->vy();
+                        const double & vz = particle->vz();
+                        
+                        geometry_msgs::Point origin, dest;
+                        origin.x = x;
+                        origin.y = y;
+                        origin.z = z;
+                        
+                        dest.x = x + vx * m_deltaTime;
+                        dest.y = y + vy * m_deltaTime;
+                        dest.z = z + vz * m_deltaTime;
+                        
+                        particleVector.points.push_back(origin);
+                        particleVector.points.push_back(dest);
+                        
+                        particles.markers.push_back(particleVector);
+//                     }
+//                 }
+//             }
+//         }
     }
     
     m_particlesPub.publish(particles);
@@ -1412,9 +1410,9 @@ void VoxelGridTracking::publishMainVectors()
     for (uint32_t x = 0; x < m_dimX; x++) {
         for (uint32_t y = 0; y < m_dimY; y++) {
             for (uint32_t z = 0; z < m_dimZ; z++) {
-                const Voxel & voxel = m_grid[x][y][z];
+                const VoxelPtr & voxel = m_grid[x][y][z];
                 
-                if (! voxel.empty()) {
+                if (voxel && (! voxel->empty())) {
                     
                     visualization_msgs::Marker mainVector;
                     mainVector.header.frame_id = m_poseFrame;
@@ -1432,7 +1430,7 @@ void VoxelGridTracking::publishMainVectors()
                     mainVector.scale.y = 0.03;
                     mainVector.scale.z = 0.1;
                     
-                    cv::Vec3f color(voxel.vx(), voxel.vy(), voxel.vz());
+                    cv::Vec3f color(voxel->vx(), voxel->vy(), voxel->vz());
                     if (cv::norm(color) != 0.0) {
                         color = color / cv::norm(color);
 
@@ -1449,13 +1447,13 @@ void VoxelGridTracking::publishMainVectors()
                     //         orientation.lifetime = ros::Duration(5.0);
                     
                     geometry_msgs::Point origin, dest;
-                    origin.x = voxel.centroidX();
-                    origin.y = voxel.centroidY();
-                    origin.z = voxel.centroidZ();
+                    origin.x = voxel->centroidX();
+                    origin.y = voxel->centroidY();
+                    origin.z = voxel->centroidZ();
                     
-                    dest.x = voxel.centroidX() + voxel.vx() * m_deltaTime * 3.0;
-                    dest.y = voxel.centroidY() + voxel.vy() * m_deltaTime * 3.0;
-                    dest.z = voxel.centroidZ() + voxel.vz() * m_deltaTime * 3.0;
+                    dest.x = voxel->centroidX() + voxel->vx() * m_deltaTime * 3.0;
+                    dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 3.0;
+                    dest.z = voxel->centroidZ() + voxel->vz() * m_deltaTime * 3.0;
                     
                     mainVector.points.push_back(origin);
                     mainVector.points.push_back(dest);

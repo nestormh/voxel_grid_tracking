@@ -341,10 +341,10 @@ void VoxelObstacle::updateSpeedFromParticles()
             
             m_centerX = m_centerY = m_centerZ = 0.0;
             BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                BOOST_FOREACH(const Particle3d & particle, voxel.getParticles()) {
-                    m_vx += particle.vx();
-                    m_vy += particle.vy();
-                    m_vz += particle.vz();
+                BOOST_FOREACH(const ParticlePtr & particle, voxel.getParticles()) {
+                    m_vx += particle->vx();
+                    m_vy += particle->vy();
+                    m_vz += particle->vz();
                     
                     countParticles++;
                 }
@@ -379,10 +379,10 @@ void VoxelObstacle::updateSpeedFromParticles()
             // We check the results
             double stdevX = 0.0, stdevY = 0.0, stdevZ = 0.0;
             BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                BOOST_FOREACH(const Particle3d & particle, voxel.getParticles()) {
-                    const double & diffX = particle.vx() - m_vx;
-                    const double & diffY = particle.vy() - m_vy;
-                    const double & diffZ = particle.vz() - m_vz;
+                BOOST_FOREACH(const ParticlePtr & particle, voxel.getParticles()) {
+                    const double & diffX = particle->vx() - m_vx;
+                    const double & diffY = particle->vy() - m_vy;
+                    const double & diffZ = particle->vz() - m_vz;
                     stdevX += diffX * diffX;
                     stdevY += diffY * diffY;
                     stdevZ += diffZ * diffZ;                                  
@@ -414,16 +414,16 @@ void VoxelObstacle::updateSpeedFromParticles()
             
             m_centerX = m_centerY = m_centerZ = 0.0;
             BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                BOOST_FOREACH(const Particle3d & particle, voxel.getParticles()) {
-                    if (particle.age() > 1) {
+                BOOST_FOREACH(const ParticlePtr & particle, voxel.getParticles()) {
+                    if (particle->age() > 1) {
                         double yaw, pitch;
-                        particle.getYawPitch(yaw, pitch);
+                        particle->getYawPitch(yaw, pitch);
                         
                         uint32_t idxYaw = yaw / m_yawInterval;
                         uint32_t idxPitch = pitch / m_pitchInterval;
                         
                         histogram[idxPitch][idxYaw].numPoints++;
-                        histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle.vx(), particle.vy(), particle.vz()));
+                        histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle->vx(), particle->vy(), particle->vz()));
                     }
                 }
                 m_centerX += voxel.centroidX();

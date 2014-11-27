@@ -276,7 +276,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::KARLSRUHE_V2:
         {
-            initialIdx = 1; //27; //55; //260; //72; //55;
+            initialIdx = 27; //27; //55; //260; //72; //55;
             lastIdx = 340;
             correspondencesPath = boost::filesystem::path("/local/imaged/Karlsruhe");
             seqName = boost::filesystem::path("2011_09_28/2011_09_28_drive_0038_sync");     // Campus

@@ -71,41 +71,53 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
 
 void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform)
 {
-    for (uint32_t i = m_particles.size(); i < numParticles; i++)
-        m_particles.push_back(Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
-                                         m_sizeX, m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ, 
-                                         pose2mapTransform));
+    for (uint32_t i = m_particles.size(); i < numParticles; i++) {
+        ParticlePtr particle(new Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
+                   m_sizeX, m_sizeY, m_sizeZ, m_maxVelX, m_maxVelY, m_maxVelZ, 
+                   pose2mapTransform));
+        m_particles.push_back(particle);
+    }
 }
 
-void Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTransform)
+ParticleList Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTransform)
 {
+    ParticleList particleList;
     for (int32_t vx = -1; vx <= 1; vx++) {
         for (int32_t vy = -1; vy <= 1; vy++) {
             int32_t vz = 0;
 //             for (int32_t vz = -1; vz <= 1; vz++) {
                 for (double factorSpeed = 0.1; factorSpeed <= 1.0; factorSpeed += 0.1) {
-                    Particle3d particle(m_centroidX, m_centroidY, m_centroidZ, 
-                               vx * m_maxVelX * factorSpeed, 
-                               vy * m_maxVelY * factorSpeed, 
-                               vz * m_maxVelZ * factorSpeed,
-                               pose2mapTransform, true);
+                    ParticlePtr particle(new Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
+                                            vx * m_maxVelX * factorSpeed, 
+                                            vy * m_maxVelY * factorSpeed, 
+                                            vz * m_maxVelZ * factorSpeed,
+                                            pose2mapTransform, true));
                     
-                    m_particles.push_back(particle);
+                    particleList.push_back(particle);
                 }
             }
 //         }
         
     }
+    
+    return particleList;
 }
 
 
-void Voxel::createParticlesFromOFlow(const uint32_t & numParticles)
+ParticleList Voxel::createParticlesFromOFlow(const uint32_t & numParticles)
 {
+    ParticleList particleList;
     for (uint32_t i = m_particles.size(); i < numParticles; i++) {
-        const Particle3d & particle = m_oFlowParticles[rand() % m_oFlowParticles.size()];
+        ParticlePtr particle = m_oFlowParticles[rand() % m_oFlowParticles.size()];
         
-        m_particles.push_back(Particle3d(particle));
+        particleList.push_back(particle);
     }
+    
+    // Append particles to the local list
+    m_particles.reserve(m_particles.size() + particleList.size());
+    m_particles.insert(m_particles.end(), particleList.begin(), particleList.end());
+    
+    return particleList;
 }
 
 void Voxel::setOccupiedPosteriorProb(const uint32_t& particlesPerVoxel)
@@ -122,52 +134,42 @@ void Voxel::setOccupiedPosteriorProb(const uint32_t& particlesPerVoxel)
     }    
 }
 
-void Voxel::makeCopy(const Particle3d& particle)
+void Voxel::makeCopy(const ParticlePtr& particle)
 {
-    Particle3d newParticle(particle);
+    ParticlePtr newParticle(new Particle3d(*particle));
     m_particles.push_back(newParticle);
 }
 
-void Voxel::addParticle(const Particle3d& particle)
+void Voxel::addParticle(const ParticlePtr& particle)
 {
     m_particles.push_back(particle);
 }
 
-void Voxel::addFlowParticle(const Particle3d& particle)
+void Voxel::addFlowParticle(const ParticlePtr& particle)
 {
     m_oFlowParticles.push_back(particle);
 }
     
-void Voxel::transformParticles(const Eigen::MatrixXd & stateTransition, vector <Particle3d> & newParticles)
-{
-    BOOST_FOREACH(Particle3d & particle, m_particles) {
-        particle.transform(stateTransition);
-        
-        newParticles.push_back(particle);
-    }
-    m_particles.clear();
-}
-
+// TODO: I am not sorting particles anymore. Ensure that particles are inserted in the order they were inserted!!!
 void Voxel::sortParticles()
 {
-    std::sort(m_particles.rbegin(), m_particles.rend());
-    
-    m_oldestParticle = m_particles[0].age();
+//     std::sort(m_particles.rbegin(), m_particles.rend());
+    m_oldestParticle = m_particles[0]->age();
 }
 
 void Voxel::joinParticles()
 {
     if (m_oFlowParticles.size() != 0) {
+        m_particles.reserve(m_particles.size() + m_oFlowParticles.size());
         m_particles.insert( m_particles.begin(), m_oFlowParticles.begin(), m_oFlowParticles.end() );
-//         m_particles = m_oFlowParticles;
     }
 }
 
-void Voxel::reduceParticles()
+void Voxel::reduceParticles(const uint32_t & maxNumberOfParticles)
 {
-    vector<Particle3d>::const_iterator first = m_particles.begin();
-    vector<Particle3d>::const_iterator last = m_particles.begin() + std::min(30, (int)m_particles.size());
-    m_particles = vector<Particle3d> (first, last);
+    ParticleList::const_iterator first = m_particles.begin();
+    ParticleList::const_iterator last = m_particles.begin() + std::min(30, (int)m_particles.size());
+    m_particles = ParticleList (first, last);
 }
 
 
@@ -184,10 +186,10 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
     switch (m_speedMethod) {
         case SPEED_METHOD_MEAN: {
             if (m_particles.size() != 0) {
-                BOOST_FOREACH(Particle3d particle, m_particles) {
-                    m_vx += particle.vx();
-                    m_vy += particle.vy();
-                    m_vz += particle.vz();
+                BOOST_FOREACH(ParticlePtr particle, m_particles) {
+                    m_vx += particle->vx();
+                    m_vy += particle->vy();
+                    m_vz += particle->vz();
                 }
 
                 m_vx /= m_particles.size();
@@ -218,20 +220,20 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             cout << "totalPitchBins " << totalPitchBins << endl;
             cout << "totalYawBins " << totalYawBins << endl;
             
-            BOOST_FOREACH(Particle3d particle, m_particles) {
+            BOOST_FOREACH(ParticlePtr particle, m_particles) {
 //             for (uint32_t i = 0; i < m_particles.size() / 2.0; i++) {
 //                 const Particle3d & particle = m_particles[i];
                 
 //                 if (particle.age() != 1) {
                 
                     double yaw, pitch;
-                    particle.getYawPitch(yaw, pitch);
+                    particle->getYawPitch(yaw, pitch);
                     
                     uint32_t idxYaw = yaw / m_yawInterval;
                     uint32_t idxPitch = pitch / m_pitchInterval;
                                     
                     histogram[idxPitch][idxYaw].numPoints++;
-                    histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle.vx(), particle.vy(), particle.vz()));
+                    histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle->vx(), particle->vy(), particle->vz()));
 //                 }
             }
             

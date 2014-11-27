@@ -1,4 +1,2 @@
-Visualize voxels using the generated list, try using m_voxelList.resize() to update the size of the list after creation.
-Optimize times in getVoxelGridFromPointCloud().
-Connect with ELAS and see the differences.
-Continue the transformation of the code to be used in just map coordinates.
+Implement a way to get a better visualization of the particles in a voxel, and the resulting position vectors.
+http://wiki.ros.org/rviz/Tutorials/Interactive%20Markers%3A%20Getting%20Started#menu
