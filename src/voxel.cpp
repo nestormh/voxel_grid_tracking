@@ -168,8 +168,12 @@ void Voxel::joinParticles()
 void Voxel::reduceParticles(const uint32_t & maxNumberOfParticles)
 {
     ParticleList::const_iterator first = m_particles.begin();
-    ParticleList::const_iterator last = m_particles.begin() + std::min(30, (int)m_particles.size());
+    ParticleList::const_iterator last = m_particles.begin() + std::min(maxNumberOfParticles, (uint32_t)m_particles.size());
     m_particles = ParticleList (first, last);
+    
+    BOOST_FOREACH(const ParticlePtr & particle, m_particles)
+    cout << particle->age() << ", ";
+    cout << endl;
 }
 
 

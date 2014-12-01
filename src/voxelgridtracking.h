@@ -176,8 +176,14 @@ protected:
     
     // Publishers
     ros::Publisher m_voxelsPub;
+    ros::Publisher m_voxelsIdxPub;
     ros::Publisher m_pointsPerVoxelPub;
     ros::Publisher m_particlesPub;
+    ros::Publisher m_particles0Pub;
+    ros::Publisher m_particles1Pub;
+    ros::Publisher m_particles2Pub;
+    ros::Publisher m_particles3Pub;
+    ros::Publisher m_particlesDPub;
     ros::Publisher m_particlesSimplePub;
     ros::Publisher m_oFlowPub;
     ros::Publisher m_mainVectorsPub;

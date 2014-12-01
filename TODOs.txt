@@ -1,2 +1,4 @@
 Implement a way to get a better visualization of the particles in a voxel, and the resulting position vectors.
-http://wiki.ros.org/rviz/Tutorials/Interactive%20Markers%3A%20Getting%20Started#menu
+Use (1,3,2) as testing voxel.
+Try using opencv histograms as basis for a 4-D histogram (vx, vy, vz, magnitude) (Start with vx, vy, magnitude)
+Once the algorithm is finished, extend it to 3D.

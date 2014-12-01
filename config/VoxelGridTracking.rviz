@@ -11,7 +11,12 @@ Panels:
         - /voxel_grid_tracking1/debugPointCloud1
         - /voxel_grid_tracking1/FullScene1
         - /voxel_grid_tracking1/OFlow1
-        - /voxel_grid_tracking1/Particles1
+        - /voxel_grid_tracking1/VoxelsIdx1
+        - /voxel_grid_tracking1/Particles2/particles01
+        - /voxel_grid_tracking1/Particles2/particles11
+        - /voxel_grid_tracking1/Particles2/particles21
+        - /voxel_grid_tracking1/Particles2/particles31
+        - /voxel_grid_tracking1/Particles2/particlesD1
         - /StereoAndOdom1/InputCloudStereo1
         - /StereoAndOdom1/LeftImg1
         - /StereoAndOdom1/RightImg1
@@ -197,6 +202,14 @@ Visualization Manager:
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/voxelsIdx
+          Name: VoxelsIdx
+          Namespaces:
+            speedText: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacles
           Name: Obstacles
@@ -240,6 +253,45 @@ Visualization Manager:
           Name: Particles
           Topic: /voxel_grid_tracking/voxel_grid_tracking/particlesSimple
           Value: true
+        - Class: rviz/Group
+          Displays:
+            - Arrow Length: 0.3
+              Class: rviz/PoseArray
+              Color: 255; 0; 0
+              Enabled: true
+              Name: particles0
+              Topic: /voxel_grid_tracking/voxel_grid_tracking/particles0
+              Value: true
+            - Arrow Length: 0.3
+              Class: rviz/PoseArray
+              Color: 0; 255; 0
+              Enabled: true
+              Name: particles1
+              Topic: /voxel_grid_tracking/voxel_grid_tracking/particles1
+              Value: true
+            - Arrow Length: 0.3
+              Class: rviz/PoseArray
+              Color: 0; 0; 255
+              Enabled: true
+              Name: particles2
+              Topic: /voxel_grid_tracking/voxel_grid_tracking/particles2
+              Value: true
+            - Arrow Length: 0.3
+              Class: rviz/PoseArray
+              Color: 255; 255; 0
+              Enabled: true
+              Name: particles3
+              Topic: /voxel_grid_tracking/voxel_grid_tracking/particles3
+              Value: true
+            - Arrow Length: 0.3
+              Class: rviz/PoseArray
+              Color: 255; 0; 255
+              Enabled: true
+              Name: particlesD
+              Topic: /voxel_grid_tracking/voxel_grid_tracking/particlesD
+              Value: true
+          Enabled: true
+          Name: Particles
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/particles
@@ -587,22 +639,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 15.7802
+      Distance: 3.84749
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 10.8422
-        Y: -0.978708
-        Z: 1.12602
+        X: 12.0079
+        Y: -2.42476
+        Z: 3.33449
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.394799
+      Pitch: 0.0197993
       Target Frame: map
       Value: Orbit (rviz)
-      Yaw: 2.89324
+      Yaw: 3.23325
     Saved:
       - Class: rviz/XYOrbit
         Distance: 20.0678
