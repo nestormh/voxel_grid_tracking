@@ -46,12 +46,17 @@ public:
     
     void transform(const float & t);
     
+    void updatePosition(const float & x, const float & y, const float & z);
+    
     double x() const { return m_x; }
     double y() const { return m_y; }
     double z() const { return m_z; }
     double vx() const { return m_vx; }
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
+    double xOld() const { return m_xOld; }
+    double yOld() const { return m_yOld; }
+    double zOld() const { return m_zOld; }
     
     uint32_t age() const { return m_age; }
     void setAge(const uint32_t & age) { m_age = age; }
@@ -70,6 +75,7 @@ public:
     
 private:
     double m_x, m_y, m_z, m_vx, m_vy, m_vz;
+    double m_xOld, m_yOld, m_zOld;
     
     uint32_t m_age;
     

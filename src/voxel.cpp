@@ -19,6 +19,8 @@
 #include <iostream>
 #include <boost/foreach.hpp>
 #include <pcl/common/impl/centroid.hpp>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 
 using namespace std;
@@ -32,17 +34,19 @@ Voxel::Voxel()
 {
     m_occupied = false;
 }
+
 Voxel::Voxel(const double & x, const double & y, const double & z, 
              const double & centroidX, const double & centroidY, const double & centroidZ,
              const double & sizeX, const double & sizeY, const double & sizeZ, 
              const double & maxVelX, const double & maxVelY, const double & maxVelZ,
              const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
-             const double & yawInterval, const double & pitchInterval) : 
+             const double & yawInterval, const double & pitchInterval, const float & factorSpeed) : 
                     m_x(x), m_y(y), m_z(z), 
                     m_centroidX(centroidX), m_centroidY(centroidY), m_centroidZ(centroidZ), 
                     m_sizeX(sizeX), m_sizeY(sizeY), m_sizeZ(sizeZ), 
                     m_maxVelX(maxVelX), m_maxVelY(maxVelY), m_maxVelZ(maxVelZ),
-                    m_speedMethod(speedMethod), m_yawInterval(yawInterval), m_pitchInterval(pitchInterval)
+                    m_speedMethod(speedMethod), m_yawInterval(yawInterval), m_pitchInterval(pitchInterval),
+                    m_factorSpeed(factorSpeed)
 {
     if ((x == 0) || (y == 0) || (z == 0)) {
         m_sigmaX = 0.0;
@@ -67,6 +71,8 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
     m_oldestParticle = 0;
     
     m_occupied = true;
+    
+    m_speedHistogram.resize(boost::extents[3][3][3][((int)ceil(1.0 / m_factorSpeed)) + 1]);
 }
 
 void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform)
@@ -86,13 +92,13 @@ ParticleList Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTr
         for (int32_t vy = -1; vy <= 1; vy++) {
             int32_t vz = 0;
 //             for (int32_t vz = -1; vz <= 1; vz++) {
-                for (double factorSpeed = 0.1; factorSpeed <= 1.0; factorSpeed += 0.1) {
+                for (double factorSpeed = 0.0; factorSpeed <= 1.0; factorSpeed += m_factorSpeed) {
                     ParticlePtr particle(new Particle3d(m_centroidX, m_centroidY, m_centroidZ, 
                                             vx * m_maxVelX * factorSpeed, 
                                             vy * m_maxVelY * factorSpeed, 
                                             vz * m_maxVelZ * factorSpeed,
-                                            pose2mapTransform, true));
-                    
+                                            pose2mapTransform, false));
+
                     particleList.push_back(particle);
                 }
             }
@@ -170,10 +176,13 @@ void Voxel::reduceParticles(const uint32_t & maxNumberOfParticles)
     ParticleList::const_iterator first = m_particles.begin();
     ParticleList::const_iterator last = m_particles.begin() + std::min(maxNumberOfParticles, (uint32_t)m_particles.size());
     m_particles = ParticleList (first, last);
-    
-    BOOST_FOREACH(const ParticlePtr & particle, m_particles)
-    cout << particle->age() << ", ";
-    cout << endl;
+}
+
+void Voxel::centerParticles()
+{
+    BOOST_FOREACH(ParticlePtr & particle, m_particles) {
+        particle->updatePosition(m_centroidX, m_centroidY, m_centroidZ);
+    }
 }
 
 
@@ -216,13 +225,67 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
         }
         case SPEED_METHOD_CIRC_HIST: {
             
+            if ((m_x == 1) && (m_y == 3) && (m_z == 2)) {
+                cout << "Analyzing (1, 3, 2)" << endl;
+                cout << "===================" << endl;
+//                 BOOST_FOREACH(ParticlePtr particle, m_particles) {
+//                     cout << *particle << endl;
+//                 }
+//                 cout << "-------------------" << endl;
+                
+                SpeedHistogram histogram(boost::extents[3][3][3][((int)ceil(1.0 / m_factorSpeed)) + 1]);
+                
+                uint32_t totalPoints = 0;
+                
+                float maxSpeed = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ));
+                BOOST_FOREACH(ParticlePtr particle, m_particles) {
+                    if (particle->age() > 1) {
+                        const float & vx = m_centroidX - particle->xOld();
+                        const float & vy = m_centroidY - particle->yOld();
+                        const float & vz = m_centroidZ - particle->zOld();
+                        
+                        cv::Vec3f speedVector(vx, vy, vz);
+                        float speed = cv::norm(speedVector);
+                        if (speed != 0.0f)
+                            speedVector /= speed;
+                        
+                        uint32_t idX = round(speedVector[0] + 1.0f);
+                        uint32_t idY = round(speedVector[1] + 1.0f);
+                        uint32_t idZ = round(speedVector[2] + 1.0f);
+                        uint32_t idSpeed = round(speed / maxSpeed / m_factorSpeed);
+                        cout << "v: " << speedVector << ", speed: " << speed << ", maxSpeed " << maxSpeed <<
+                                " => " << cv::Vec3f(idX, idY, idZ) << ", idSpeed: " << idSpeed << endl;
+                        
+                        histogram[idX][idY][idZ][idSpeed].numPoints += particle->age();
+                        totalPoints += particle->age();
+                    }
+                }
+                
+                cout << "-------------------" << endl;
+
+                for (int32_t x = 0; x < 3; x++) {
+                    for (int32_t y = 0; y < 3; y++) {
+                        for (int32_t z = 0; z < 3; z++) {
+                            for (int32_t s = 0; s < ceil(1.0 / m_factorSpeed) + 1; s++) {
+                                if (histogram[x][y][z][s].numPoints != 0) {
+                                    cout << "(" << x - 1 << ", " << y - 1 << ", " 
+                                            << s * m_factorSpeed * maxSpeed << ") => " 
+                                            << histogram[x][y][z][s].numPoints / (float)totalPoints << endl;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            
             typedef boost::multi_array<polar_grid_tracking::t_histogram, 2> CircularHist;
             const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
             
-            cout << "totalPitchBins " << totalPitchBins << endl;
-            cout << "totalYawBins " << totalYawBins << endl;
+//             cout << "totalPitchBins " << totalPitchBins << endl;
+//             cout << "totalYawBins " << totalYawBins << endl;
             
             BOOST_FOREACH(ParticlePtr particle, m_particles) {
 //             for (uint32_t i = 0; i < m_particles.size() / 2.0; i++) {
@@ -250,10 +313,6 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
                         numVectors = histogram[idxPitch][idxYaw].numPoints;
                         maxIdxPitch = idxPitch;
                         maxIdxYaw = idxYaw;
-                        
-                        if (numVectors != 0) {
-                            cout << idxYaw * m_yawInterval * 180 / CV_PI << " = " << numVectors << endl;
-                        }
                     }
                 }
             }                
@@ -266,19 +325,60 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
             m_vy = sin(m_yaw) * m_magnitude;
             m_vz = sin(m_pitch) * m_magnitude;
             
-            cout << "m_yaw " << m_yaw << endl;
-            cout << "m_pitch " << m_pitch << endl;
-            cout << "m_magnitude " << m_magnitude << endl;
-            cout << "m_vx " << m_vx << endl;
-            cout << "m_vy " << m_vy << endl;
-            cout << "m_vz " << m_vz << endl;
-            
-            cout << "==============================" << endl;
+//             cout << "m_yaw " << m_yaw << endl;
+//             cout << "m_pitch " << m_pitch << endl;
+//             cout << "m_magnitude " << m_magnitude << endl;
+//             cout << "m_vx " << m_vx << endl;
+//             cout << "m_vy " << m_vy << endl;
+//             cout << "m_vz " << m_vz << endl;
+//             
+//             cout << "==============================" << endl;
             break;
         }
         default: {
             ROS_ERROR("Speed method not known: %d", m_speedMethod);
             exit(-1);
+        }
+    }
+}
+
+void Voxel::updateHistogram()
+{
+    uint32_t totalPoints = 0;
+    const float & speed2IdFactor = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ)) / m_factorSpeed;
+    BOOST_FOREACH(ParticlePtr particle, m_particles) {
+        if (particle->age() > 1) {
+            const float & vx = m_centroidX - particle->xOld();
+            const float & vy = m_centroidY - particle->yOld();
+            const float & vz = m_centroidZ - particle->zOld();
+            
+            cv::Vec3f speedVector(vx, vy, vz);
+            float speed = cv::norm(speedVector);
+            if (speed != 0.0f)
+                speedVector /= speed;
+            
+            const uint32_t & idX = round(speedVector[0] + 1.0f);
+            const uint32_t & idY = round(speedVector[1] + 1.0f);
+            const uint32_t & idZ = round(speedVector[2] + 1.0f);
+            const uint32_t & idSpeed = round(speed / speed2IdFactor);
+            
+            m_speedHistogram[idX][idY][idZ][idSpeed].numPoints += particle->age();
+            totalPoints += particle->age();
+        }
+    }
+    
+    for (int32_t x = 0; x < 3; x++) {
+        for (int32_t y = 0; y < 3; y++) {
+            for (int32_t z = 0; z < 3; z++) {
+                for (int32_t s = 0; s < ceil(1.0 / m_factorSpeed) + 1; s++) {
+                    if (m_speedHistogram[x][y][z][s].numPoints != 0) {
+                        m_speedHistogram[x][y][z][s].probability = 
+                                    m_speedHistogram[x][y][z][s].numPoints / (float)totalPoints;
+                    } else {
+                        m_speedHistogram[x][y][z][s].probability = 0.0f;
+                    }
+                }
+            }
         }
     }
 }

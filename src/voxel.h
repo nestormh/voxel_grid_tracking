@@ -42,6 +42,9 @@ typedef VoxelGrid::index voxelIdx;
 
 typedef boost::shared_ptr<Particle3d> ParticlePtr;
 typedef vector <ParticlePtr> ParticleList;
+
+// FIXME: Do I really need a polar_grid_tracking::t_histogram for this?
+typedef boost::multi_array<polar_grid_tracking::t_histogram, 4> SpeedHistogram;
     
 class Voxel
 {
@@ -52,7 +55,7 @@ public:
           const double & sizeX, const double & sizeY, const double & sizeZ, 
           const double & maxVelX, const double & maxVelY, const double & maxVelZ,
           const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
-          const double & yawInterval, const double & pitchInterval);
+          const double & yawInterval, const double & pitchInterval, const float & factorSpeed);
     
     void createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform);
     ParticleList createParticlesStatic(const tf::StampedTransform & pose2mapTransform);
@@ -90,6 +93,8 @@ public:
     void setMainVectors(const double & deltaEgoX, const double & deltaEgoY, const double & deltaEgoZ);
     void getMainVectors(double & vx, double & vy, double & vz) const { vx = m_vx; vy = m_vy; vz = m_vz; }
     
+    void updateHistogram();
+    
     void addPoint(const pcl::PointXYZRGB & point);
     bool occupied() const { return m_occupied; }
     
@@ -98,6 +103,7 @@ public:
     void sortParticles();
     void joinParticles();
     void reduceParticles(const uint32_t & maxNumberOfParticles);
+    void centerParticles();
     
     double centroidX() const { return m_centroidX; }
     double centroidY() const { return m_centroidY; }
@@ -148,6 +154,8 @@ protected:
     double m_yawInterval;
     double m_pitchInterval;
     
+    float m_factorSpeed;
+    
     uint32_t m_oldestParticle;
     
     SpeedMethod m_speedMethod;
@@ -158,6 +166,8 @@ protected:
     
     ParticleList m_particles;
     ParticleList m_oFlowParticles;
+
+    SpeedHistogram m_speedHistogram;
 };
 
 ostream& operator<<(ostream & stream, const Voxel & in);

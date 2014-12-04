@@ -115,7 +115,6 @@ VoxelGridTracking::VoxelGridTracking()
     m_centerX = 693.977;
     m_centerY = 238.608;
     
-    
     m_cellSizeX = 0.5; //0.25;
     m_cellSizeY = 0.5; //0.25;
     m_cellSizeZ = 0.5; //0.25; // 0.75
@@ -128,6 +127,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxVelX = 3.0;
     m_maxVelY = 3.0;
     m_maxVelZ = 0.0;
+    
+    m_factorSpeed = 0.1;
     
     if (m_maxVelZ != 0.0) {
         ROS_WARN("The max speed expected for the z axis is %f. Are you sure you expect this behaviour?", m_maxVelZ);
@@ -152,7 +153,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxCommonVolume = 0.8;
     
     // SPEED_METHOD_MEAN, SPEED_METHOD_CIRC_HIST
-    m_speedMethod = SPEED_METHOD_MEAN;
+    m_speedMethod = SPEED_METHOD_CIRC_HIST;
     
     m_obstacleSpeedMethod = SPEED_METHOD_CIRC_HIST;
     
@@ -337,12 +338,12 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
         prediction();
         END_CLOCK(totalCompute5, startCompute5)
         ROS_INFO("[%s] %d, prediction: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
-        publishParticles();
-        ROS_ERROR("ERROR: I am not sorting particles anymore. Ensure that particles are inserted in the order they were inserted!!!");
         INIT_CLOCK(startCompute6)
         measurementBasedUpdate();
         END_CLOCK(totalCompute6, startCompute6)
         ROS_INFO("[%s] %d, measurementBasedUpdate: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
+
+        publishParticles();
         
         INIT_CLOCK(startCompute7)
         segment();
@@ -683,7 +684,7 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                                         m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
                                         m_maxVelX, m_maxVelY, m_maxVelZ, 
                                         m_cameraParams, m_speedMethod,
-                                        m_yawInterval, m_pitchInterval));
+                                        m_yawInterval, m_pitchInterval, m_factorSpeed));
                     
                     m_voxelList.push_back(voxelPtr);
                     m_grid[x][y][z] = voxelPtr;
@@ -869,8 +870,10 @@ void VoxelGridTracking::measurementBasedUpdate()
                 
                 if ((voxel) && (! voxel->empty()) && (voxel->occupied())) {
                     voxel->sortParticles();
-                    voxel->setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
+//                     voxel->setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
+                    voxel->updateHistogram();
                     voxel->reduceParticles(m_maxNumberOfParticles);
+                    voxel->centerParticles();
                 }
             }
         }
@@ -1336,41 +1339,37 @@ void VoxelGridTracking::publishParticles()
             
             particleToVoxel(particle, X, Y, Z);
             
-            if ((X + Y + Z) % 2 == 0) {
-                
-                pose.position.x = particle->x();
-                pose.position.y = particle->y();
-                pose.position.z = particle->z();
-                
-                const double & vx = particle->vx();
-                const double & vy = particle->vy();
-                const double & vz = particle->vz();
-                
-                const tf::Quaternion & quat = particle->getQuaternion();
-                pose.orientation.w = quat.w();
-                pose.orientation.x = quat.x();
-                pose.orientation.y = quat.y();
-                pose.orientation.z = quat.z();
-                
-                switch (particle->age()) {
-                    case 0:
-                        particles0.poses.push_back(pose);
-                        break;
-                    case 1:
-                        particles1.poses.push_back(pose);
-                        break;
-                    case 2:
-                        particles2.poses.push_back(pose);
-                        break;
-                    case 3:
-                        particles3.poses.push_back(pose);
-                        break;
-                    default:
-                        particlesD.poses.push_back(pose);
-                        break;
-                }
-            }
+            pose.position.x = particle->x();
+            pose.position.y = particle->y();
+            pose.position.z = particle->z();
             
+            const double & vx = particle->vx();
+            const double & vy = particle->vy();
+            const double & vz = particle->vz();
+            
+            const tf::Quaternion & quat = particle->getQuaternion();
+            pose.orientation.w = quat.w();
+            pose.orientation.x = quat.x();
+            pose.orientation.y = quat.y();
+            pose.orientation.z = quat.z();
+            
+            switch (particle->age()) {
+                case 0:
+                    particles0.poses.push_back(pose);
+                    break;
+                case 1:
+                    particles1.poses.push_back(pose);
+                    break;
+                case 2:
+                    particles2.poses.push_back(pose);
+                    break;
+                case 3:
+                    particles3.poses.push_back(pose);
+                    break;
+                default:
+                    particlesD.poses.push_back(pose);
+                    break;
+            }
         }
         
         if (particles0.poses.size() != 0) m_particles0Pub.publish(particles0);

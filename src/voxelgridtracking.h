@@ -132,6 +132,7 @@ protected:
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
     float m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
+    float m_factorSpeed;
     float m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     float m_voxelSize;
     double m_maxVelX, m_maxVelY, m_maxVelZ;

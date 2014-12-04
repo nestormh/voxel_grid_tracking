@@ -194,21 +194,21 @@ Visualization Manager:
           Topic: /voxel_grid_tracking/voxel_grid_tracking/oflow_visualization
           Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/voxels
           Name: Voxels
           Namespaces:
-            voxels: true
+            {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/voxelsIdx
           Name: VoxelsIdx
           Namespaces:
-            speedText: true
+            {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacles
@@ -249,10 +249,10 @@ Visualization Manager:
         - Arrow Length: 0.3
           Class: rviz/PoseArray
           Color: 255; 25; 0
-          Enabled: true
+          Enabled: false
           Name: Particles
           Topic: /voxel_grid_tracking/voxel_grid_tracking/particlesSimple
-          Value: true
+          Value: false
         - Class: rviz/Group
           Displays:
             - Arrow Length: 0.3
@@ -639,22 +639,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.84749
+      Distance: 13.3837
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 12.0079
-        Y: -2.42476
-        Z: 3.33449
+        X: 11.432
+        Y: -1.99993
+        Z: 1.16466
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.0197993
+      Pitch: 0.584799
       Target Frame: map
       Value: Orbit (rviz)
-      Yaw: 3.23325
+      Yaw: 3.90826
     Saved:
       - Class: rviz/XYOrbit
         Distance: 20.0678

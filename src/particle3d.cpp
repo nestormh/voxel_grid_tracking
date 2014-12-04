@@ -53,6 +53,10 @@ Particle3d::Particle3d(const double & centroidX, const double & centroidY, const
     
     m_age = 0;
     
+    m_xOld = m_x;
+    m_yOld = m_y;
+    m_zOld = m_z;
+    
     m_id = (int32_t)(255 * (double)rand() / RAND_MAX);
 }
 
@@ -118,6 +122,10 @@ void Particle3d::transform(const float & t)
     float deltaX, deltaY, deltaZ, deltaVx, deltaVy, deltaVz;
     deltaX = deltaY = deltaZ = deltaVx = deltaVy = deltaVz = 0.0;
     
+    m_xOld = m_x;
+    m_yOld = m_y;
+    m_zOld = m_z;
+    
     m_x += m_vx * t + deltaX;
     m_y += m_vy * t + deltaY;
     m_z += m_vz * t + deltaZ;
@@ -128,6 +136,14 @@ void Particle3d::transform(const float & t)
     m_age++;
 }
 
+void Particle3d::updatePosition(const float& x, const float& y, const float& z)
+{
+    m_x = x;
+    m_y = y;
+    m_z = z;
+}
+
+
 bool Particle3d::operator<(const Particle3d& particle) const
 {
     return (m_age < particle.age());
@@ -135,8 +151,8 @@ bool Particle3d::operator<(const Particle3d& particle) const
 
 
 ostream& operator<<(ostream & stream, const Particle3d & in) {
-    stream << "[" << in.x() << ", " << in.y() << ", " << in.z() << ", " 
-           << in.vx() << ", " << in.vy() << ", " << in.vz() << ":::age: " << in.age() << "]";
+    stream << "[ pos: " << in.x() << ", " << in.y() << ", " << in.z() << ", speed: " 
+           << in.vx() << ", " << in.vy() << ", " << in.vz() << ", age: " << in.age() << "]";
     return stream;
 }
 
