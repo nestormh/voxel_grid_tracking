@@ -98,7 +98,7 @@ ParticleList Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTr
                                             vy * m_maxVelY * factorSpeed, 
                                             vz * m_maxVelZ * factorSpeed,
                                             pose2mapTransform, false));
-
+                    
                     particleList.push_back(particle);
                 }
             }
@@ -345,35 +345,71 @@ void Voxel::setMainVectors(const double & deltaEgoX, const double & deltaEgoY, c
 void Voxel::updateHistogram()
 {
     uint32_t totalPoints = 0;
-    const float & speed2IdFactor = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ)) / m_factorSpeed;
+    const float & maxSpeed = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ));
+    const float & speed2IdFactor =  maxSpeed * m_factorSpeed;
     BOOST_FOREACH(ParticlePtr particle, m_particles) {
         if (particle->age() > 1) {
-            const float & vx = m_centroidX - particle->xOld();
-            const float & vy = m_centroidY - particle->yOld();
-            const float & vz = m_centroidZ - particle->zOld();
+//             const float & vx = m_centroidX - particle->xOld();
+//             const float & vy = m_centroidY - particle->yOld();
+//             const float & vz = m_centroidZ - particle->zOld();
+            
+            const float & vx = particle->vx();
+            const float & vy = particle->vy();
+            const float & vz = particle->vz();
+            
             
             cv::Vec3f speedVector(vx, vy, vz);
             float speed = cv::norm(speedVector);
             if (speed != 0.0f)
                 speedVector /= speed;
             
+            if (vx == vy == vz == 0.0)
+                speed = 0.0f;
+            
             const uint32_t & idX = round(speedVector[0] + 1.0f);
             const uint32_t & idY = round(speedVector[1] + 1.0f);
             const uint32_t & idZ = round(speedVector[2] + 1.0f);
-            const uint32_t & idSpeed = round(speed / speed2IdFactor);
+            const uint32_t & idSpeed = 10; //round(speed / speed2IdFactor);
+            
+//             cout << "speed " << speed << ", idSpeed " << idSpeed << ", maxSpeed " << maxSpeed << 
+//                     ", m_factorSpeed " << m_factorSpeed << ", speed2IdFactor " << speed2IdFactor << endl;
             
             m_speedHistogram[idX][idY][idZ][idSpeed].numPoints += particle->age();
             totalPoints += particle->age();
         }
     }
     
+    float maxProb = 0.0f;
+    int32_t posX = 0, posY = 0, posZ = 0, posS = 0;
     for (int32_t x = 0; x < 3; x++) {
         for (int32_t y = 0; y < 3; y++) {
             for (int32_t z = 0; z < 3; z++) {
+                // Avoid getting (0,0,0) as max probability. This possibility will be considered later.
+                if (x == y == z == 1) {
+                    if (m_speedHistogram[x][y][z][0].numPoints != 0) {
+                        m_speedHistogram[x][y][z][0].probability = 
+                            m_speedHistogram[x][y][z][0].numPoints / (float)totalPoints;
+                    } else {
+                        m_speedHistogram[x][y][z][0].probability = 0.0;
+                    }
+                    
+                    continue;
+                }
                 for (int32_t s = 0; s < ceil(1.0 / m_factorSpeed) + 1; s++) {
                     if (m_speedHistogram[x][y][z][s].numPoints != 0) {
                         m_speedHistogram[x][y][z][s].probability = 
                                     m_speedHistogram[x][y][z][s].numPoints / (float)totalPoints;
+                                    
+                        if ((m_x >= 1) && (m_x <= 3) && (m_y >= 2) && (m_y <= 3))
+                            cout << cv::Vec4f(x - 1, y - 1, z - 1, s) << " => " << m_speedHistogram[x][y][z][s].probability << endl;
+                                    
+                        if (m_speedHistogram[x][y][z][s].probability > maxProb) {
+                            maxProb = m_speedHistogram[x][y][z][s].probability;
+                            posX = x;
+                            posY = y;
+                            posZ = z;
+                            posS = s;
+                        }
                     } else {
                         m_speedHistogram[x][y][z][s].probability = 0.0f;
                     }
@@ -381,6 +417,14 @@ void Voxel::updateHistogram()
             }
         }
     }
+    
+    m_vx = posX - 1;
+    m_vy = posY - 1;
+    m_vz = posZ - 1;
+    m_magnitude = posS * m_factorSpeed * maxSpeed;
+    
+    if ((m_x >= 1) && (m_x <= 3) && (m_y >= 2) && (m_y <= 3))
+        cout << cv::Vec4f(m_vx, m_vy, m_vz, m_magnitude) << " => posS " << posS << " => " << maxProb << endl;
 }
 
 void Voxel::reset()

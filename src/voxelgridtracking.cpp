@@ -31,6 +31,9 @@
 #include <pcl/point_types.h>
 #include <pcl_ros/filters/voxel_grid.h>
 #include <pcl-1.7/pcl/common/common.h>
+#include <pcl_ros/filters/voxel_grid.h>
+#include <pcl_ros/features/normal_3d.h>
+#include <pcl-1.7/pcl/segmentation/conditional_euclidean_clustering.h>
 
 #include <boost/foreach.hpp>
 #include <boost/graph/graph_concepts.hpp>
@@ -124,8 +127,8 @@ VoxelGridTracking::VoxelGridTracking()
     
     m_threads = 8;
 
-    m_maxVelX = 3.0;
-    m_maxVelY = 3.0;
+    m_maxVelX = 1.0;
+    m_maxVelY = 1.0;
     m_maxVelZ = 0.0;
     
     m_factorSpeed = 0.1;
@@ -241,7 +244,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
     
     m_segmentedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("segmentedPointCloud", 1);
-    m_debugPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("debugPointCloud", 1);
+    m_debugSegmentPub = nh.advertise<sensor_msgs::PointCloud2> ("debugSegment", 1);
 //     ros::spin();
 }
 
@@ -346,7 +349,8 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
         publishParticles();
         
         INIT_CLOCK(startCompute7)
-        segment();
+//         segment();
+        segmentWithClustering();
         END_CLOCK(totalCompute7, startCompute7)
         ROS_INFO("[%s] %d, segment: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
 //         
@@ -969,6 +973,109 @@ void VoxelGridTracking::segment()
     }
 }
 
+bool customRegionGrowing(const VoxelGridTracking::PointNormalType& point1, const VoxelGridTracking::PointNormalType& point2, float squared_distance)
+{
+    // TODO: Limit similarity based on normals
+    //     Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
+    //     if (squared_distance < 10000)
+    //     {
+    //         if (fabs (point_a.intensity - point_b.intensity) < 8.0f)
+    //             return (true);
+    //         if (fabs (point_a_normal.dot (point_b_normal)) < 0.06)
+    //             return (true);
+    //     }
+    //     else
+    //     {
+    //         if (fabs (point_a.intensity - point_b.intensity) < 3.0f)
+    //             return (true);
+    //     }
+    //     return (false);
+    return true;
+}
+
+void VoxelGridTracking::segmentWithClustering()
+{
+    
+    
+    PointCloudNormalPtr pointCloud(new PointCloudNormal());
+    pointCloud->reserve(m_voxelList.size());
+    
+    pcl::IndicesClustersPtr clusters (new pcl::IndicesClusters), 
+                            small_clusters (new pcl::IndicesClusters), 
+                            large_clusters (new pcl::IndicesClusters);
+    
+    BOOST_FOREACH(const VoxelPtr & voxel, m_voxelList) {
+        PointNormalType point;
+        point.x = voxel->x();
+        point.y = voxel->y();
+        point.z = voxel->z();
+        point.normal[0] = voxel->vx();
+        point.normal[1] = voxel->vy();
+        point.normal[2] = voxel->vz();
+        point.curvature = voxel->magnitude();
+        
+//         cv::Vec3f color(255.0 + point.normal[0] * 128.0, 255.0 + point.normal[1] * 128.0, 255.0 + point.normal[2] * 128.0);
+//         cout << cv::Vec4f(point.normal[0], point.normal[1], point.normal[2], point.curvature) << 
+//              " => " << color << endl;
+        
+        pointCloud->push_back(point);
+    }
+    
+    // Set up a Conditional Euclidean Clustering class
+    pcl::ConditionalEuclideanClustering<PointNormalType> cec (true);
+    cec.setInputCloud(pointCloud);
+    cec.setConditionFunction (&customRegionGrowing);
+    cec.setClusterTolerance (2.0);
+    cec.setMinClusterSize (m_minVoxelsPerObstacle);
+    cec.setMaxClusterSize (std::numeric_limits<int>::max());
+    cec.segment (*clusters);
+    cec.getRemovedClusters (small_clusters, large_clusters);
+
+    // Using the intensity channel for lazy visualization of the output
+    for (int i = 0; i < small_clusters->size (); ++i) {
+        for (int j = 0; j < (*small_clusters)[i].indices.size (); ++j) {
+            pointCloud->points[(*small_clusters)[i].indices[j]].r = 0.0;
+            pointCloud->points[(*small_clusters)[i].indices[j]].g = 255.0;
+            pointCloud->points[(*small_clusters)[i].indices[j]].b = 0.0;
+        }
+    }
+    
+    for (int i = 0; i < large_clusters->size (); ++i) {
+        for (int j = 0; j < (*large_clusters)[i].indices.size (); ++j) {
+            pointCloud->points[(*large_clusters)[i].indices[j]].r = 0.0;
+            pointCloud->points[(*large_clusters)[i].indices[j]].g = 0.0;
+            pointCloud->points[(*large_clusters)[i].indices[j]].b = 255.0;
+        }
+    }
+//     
+    for (int i = 0; i < clusters->size (); ++i) {
+        cv::Scalar color(rand() & 0xFF, rand() & 0xFF, rand() & 0xFF);
+        for (int j = 0; j < (*clusters)[i].indices.size (); ++j) {
+            PointNormalType & point = pointCloud->points[(*clusters)[i].indices[j]];
+//             if ((point.x >= 1) && (point.x <= 3) && (point.y >= 2) && (point.y <= 3))
+//                 cout << "curvature " << point.curvature << endl;
+            
+//             cv::Scalar color(128.0 + point.normal[0] * 128.0, 128.0 + point.normal[1] * 128.0, 128.0 + point.normal[2] * 128.0);
+
+            point.x = m_voxelList.at((*clusters)[i].indices[j])->centroidX();
+            point.y = m_voxelList.at((*clusters)[i].indices[j])->centroidY();
+            point.z = m_voxelList.at((*clusters)[i].indices[j])->centroidZ();
+            
+            pointCloud->points[(*clusters)[i].indices[j]].r = color[0];
+            pointCloud->points[(*clusters)[i].indices[j]].g = color[1];
+            pointCloud->points[(*clusters)[i].indices[j]].b = color[2];
+        }
+    }
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*pointCloud, cloudMsg);
+    cloudMsg.header.frame_id = m_mapFrame;
+    cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = m_currentId;
+    
+    m_debugSegmentPub.publish(cloudMsg);
+}
+
 void VoxelGridTracking::aggregation()
 {
     ObstacleList::iterator it = m_obstacles.begin();
@@ -1503,7 +1610,7 @@ void VoxelGridTracking::publishMainVectors()
                 if (voxel && (! voxel->empty())) {
                     
                     visualization_msgs::Marker mainVector;
-                    mainVector.header.frame_id = m_poseFrame;
+                    mainVector.header.frame_id = m_mapFrame;
                     mainVector.header.stamp = ros::Time();
                     mainVector.id = idCount++;
                     mainVector.ns = "mainVectors";
@@ -1539,9 +1646,9 @@ void VoxelGridTracking::publishMainVectors()
                     origin.y = voxel->centroidY();
                     origin.z = voxel->centroidZ();
                     
-                    dest.x = voxel->centroidX() + voxel->vx() * m_deltaTime * 3.0;
-                    dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 3.0;
-                    dest.z = voxel->centroidZ() + voxel->vz() * m_deltaTime * 3.0;
+                    dest.x = voxel->centroidX() + voxel->vx() * m_deltaTime * 5.0;
+                    dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 5.0;
+                    dest.z = voxel->centroidZ() + voxel->vz() * m_deltaTime * 5.0;
                     
                     mainVector.points.push_back(origin);
                     mainVector.points.push_back(dest);

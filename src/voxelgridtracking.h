@@ -47,6 +47,11 @@ class VoxelGridTracking
 public:
     VoxelGridTracking();
     
+    // TODO: Change to PointXYZNormal
+    typedef pcl::PointXYZRGBNormal PointNormalType;
+    typedef pcl::PointCloud< PointNormalType > PointCloudNormal;
+    typedef PointCloudNormal::Ptr PointCloudNormalPtr;
+    
 protected:
     typedef boost::multi_array<double, 4> ColorMatrix;
     typedef boost::multi_array<double, 2> ColorVector;
@@ -79,6 +84,7 @@ protected:
     void prediction();
     void measurementBasedUpdate();
     void segment();
+    void segmentWithClustering();
     void aggregation();
     void noiseRemoval();
     void updateObstacles();
@@ -195,7 +201,7 @@ protected:
     ros::Publisher m_ROIPub;
     ros::Publisher m_fakePointCloudPub;
     ros::Publisher m_segmentedPointCloudPub;
-    ros::Publisher m_debugPointCloudPub;
+    ros::Publisher m_debugSegmentPub;
 };
 
 }
