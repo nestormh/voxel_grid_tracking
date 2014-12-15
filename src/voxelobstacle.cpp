@@ -138,6 +138,156 @@ void VoxelObstacle::updateMotionInformation()
         m_pitch = -m_pitch;
 }
 
+void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY, 
+                                    const float & maxVelZ, const float & factorSpeed)
+{
+//     cout << "-----------------------------------------" << endl;
+//     cout << "Analyzing " << m_idx << endl;
+    
+    SpeedHistogram speedHistogram;
+    speedHistogram.resize(boost::extents[3][3][3][((int)ceil(1.0 / factorSpeed)) + 1]);
+    
+    uint32_t totalPoints = 0;
+    const float & maxSpeed = cv::norm(cv::Vec3f(maxVelX, maxVelY, maxVelZ));
+    const float & speed2IdFactor =  maxSpeed * factorSpeed;
+    BOOST_FOREACH(Voxel voxel, m_voxels) {
+        const ParticleList & particles = voxel.getParticles();
+        BOOST_FOREACH(ParticlePtr particle, particles) {
+//             if (particle->age() >= 1) {
+                //             const float & vx = m_centroidX - particle->xOld();
+                //             const float & vy = m_centroidY - particle->yOld();
+                //             const float & vz = m_centroidZ - particle->zOld();
+                
+                const float & vx = particle->vx();
+                const float & vy = particle->vy();
+                const float & vz = particle->vz();
+                
+                cv::Vec3f speedVector(vx, vy, vz);
+                float speed = cv::norm(speedVector);
+                if (speed != 0.0f)
+                    speedVector /= speed;
+                
+                if (vx == vy == vz == 0.0)
+                    speed = 0.0f;
+                
+                const uint32_t & idX = round(speedVector[0] + 1.0f);
+                const uint32_t & idY = round(speedVector[1] + 1.0f);
+                const uint32_t & idZ = round(speedVector[2] + 1.0f);
+                const uint32_t & idSpeed = round(speed / speed2IdFactor);
+                
+//                 cout << "speed " << speed << ", idSpeed " << idSpeed << ", maxSpeed " << maxSpeed << 
+//                         ", m_factorSpeed " << factorSpeed << ", speed2IdFactor " << speed2IdFactor << endl;
+                
+                speedHistogram[idX][idY][idZ][idSpeed].numPoints += particle->age();
+                totalPoints += particle->age();
+//             }
+        }
+    }
+        
+    float maxProb = 0.0f;
+    int32_t posX = 0, posY = 0, posZ = 0, posS = 0;
+    for (int32_t x = 0; x < 3; x++) {
+        for (int32_t y = 0; y < 3; y++) {
+            for (int32_t z = 0; z < 3; z++) {
+                // Avoid getting (0,0,0) as max probability. This possibility will be considered later.
+                //                 if (x == y == z == 1) {
+                //                     if (m_speedHistogram[x][y][z][0].numPoints != 0) {
+                //                         m_speedHistogram[x][y][z][0].probability = 
+                //                             m_speedHistogram[x][y][z][0].numPoints / (float)totalPoints;
+                //                     } else {
+                //                         m_speedHistogram[x][y][z][0].probability = 0.0;
+                //                     }
+                //                     
+                //                     continue;
+                //                 }
+                for (int32_t s = 0; s < ceil(1.0 / factorSpeed) + 1; s++) {
+                    if (speedHistogram[x][y][z][s].numPoints != 0) {
+//                             if (speedHistogram[x][y][z][s].numPoints > maxProb) {
+//                                 maxProb = speedHistogram[x][y][z][s].numPoints;
+//                                 posX = x;
+//                                 posY = y;
+//                                 posZ = z;
+//                                 posS = s;
+//                             }
+                        posX += x * speedHistogram[x][y][z][s].numPoints;
+                        posY += y * speedHistogram[x][y][z][s].numPoints;
+                        posZ += z * speedHistogram[x][y][z][s].numPoints;
+                        posS += s * speedHistogram[x][y][z][s].numPoints;
+                        
+//                         cout << cv::Vec4f(x - 1, y - 1, z - 1, s) << 
+//                         " => " << speedHistogram[x][y][z][s].numPoints << 
+//                         " => " << cv::Vec4f(posX - 1, posY - 1, posZ - 1, posS) <<
+//                         " => " << maxProb << endl;               
+                    } else {
+                        speedHistogram[x][y][z][s].numPoints = 0.0f;
+                    }
+                }
+            }
+        }
+    }
+    
+    if (totalPoints != 0) {
+        posX /= totalPoints;
+        posY /= totalPoints;
+        posZ /= totalPoints;
+        posS /= totalPoints;
+    }
+    
+    m_vx = posX - 1;
+    m_vy = posY - 1;
+    m_vz = posZ - 1;
+    m_magnitude = posS * factorSpeed * maxSpeed;
+    
+//     cout << cv::Vec4f(m_vx, m_vy, m_vz, m_magnitude)  << 
+//     " => " << cv::Vec4f(posX - 1, posY - 1, posZ - 1, posS) << " => " << maxProb <<  " => " << totalPoints << endl;
+    
+    // FIXME: This is just for debugging visualization
+    //     m_vx = -1;
+    //     m_vy = -1;
+    //     m_vz = 0;
+    //     m_magnitude = 1.0;
+    {
+        m_vx = m_vy = m_vz = 0;
+        uint32_t totalPoints = 0;
+        const float & maxSpeed = cv::norm(cv::Vec3f(maxVelX, maxVelY, maxVelZ));
+        const float & speed2IdFactor =  maxSpeed * factorSpeed;
+        BOOST_FOREACH(Voxel voxel, m_voxels) {
+            const ParticleList & particles = voxel.getParticles();
+            BOOST_FOREACH(ParticlePtr particle, particles) {
+                //             if (particle->age() >= 1) {
+                const float & vx = particle->vx();
+                const float & vy = particle->vy();
+                const float & vz = particle->vz();
+
+                uint32_t increment = particle->age(); 
+                m_vx += vx * increment;
+                m_vy += vy * increment;
+                m_vz += vz * increment;
+                totalPoints += increment;
+                //             }
+            }
+        }
+    
+        m_vx /= totalPoints;
+        m_vy /= totalPoints;
+        m_vz /= totalPoints;
+        
+        cv::Vec3f speedVector(m_vx, m_vy, m_vz);
+        m_magnitude = cv::norm(speedVector);
+        if (m_magnitude != 0.0f) {
+            speedVector /= m_magnitude;
+            
+            m_vx = speedVector[0];
+            m_vy = speedVector[1];
+            m_vz = speedVector[2];
+        }
+
+//         cout << cv::Vec4f(m_vx, m_vy, m_vz, m_magnitude)  << endl;
+    }
+    
+    
+}
+
 bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)
 {
     return true;

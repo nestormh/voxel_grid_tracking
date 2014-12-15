@@ -67,6 +67,8 @@ public:
     
     void updateSpeed(const double & egoDeltaX, const double & egoDeltaY, const double & egoDeltaZ);
     void updateSpeedFromParticles();
+    void updateHistogram(const float & maxVelX, const float & maxVelY, 
+                                        const float & maxVelZ, const float & factorSpeed);
     
     static double commonVolume(const VoxelObstacle & obst1, const VoxelObstacle & obst2);
     

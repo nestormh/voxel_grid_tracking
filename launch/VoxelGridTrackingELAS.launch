@@ -71,8 +71,8 @@
             <param name="motion_frame_id" value="map" />
         </node>-->
         
-        <!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-        <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--         <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
         <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />

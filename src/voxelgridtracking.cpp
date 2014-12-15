@@ -41,7 +41,11 @@
 #include <opencv2/opencv.hpp>
 #include <message_filters/synchronizer.h>
 
-///////////////////////////////////////////
+#include <eigen3/Eigen/Core>
+
+#include <math.h>
+
+ ///////////////////////////////////////////
 
 #include <octomap/octomap.h>
 #include <octomap/OcTree.h>
@@ -140,7 +144,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_particlesPerVoxel = 100;
     m_threshProbForCreation = 0.0; //0.2;
     
-    m_threshOccupancyProb = 0.9;
+    m_threshOccupancyProb = 0.8;
     
     m_neighBorX = 1;
     m_neighBorY = 1;
@@ -652,7 +656,7 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
         for (searchPoint.y = minPoint.y + halfSizeY; searchPoint.y < maxPoint.y; searchPoint.y += m_cellSizeY) {
             for (searchPoint.z = minPoint.z + halfSizeZ; searchPoint.z < maxPoint.z; searchPoint.z += m_cellSizeZ) {
 
-                const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize, 
+                const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize / 2.0, 
                                                                 pointIdxRadiusSearch, pointRadiusSquaredDistance);
                 
                 if (neighbours == 0)
@@ -683,15 +687,19 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                     const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
                     const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
                     
-                    VoxelPtr voxelPtr( new Voxel(x, y, z, 
-                                        searchPoint.x, searchPoint.y, searchPoint.z, 
-                                        m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
-                                        m_maxVelX, m_maxVelY, m_maxVelZ, 
-                                        m_cameraParams, m_speedMethod,
-                                        m_yawInterval, m_pitchInterval, m_factorSpeed));
+                    // FIXME: This is just for debugging
+//                     if (z == 1.0) {
                     
-                    m_voxelList.push_back(voxelPtr);
-                    m_grid[x][y][z] = voxelPtr;
+                        VoxelPtr voxelPtr( new Voxel(x, y, z, 
+                                            searchPoint.x, searchPoint.y, searchPoint.z, 
+                                            m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
+                                            m_maxVelX, m_maxVelY, m_maxVelZ, 
+                                            m_cameraParams, m_speedMethod,
+                                            m_yawInterval, m_pitchInterval, m_factorSpeed));
+                        
+                        m_voxelList.push_back(voxelPtr);
+                        m_grid[x][y][z] = voxelPtr;
+//                     }
                 }
             }
         }
@@ -973,24 +981,49 @@ void VoxelGridTracking::segment()
     }
 }
 
+float angleBetweenVectors(Eigen::Vector2f v1, Eigen::Vector2f v2) {
+    float v1_norm = v1.norm(); 
+    float v2_norm = v2.norm();
+    float dot = v1.dot(v2);
+    float c = dot / (v1_norm * v2_norm);
+    
+    // clamp d to from going beyond +/- 1 as acos(+1/-1) results in infinity
+    if (c > 1.0f) {
+        c = 1.0;
+    } else if (c < -1.0) {
+        c = -1.0;
+    }
+    
+    return acos(c);
+}
+
 bool customRegionGrowing(const VoxelGridTracking::PointNormalType& point1, const VoxelGridTracking::PointNormalType& point2, float squared_distance)
 {
+    
+//     if (((point1.x - point2.x) > 1.0) && 
+//         ((point1.y - point2.y) > 1.0) && 
+//         ((point1.z - point2.z) > 1.0))
+    if ((point1.x - point2.x)  + (point1.y - point2.y) + (point1.z - point2.z) > 1.0)
+        return false;
+    
+    
     // TODO: Limit similarity based on normals
-    //     Eigen::Map<const Eigen::Vector3f> point_a_normal = point_a.normal, point_b_normal = point_b.normal;
-    //     if (squared_distance < 10000)
-    //     {
-    //         if (fabs (point_a.intensity - point_b.intensity) < 8.0f)
-    //             return (true);
-    //         if (fabs (point_a_normal.dot (point_b_normal)) < 0.06)
-    //             return (true);
-    //     }
-    //     else
-    //     {
-    //         if (fabs (point_a.intensity - point_b.intensity) < 3.0f)
-    //             return (true);
-    //     }
-    //     return (false);
-    return true;
+    Eigen::Map<const Eigen::Vector3f> normal1 = point1.normal, normal2 = point2.normal;
+    Eigen::Vector2f v1(point1.normal[0], point1.normal[1]); 
+    Eigen::Vector2f v2(point2.normal[0], point2.normal[1]);
+    float angle = angleBetweenVectors(v1, v2);
+    cout << cv::Vec3f(point1.x, point1.y, point1.z)  << " , " << cv::Vec3f(point2.x, point2.y, point2.z) << " => " 
+    << normal1 << " , " << normal2 << " => " << (angle * 180.0 / CV_PI);
+    if (angle < CV_PI / 2.0)
+        cout << "=> True" << endl;
+    else
+        cout << "=> False" << endl;
+    if (angle < CV_PI / 2.0)
+        return true;
+    
+    return false;
+    
+//     return true;
 }
 
 void VoxelGridTracking::segmentWithClustering()
@@ -1025,11 +1058,28 @@ void VoxelGridTracking::segmentWithClustering()
     pcl::ConditionalEuclideanClustering<PointNormalType> cec (true);
     cec.setInputCloud(pointCloud);
     cec.setConditionFunction (&customRegionGrowing);
-    cec.setClusterTolerance (2.0);
+    cec.setClusterTolerance (sqrt(2.0));
     cec.setMinClusterSize (m_minVoxelsPerObstacle);
     cec.setMaxClusterSize (std::numeric_limits<int>::max());
     cec.segment (*clusters);
     cec.getRemovedClusters (small_clusters, large_clusters);
+    
+    m_obstacles.clear();
+    for (int i = 0; i < clusters->size (); ++i) {
+        
+        VoxelObstacle obst(i, 
+                           m_threshYaw, m_threshPitch, m_threshMagnitude, 
+                           m_minVoxelDensity, m_obstacleSpeedMethod, 
+                           m_yawInterval, m_pitchInterval);
+        
+        for (int j = 0; j < (*clusters)[i].indices.size (); ++j) {
+            VoxelPtr voxel = m_voxelList.at((*clusters)[i].indices[j]);
+            
+            obst.addVoxelToObstacle(*voxel);
+        }
+        
+        m_obstacles.push_back(obst);
+    }
 
     // Using the intensity channel for lazy visualization of the output
     for (int i = 0; i < small_clusters->size (); ++i) {
@@ -1158,6 +1208,7 @@ void VoxelGridTracking::updateSpeedFromObstacles()
     BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles) {
 //         obstacle.updateSpeed(m_deltaX, m_deltaY, m_deltaZ);
         obstacle.updateSpeedFromParticles();
+        obstacle.updateHistogram(m_maxVelX, m_maxVelY, m_maxVelZ, m_factorSpeed);
     }
 }
 
@@ -1385,36 +1436,26 @@ void VoxelGridTracking::publishParticles()
         particles.header.frame_id = m_mapFrame;
         particles.header.stamp = ros::Time();
             
-        BOOST_FOREACH(const ParticlePtr & particle, m_particles) {
-//         for (uint32_t x = 0; x < m_dimX; x++) {
-//             for (uint32_t y = 0; y < m_dimY; y++) {
-//                 for (uint32_t z = 0; z < m_dimZ; z++) {
-//                     const VoxelPtr & voxel = m_grid[x][y][z];
-                    
-//                     if (voxel) {
-//                         for (uint32_t i = 0; i < voxel->numParticles(); i++) {
-//                             const Particle3d & particle = voxel->getParticle(i);
-                            geometry_msgs::Pose pose;
-                            
-                            pose.position.x = particle->x();
-                            pose.position.y = particle->y();
-                            pose.position.z = particle->z();
-                            
-                            const double & vx = particle->vx();
-                            const double & vy = particle->vy();
-                            const double & vz = particle->vz();
-                            
-                            const tf::Quaternion & quat = particle->getQuaternion();
-                            pose.orientation.w = quat.w();
-                            pose.orientation.x = quat.x();
-                            pose.orientation.y = quat.y();
-                            pose.orientation.z = quat.z();
-                            
-                            particles.poses.push_back(pose);
-//                         }
-//                     }
-//                 }
-//             }
+        BOOST_FOREACH(const VoxelPtr & voxel, m_voxelList) {
+            BOOST_FOREACH(const ParticlePtr & particle, voxel->getParticles()) {
+                geometry_msgs::Pose pose;
+                
+                pose.position.x = particle->x();
+                pose.position.y = particle->y();
+                pose.position.z = particle->z();
+                
+                const double & vx = particle->vx();
+                const double & vy = particle->vy();
+                const double & vz = particle->vz();
+                
+                const tf::Quaternion & quat = particle->getQuaternion();
+                pose.orientation.w = quat.w();
+                pose.orientation.x = quat.x();
+                pose.orientation.y = quat.y();
+                pose.orientation.z = quat.z();
+                
+                particles.poses.push_back(pose);
+            }
         }
         
         m_particlesSimplePub.publish(particles);
@@ -1439,43 +1480,57 @@ void VoxelGridTracking::publishParticles()
         particlesD.header.frame_id = m_mapFrame;
         particlesD.header.stamp = ros::Time();
         
-        BOOST_FOREACH(const ParticlePtr & particle, m_particles) {
-            geometry_msgs::Pose pose;
-            
-            int X, Y, Z;
-            
-            particleToVoxel(particle, X, Y, Z);
-            
-            pose.position.x = particle->x();
-            pose.position.y = particle->y();
-            pose.position.z = particle->z();
-            
-            const double & vx = particle->vx();
-            const double & vy = particle->vy();
-            const double & vz = particle->vz();
-            
-            const tf::Quaternion & quat = particle->getQuaternion();
-            pose.orientation.w = quat.w();
-            pose.orientation.x = quat.x();
-            pose.orientation.y = quat.y();
-            pose.orientation.z = quat.z();
-            
-            switch (particle->age()) {
-                case 0:
-                    particles0.poses.push_back(pose);
-                    break;
-                case 1:
-                    particles1.poses.push_back(pose);
-                    break;
-                case 2:
-                    particles2.poses.push_back(pose);
-                    break;
-                case 3:
-                    particles3.poses.push_back(pose);
-                    break;
-                default:
-                    particlesD.poses.push_back(pose);
-                    break;
+        BOOST_FOREACH(const VoxelPtr & voxel, m_voxelList) {
+            BOOST_FOREACH(const ParticlePtr & particle, voxel->getParticles()) {
+                geometry_msgs::Pose pose;
+                
+                int X, Y, Z;
+                
+                particleToVoxel(particle, X, Y, Z);
+                
+                pose.position.x = voxel->centroidX(); // particle->x();
+                pose.position.y = voxel->centroidY(); // particle->y();
+                pose.position.z = voxel->centroidZ(); // particle->z();
+                
+                const double & vx = particle->vx();
+                const double & vy = particle->vy();
+                const double & vz = particle->vz();
+                
+                float magnitude = cv::norm(cv::Vec3f(vx, vy, vz));
+                float maxMagnitude = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ));
+                
+                pose.position.z += (m_cellSizeZ / 2.0) - (m_cellSizeZ * (magnitude / maxMagnitude));
+                
+                if (vx != 0) {
+                    pose.position.x += (float)rand()/(float)(RAND_MAX/(m_cellSizeX / 20.0f));
+                }
+                if (vy != 0) {
+                    pose.position.y += (float)rand()/(float)(RAND_MAX/(m_cellSizeX / 20.0f));
+                }
+                
+                const tf::Quaternion & quat = particle->getQuaternion();
+                pose.orientation.w = quat.w();
+                pose.orientation.x = quat.x();
+                pose.orientation.y = quat.y();
+                pose.orientation.z = quat.z();
+                
+                switch (particle->age()) {
+                    case 0:
+                        particles0.poses.push_back(pose);
+                        break;
+                    case 1:
+                        particles1.poses.push_back(pose);
+                        break;
+                    case 2:
+                        particles2.poses.push_back(pose);
+                        break;
+                    case 3:
+                        particles3.poses.push_back(pose);
+                        break;
+                    default:
+                        particlesD.poses.push_back(pose);
+                        break;
+                }
             }
         }
         
@@ -1510,72 +1565,61 @@ void VoxelGridTracking::publishParticles()
     visualization_msgs::MarkerArray particles;
     
     uint32_t idCount = 0;
-    BOOST_FOREACH(const ParticlePtr & particle, m_particles) {
-//         for (uint32_t x = 0; x < m_dimX; x++) {
-//             for (uint32_t y = 0; y < m_dimY; y++) {
-//                 for (uint32_t z = 0; z < m_dimZ; z++) {
-//                     const VoxelPtr & voxel = m_grid[x][y][z];
-
-//                     if (voxel) {
-//                         for (uint32_t i = 0; i < voxel->numParticles(); i++) {
-//                             const Particle3d & particle = voxel->getParticle(i);
-                
-                        uint32_t age = particle->age();
-                        const uint32_t & id = particle->id();
-                        if (age >= MAX_PARTICLE_AGE_REPRESENTATION)
-                            age = MAX_PARTICLE_AGE_REPRESENTATION - 1;
-                        
-                        visualization_msgs::Marker particleVector;
-                        particleVector.header.frame_id = m_mapFrame;
-                        particleVector.header.stamp = ros::Time();
-                        particleVector.id = idCount++;
-                        stringstream ss;
-                        ss << "age_" << age;
-                        particleVector.ns = ss.str();
-                        particleVector.type = visualization_msgs::Marker::ARROW;
-                        particleVector.action = visualization_msgs::Marker::ADD;
-                        
-                        particleVector.pose.orientation.x = 0.0;
-                        particleVector.pose.orientation.y = 0.0;
-                        particleVector.pose.orientation.z = 0.0;
-                        particleVector.pose.orientation.w = 1.0;
-                        particleVector.scale.x = 0.01;
-                        particleVector.scale.y = 0.03;
-                        particleVector.scale.z = 0.1;
-                        particleVector.color.a = 1.0;
-    //                     particleVector.color.r = m_obstacleColors[age][2];
-    //                     particleVector.color.g = m_obstacleColors[age][1];
-    //                     particleVector.color.b = m_obstacleColors[age][0];
-                        particleVector.color.r = m_obstacleColors[id][2];
-                        particleVector.color.g = m_obstacleColors[id][1];
-                        particleVector.color.b = m_obstacleColors[id][0];
-                        
-                        //         orientation.lifetime = ros::Duration(5.0);
-                        
-                        const double & x = particle->x();
-                        const double & y = particle->y();
-                        const double & z = particle->z();
-                        const double & vx = particle->vx();
-                        const double & vy = particle->vy();
-                        const double & vz = particle->vz();
-                        
-                        geometry_msgs::Point origin, dest;
-                        origin.x = x;
-                        origin.y = y;
-                        origin.z = z;
-                        
-                        dest.x = x + vx * m_deltaTime;
-                        dest.y = y + vy * m_deltaTime;
-                        dest.z = z + vz * m_deltaTime;
-                        
-                        particleVector.points.push_back(origin);
-                        particleVector.points.push_back(dest);
-                        
-                        particles.markers.push_back(particleVector);
-//                     }
-//                 }
-//             }
-//         }
+    BOOST_FOREACH(const VoxelPtr & voxel, m_voxelList) {
+        BOOST_FOREACH(const ParticlePtr & particle, voxel->getParticles()) {
+            uint32_t age = particle->age();
+            const uint32_t & id = particle->id();
+            if (age >= MAX_PARTICLE_AGE_REPRESENTATION)
+                age = MAX_PARTICLE_AGE_REPRESENTATION - 1;
+            
+            visualization_msgs::Marker particleVector;
+            particleVector.header.frame_id = m_mapFrame;
+            particleVector.header.stamp = ros::Time();
+            particleVector.id = idCount++;
+            stringstream ss;
+            ss << "age_" << age;
+            particleVector.ns = ss.str();
+            particleVector.type = visualization_msgs::Marker::ARROW;
+            particleVector.action = visualization_msgs::Marker::ADD;
+            
+            particleVector.pose.orientation.x = 0.0;
+            particleVector.pose.orientation.y = 0.0;
+            particleVector.pose.orientation.z = 0.0;
+            particleVector.pose.orientation.w = 1.0;
+            particleVector.scale.x = 0.01;
+            particleVector.scale.y = 0.03;
+            particleVector.scale.z = 0.1;
+            particleVector.color.a = 1.0;
+//                     particleVector.color.r = m_obstacleColors[age][2];
+//                     particleVector.color.g = m_obstacleColors[age][1];
+//                     particleVector.color.b = m_obstacleColors[age][0];
+            particleVector.color.r = m_obstacleColors[id][2];
+            particleVector.color.g = m_obstacleColors[id][1];
+            particleVector.color.b = m_obstacleColors[id][0];
+            
+            //         orientation.lifetime = ros::Duration(5.0);
+            
+            const double & x = voxel->centroidX(); // particle->x();
+            const double & y = voxel->centroidY(); // particle->y();
+            const double & z = voxel->centroidZ(); // particle->z();
+            const double & vx = particle->vx();
+            const double & vy = particle->vy();
+            const double & vz = particle->vz();
+            
+            geometry_msgs::Point origin, dest;
+            origin.x = x;
+            origin.y = y;
+            origin.z = z;
+            
+            dest.x = x + vx * m_deltaTime;
+            dest.y = y + vy * m_deltaTime;
+            dest.z = z + vz * m_deltaTime;
+            
+            particleVector.points.push_back(origin);
+            particleVector.points.push_back(dest);
+            
+            particles.markers.push_back(particleVector);
+        }
     }
     
     m_particlesPub.publish(particles);
@@ -1587,7 +1631,7 @@ void VoxelGridTracking::publishMainVectors()
     
     for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
         visualization_msgs::Marker voxelMarker;
-        voxelMarker.header.frame_id = m_poseFrame;
+        voxelMarker.header.frame_id = m_mapFrame;
         voxelMarker.header.stamp = ros::Time();
         voxelMarker.id = i;
         voxelMarker.ns = "mainVectors";
@@ -1646,9 +1690,15 @@ void VoxelGridTracking::publishMainVectors()
                     origin.y = voxel->centroidY();
                     origin.z = voxel->centroidZ();
                     
-                    dest.x = voxel->centroidX() + voxel->vx() * m_deltaTime * 5.0;
-                    dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 5.0;
-                    dest.z = voxel->centroidZ() + voxel->vz() * m_deltaTime * 5.0;
+                    cout << cv::Vec4f(voxel->vx(), voxel->vy(), voxel->vz(), voxel->magnitude()) << endl;
+                    
+//                     dest.x = voxel->centroidX() + voxel->vx() * m_deltaTime * 5.0;
+//                     dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 5.0;
+//                     dest.z = voxel->centroidZ() + voxel->vz() * m_deltaTime * 5.0;
+                    
+                    dest.x = voxel->centroidX() + voxel->vx() * voxel->magnitude();
+                    dest.y = voxel->centroidY() + voxel->vy() * voxel->magnitude();
+                    dest.z = voxel->centroidZ() + voxel->vz() * voxel->magnitude();
                     
                     mainVector.points.push_back(origin);
                     mainVector.points.push_back(dest);
@@ -1669,7 +1719,7 @@ void VoxelGridTracking::publishObstacles()
     
     for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
         visualization_msgs::Marker voxelMarker;
-        voxelMarker.header.frame_id = m_poseFrame;
+        voxelMarker.header.frame_id = m_mapFrame;
         voxelMarker.header.stamp = ros::Time();
         voxelMarker.id = i;
         voxelMarker.ns = "obstacles";
@@ -1693,7 +1743,7 @@ void VoxelGridTracking::publishObstacles()
         BOOST_FOREACH(const Voxel & voxel, voxels) {
 //             if (! voxel.empty()) {
                 visualization_msgs::Marker voxelMarker;
-                voxelMarker.header.frame_id = m_poseFrame;
+                voxelMarker.header.frame_id = m_mapFrame;
                 voxelMarker.header.stamp = ros::Time();
                 voxelMarker.id = idCount++;
                 voxelMarker.ns = "obstacles";
@@ -1734,7 +1784,7 @@ void VoxelGridTracking::publishObstacleCubes()
     
     for (uint32_t i = 0; i < 1000; i++) {
         visualization_msgs::Marker obstacleCubeMarker;
-        obstacleCubeMarker.header.frame_id = m_poseFrame;
+        obstacleCubeMarker.header.frame_id = m_mapFrame;
         obstacleCubeMarker.header.stamp = ros::Time();
         obstacleCubeMarker.id = i;
         obstacleCubeMarker.ns = "obstacleCubes";
@@ -1747,7 +1797,7 @@ void VoxelGridTracking::publishObstacleCubes()
     obstacleCubesCleaners.markers.clear();
     for (uint32_t i = 0; i < 1000; i++) {
         visualization_msgs::Marker obstacleCubeMarker;
-        obstacleCubeMarker.header.frame_id = m_poseFrame;
+        obstacleCubeMarker.header.frame_id = m_mapFrame;
         obstacleCubeMarker.header.stamp = ros::Time();
         obstacleCubeMarker.id = i;
         
@@ -1762,7 +1812,7 @@ void VoxelGridTracking::publishObstacleCubes()
     obstacleCubesCleaners.markers.clear();
     for (uint32_t i = 0; i < 1000; i++) {
         visualization_msgs::Marker obstacleCubeMarker;
-        obstacleCubeMarker.header.frame_id = m_poseFrame;
+        obstacleCubeMarker.header.frame_id = m_mapFrame;
         obstacleCubeMarker.header.stamp = ros::Time();
         obstacleCubeMarker.id = i;
         
@@ -1784,7 +1834,7 @@ void VoxelGridTracking::publishObstacleCubes()
         const VoxelObstacle & obstacle = m_obstacles[i];
         
         visualization_msgs::Marker obstacleCubeMarker;
-        obstacleCubeMarker.header.frame_id = m_poseFrame;
+        obstacleCubeMarker.header.frame_id = m_mapFrame;
         obstacleCubeMarker.header.stamp = ros::Time();
         obstacleCubeMarker.id = idCount++;
         obstacleCubeMarker.ns = "obstacleCubes";
@@ -1814,7 +1864,7 @@ void VoxelGridTracking::publishObstacleCubes()
         // ********************************************************
         
         visualization_msgs::Marker speedVector;
-        speedVector.header.frame_id = m_poseFrame;
+        speedVector.header.frame_id = m_mapFrame;
         speedVector.header.stamp = ros::Time();
         speedVector.id = idCount;
         speedVector.ns = "speedVector";
@@ -1838,7 +1888,7 @@ void VoxelGridTracking::publishObstacleCubes()
         geometry_msgs::Point origin, dest;
         origin.x = obstacle.centerX();
         origin.y = obstacle.centerY();
-        origin.z = obstacle.centerZ();        
+        origin.z = obstacle.centerZ() + 0.5;        
 
         // NOTE: This makes vectors longer than they actually are. 
         // For a realistic visualization, multiply by m_deltaTime
@@ -1846,9 +1896,9 @@ void VoxelGridTracking::publishObstacleCubes()
 //         dest.y = obstacle.minY() + obstacle.vy();
 //         dest.z = obstacle.centerZ() + obstacle.vz();
         
-        dest.x = obstacle.centerX() + obstacle.vx() * m_deltaTime * 20.0;
-        dest.y = obstacle.centerY() + obstacle.vy() * m_deltaTime * 20.0;
-        dest.z = obstacle.centerZ() + obstacle.vz() * m_deltaTime * 20.0;
+        dest.x = obstacle.centerX() + obstacle.vx() * obstacle.magnitude();
+        dest.y = obstacle.centerY() + obstacle.vy() * obstacle.magnitude();
+        dest.z = obstacle.centerZ() + obstacle.vz() * obstacle.magnitude() + 0.5;
 
 //         dest.x = obstacle.centerX() + obstacle.vx() / obstacle.numVoxels() * m_deltaTime;
 //         dest.y = obstacle.minY() + obstacle.vy() / obstacle.numVoxels() * m_deltaTime;
@@ -1864,7 +1914,7 @@ void VoxelGridTracking::publishObstacleCubes()
         // ********************************************************
         
         visualization_msgs::Marker speedTextVector;
-        speedTextVector.header.frame_id = m_poseFrame;
+        speedTextVector.header.frame_id = m_mapFrame;
         speedTextVector.header.stamp = ros::Time();
         speedTextVector.id = idCount;
         speedTextVector.ns = "speedText";
@@ -1887,7 +1937,7 @@ void VoxelGridTracking::publishObstacleCubes()
         
         const double speedInKmH = obstacle.magnitude() * 3.6;
         stringstream ss;
-        ss << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle.winnerNumberOfParticles();
+        ss << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle.idx() << endl;//obstacle.winnerNumberOfParticles();
         speedTextVector.text = ss.str();
                 
         obstacleSpeedTextMarkers.markers.push_back(speedTextVector);

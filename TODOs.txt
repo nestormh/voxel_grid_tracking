@@ -1,5 +1,5 @@
-Check why there are negative Z voxel main vectors in visualization
-Limit clustering by using normals.
+Revise the way in which the initial obstacles are computed, now I'm just using half of the voxel.
+Show text with speed gap for each voxel main vector.
 Discretize /map, so voxels always fall in the same positions.
 Once the algorithm is finished, extend it to 3D.
 velodyne_height_map/HeightMapNodelet: Is it really necessary?

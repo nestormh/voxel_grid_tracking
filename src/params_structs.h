@@ -73,7 +73,6 @@ typedef struct {
 typedef struct {
     uint32_t numPoints;
     double magnitudeSum;
-    float probability;
 } t_histogram;
 
 // using namespace pcl;
