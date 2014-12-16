@@ -34,6 +34,7 @@ namespace voxel_grid_tracking {
 Voxel::Voxel() 
 {
     m_occupied = false;
+    m_obstIdx = -1;
 }
 
 Voxel::Voxel(const double & x, const double & y, const double & z, 
@@ -72,6 +73,8 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
     m_oldestParticle = 0;
     
     m_occupied = true;
+    
+    m_obstIdx = -1;
     
     m_speedHistogram.resize(boost::extents[3][3][3][((int)ceil(1.0 / m_factorSpeed)) + 1]);
 }

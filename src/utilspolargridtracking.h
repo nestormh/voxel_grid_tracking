@@ -28,6 +28,12 @@
 
 using namespace std;
 
+#define IS_INBOUND_AND(x, minX, maxX) ((x >= minX) && (x <= maxX))
+#define IS_INBOUND_AND_3D(x, minX, maxX, y, minY, maxY, z, minZ, maxZ) \
+    IS_INBOUND_AND(x, minX, maxX) && \
+    IS_INBOUND_AND(y, minY, maxY) && \
+    IS_INBOUND_AND(z, minZ, maxZ)
+    
 #define LOG_BASE(base, x) log10(x) / log10(base)
 
 #define INIT_CLOCK(start) clock_t start = clock();

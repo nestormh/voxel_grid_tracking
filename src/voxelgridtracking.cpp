@@ -144,7 +144,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_particlesPerVoxel = 100;
     m_threshProbForCreation = 0.0; //0.2;
     
-    m_threshOccupancyProb = 0.8;
+    m_threshOccupancyProb = 0.5; //0.8;
     
     m_neighBorX = 1;
     m_neighBorY = 1;
@@ -249,6 +249,7 @@ VoxelGridTracking::VoxelGridTracking()
     
     m_segmentedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("segmentedPointCloud", 1);
     m_debugSegmentPub = nh.advertise<sensor_msgs::PointCloud2> ("debugSegment", 1);
+    m_debugProbPub = nh.advertise<sensor_msgs::PointCloud2> ("debugProbPub", 1);
 //     ros::spin();
 }
 
@@ -570,6 +571,8 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
 {
     INIT_CLOCK(startCompute)
     
+    PointCloudPtr debugPointCloud(new PointCloud());
+    
     PointType minPoint, maxPoint;
     
     if (m_threads >= 3) {
@@ -671,15 +674,34 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                 const float & u = X * fX_Z;
                 const float & u0 = (X - m_cellSizeX) * fX_Z;
                 const float & u1 = (X + m_cellSizeX) * fX_Z;
-                const float & sigmaX = 2 * (u1 - u0) + 1;
+                const float & sigmaX = (u1 - u0) + 1;//2 * (u1 - u0) + 1;
                 
                 const float & fY_Z = m_focalY / Z;
                 const float & v = Y * fY_Z;
                 const float & v0 = (Y - m_cellSizeY) * fY_Z;
                 const float & v1 = (Y + m_cellSizeY) * fY_Z;
-                const float & sigmaY = 2 * (v1 - v0) + 1;
+                const float & sigmaY = (u1 - u0) + 1; //2 * (v1 - v0) + 1;
                 
                 const float & prob = neighbours / sqrt(sigmaX * sigmaY);
+                
+                {
+                    const float & x = floor((searchPoint.x - minPoint.x) / m_cellSizeX);
+                    const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
+                    const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
+                    
+                    cout << "idx " << cv::Vec3f(x, y, z) << 
+                        "u " << cv::Vec4f(u0, u, u1, u1 - u0) << 
+                        ", v " << cv::Vec4f(v0, v, v1, v1 - v0) << 
+                        ", sigmaX " << sigmaX << ", sigmaY " << sigmaY <<
+                        ", sqrt(sX * sY) " << sqrt(sigmaX * sigmaY) << ", prob " << prob << 
+                        ", neighbours " << neighbours << endl;
+                    
+                    searchPoint.r = std::min(prob, 1.0f) * 255;
+                    searchPoint.g = 255.0f - searchPoint.r;
+                    searchPoint.b = 0.0f;
+                }
+                
+                debugPointCloud->push_back(searchPoint);
                 
                 // Just voxels with enough probability are added to the list
                 if (prob > m_threshOccupancyProb) {
@@ -704,6 +726,14 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
             }
         }
     }
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*debugPointCloud, cloudMsg);
+    cloudMsg.header.frame_id = m_mapFrame;
+    cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = m_currentId;
+    
+    m_debugProbPub.publish(cloudMsg);
     
     END_CLOCK_2(totalCompute, startCompute)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
@@ -947,8 +977,11 @@ void VoxelGridTracking::segment()
                         
                         std::deque<Voxel> voxelsQueue;
                         
-                        VoxelObstacle obst(m_obstacles.size(), m_threshYaw, m_threshPitch, m_threshMagnitude, m_minVoxelDensity, m_obstacleSpeedMethod, m_yawInterval, m_pitchInterval);
-                        if (! obst.addVoxelToObstacle(*voxel))
+                        VoxelObstacle::VoxelObstaclePtr obst(new VoxelObstacle(m_obstacles.size(), 
+                                                                m_threshYaw, m_threshPitch, m_threshMagnitude, 
+                                                                m_minVoxelDensity, m_obstacleSpeedMethod, 
+                                                                m_yawInterval, m_pitchInterval));
+                        if (! obst->addVoxelToObstacle(*voxel))
                             continue;
                         
                         voxelsQueue.push_back(*voxel);
@@ -964,7 +997,7 @@ void VoxelGridTracking::segment()
                                         VoxelPtr & newVoxel = m_grid[x1][y1][z1];
                                         if ((newVoxel) && (! newVoxel->assignedToObstacle()) && (! newVoxel->empty())) {
                                             
-                                            if (obst.addVoxelToObstacle(*newVoxel))
+                                            if (obst->addVoxelToObstacle(*newVoxel))
                                                 voxelsQueue.push_back(*newVoxel);
                                         }
                                     }
@@ -1066,38 +1099,112 @@ void VoxelGridTracking::segmentWithClustering()
     
     m_obstacles.clear();
     for (int i = 0; i < clusters->size (); ++i) {
+        if ((*clusters)[i].indices.size() < m_minVoxelsPerObstacle) {
+            continue;
+        }
         
-        VoxelObstacle obst(i, 
-                           m_threshYaw, m_threshPitch, m_threshMagnitude, 
-                           m_minVoxelDensity, m_obstacleSpeedMethod, 
-                           m_yawInterval, m_pitchInterval);
+        VoxelObstacle::VoxelObstaclePtr obst(new VoxelObstacle(m_obstacles.size(), 
+                                m_threshYaw, m_threshPitch, m_threshMagnitude, 
+                                m_minVoxelDensity, m_obstacleSpeedMethod, 
+                                m_yawInterval, m_pitchInterval));
         
         for (int j = 0; j < (*clusters)[i].indices.size (); ++j) {
             VoxelPtr voxel = m_voxelList.at((*clusters)[i].indices[j]);
             
-            obst.addVoxelToObstacle(*voxel);
+            obst->addVoxelToObstacle(*voxel);
         }
         
         m_obstacles.push_back(obst);
     }
-
-    // Using the intensity channel for lazy visualization of the output
-    for (int i = 0; i < small_clusters->size (); ++i) {
-        for (int j = 0; j < (*small_clusters)[i].indices.size (); ++j) {
-            pointCloud->points[(*small_clusters)[i].indices[j]].r = 0.0;
-            pointCloud->points[(*small_clusters)[i].indices[j]].g = 255.0;
-            pointCloud->points[(*small_clusters)[i].indices[j]].b = 0.0;
-        }
-    }
     
-    for (int i = 0; i < large_clusters->size (); ++i) {
-        for (int j = 0; j < (*large_clusters)[i].indices.size (); ++j) {
-            pointCloud->points[(*large_clusters)[i].indices[j]].r = 0.0;
-            pointCloud->points[(*large_clusters)[i].indices[j]].g = 0.0;
-            pointCloud->points[(*large_clusters)[i].indices[j]].b = 255.0;
+    // TODO: Rewrite this part using small_clusters
+    for (int i = 0; i < clusters->size (); ++i) {
+        int clusterIdx = -1;
+        for (int j = 0; j < (*clusters)[i].indices.size (); ++j) {
+            if ((*clusters)[i].indices.size() < m_minVoxelsPerObstacle) {
+                VoxelPtr currVoxel = m_voxelList.at((*clusters)[i].indices[j]);
+                
+                if (currVoxel->assignedToObstacle())
+                    continue;
+                
+                cout << "Trying " << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << endl;
+                
+                VoxelList neighbourList;
+                neighbourList.reserve(27);
+                
+                int maxNumberOfObstacles = -1;
+                int maxObstacleIdx = -1;
+                for (int32_t incX = -1; incX <= 1; incX++) {
+                    for (int32_t incY = -1; incY <= 1; incY++) {
+                        for (int32_t incZ = -1; incZ <= 1; incZ++) {
+                            const int posX = currVoxel->x() + incX;
+                            const int posY = currVoxel->y() + incY;
+                            const int posZ = currVoxel->z() + incZ;
+                            
+                            cout << cv::Vec3f(posX, posY, posZ) << ", " <<
+                                cv::Vec3f(m_dimX, m_dimY, m_dimZ) << endl;
+                            
+                            if (IS_INBOUND_AND_3D(posX, 0, m_dimX - 1, 
+                                        posY, 0, m_dimY - 1, posZ, 0, m_dimZ -1) &&
+                                    ((incX != 0) || (incY != 0) || (incZ != 0))) {
+
+                                cout << "\tTesting " << cv::Vec3f(posX, posY, posZ) << ", " << m_grid[posX][posY][posZ] << endl;
+                                
+                                VoxelPtr & newVoxel = m_grid[posX][posY][posZ];
+                                
+                                if ((newVoxel) && (newVoxel->assignedToObstacle())) {
+                                    VoxelObstacle::VoxelObstaclePtr & obst = m_obstacles.at(newVoxel->obstIdx());
+                                    cout << "\tIN" << endl;
+                                    cout << "\tnewVoxel->obstIdx() " << newVoxel->obstIdx() << endl;
+                                    cout << "\tm_obstacles.sz " << m_obstacles.size() << endl;
+                                    cout << "\tobst->numVoxels() " << obst->numVoxels() << endl;
+                                    cout << "\tmaxObstacleIdx " << maxObstacleIdx << endl;
+                                    
+                                    if ((int)(obst->numVoxels()) > maxNumberOfObstacles) {
+                                        maxNumberOfObstacles = obst->numVoxels();
+                                        maxObstacleIdx = newVoxel->obstIdx();
+                                        cout << "maxObstacleIdx " << maxObstacleIdx << endl;
+                                    }
+                                } else if (newVoxel) {
+                                    neighbourList.push_back(newVoxel);
+                                    cout << "neighbourList.size " << neighbourList.size() << endl;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (maxObstacleIdx != -1) {
+                    VoxelObstacle::VoxelObstaclePtr & obst = m_obstacles.at(maxObstacleIdx);
+                    obst->addVoxelToObstacle(*currVoxel);
+                    
+                    cout << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << 
+                                "[" << maxObstacleIdx << "] => ";
+                    BOOST_FOREACH (VoxelPtr & neighbour, neighbourList) {
+                        obst->addVoxelToObstacle(*neighbour);
+                        cout << cv::Vec3f(neighbour->x(), neighbour->y(), neighbour->z()) << ", ";
+                    }
+                    cout << endl;
+                } else {
+                    VoxelObstacle::VoxelObstaclePtr obst(new VoxelObstacle(m_obstacles.size(), 
+                                                m_threshYaw, m_threshPitch, m_threshMagnitude, 
+                                                m_minVoxelDensity, m_obstacleSpeedMethod, 
+                                                m_yawInterval, m_pitchInterval));
+                    obst->addVoxelToObstacle(*currVoxel);
+                    cout << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << 
+                        "[" << maxObstacleIdx << "] => ";
+                    BOOST_FOREACH (VoxelPtr & neighbour, neighbourList) {
+                        obst->addVoxelToObstacle(*neighbour);
+                    }
+                    cout << endl;
+                    m_obstacles.push_back(obst);
+                }
+            }
         }
     }
-//     
+
+    cout << __FUNCTION__ << ":" << __LINE__ << endl;
+    
     for (int i = 0; i < clusters->size (); ++i) {
         cv::Scalar color(rand() & 0xFF, rand() & 0xFF, rand() & 0xFF);
         for (int j = 0; j < (*clusters)[i].indices.size (); ++j) {
@@ -1131,7 +1238,7 @@ void VoxelGridTracking::aggregation()
     ObstacleList::iterator it = m_obstacles.begin();
     while (it != m_obstacles.end()) {
         bool joined = false;
-        if (it->numVoxels() <= m_minVoxelsPerObstacle) {
+        if ((*it)->numVoxels() <= m_minVoxelsPerObstacle) {
 //             for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
 //                 if (it->isObstacleConnected(*it2)) {
 //                     it2->joinObstacles(*it);
@@ -1152,7 +1259,7 @@ void VoxelGridTracking::noiseRemoval()
     ObstacleList::iterator it = m_obstacles.begin();
     while (it != m_obstacles.end()) {
         bool erased = false;
-        if (it->numVoxels() <= m_minVoxelsPerObstacle) {
+        if ((*it)->numVoxels() <= m_minVoxelsPerObstacle) {
             it = m_obstacles.erase(it);
             erased = true;
         }
@@ -1163,8 +1270,8 @@ void VoxelGridTracking::noiseRemoval()
 
 void VoxelGridTracking::updateObstacles()
 {
-    BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles) {
-        obstacle.update(m_cellSizeX, m_cellSizeY, m_cellSizeZ);
+    BOOST_FOREACH(VoxelObstacle::VoxelObstaclePtr & obstacle, m_obstacles) {
+        obstacle->update(m_cellSizeX, m_cellSizeY, m_cellSizeZ);
     }
 }
 
@@ -1174,23 +1281,27 @@ void VoxelGridTracking::joinCommonVolumes()
     uint32_t counter = 0;
     while (it1 != m_obstacles.end()) {
         bool joined = false;
-        const double volume1 = (it1->maxX() - it1->minX()) * (it1->maxY() - it1->minY()) * (it1->maxZ() - it1->minZ());
+        const double volume1 = ((*it1)->maxX() - (*it1)->minX()) 
+                             * ((*it1)->maxY() - (*it1)->minY()) 
+                             * ((*it1)->maxZ() - (*it1)->minZ());
         
         for (ObstacleList::iterator it2 = m_obstacles.begin(); it2 != m_obstacles.end(); it2++) {
             if (it1 == it2)
                 continue;
             
-            const double & commonVolume = VoxelObstacle::commonVolume(*it1, *it2);
+            const double & commonVolume = VoxelObstacle::commonVolume(*(*it1), *(*it2));
             
             if (commonVolume > 0.0) {
-                const double volume2 = (it2->maxX() - it2->minX()) * (it2->maxY() - it2->minY()) * (it2->maxZ() - it2->minZ());
+                const double volume2 = ((*it2)->maxX() - (*it2)->minX()) * 
+                                       ((*it2)->maxY() - (*it2)->minY()) * 
+                                       ((*it2)->maxZ() - (*it2)->minZ());
                     
                 const double volumePercent = commonVolume / min(volume1, volume2);
                 
                 if (commonVolume >= m_maxCommonVolume) {
                     
-                    it1->joinObstacles(*it2);
-                    it1->update(m_cellSizeX, m_cellSizeY, m_cellSizeZ);
+                    (*it1)->joinObstacles(*(*it2));
+                    (*it1)->update(m_cellSizeX, m_cellSizeY, m_cellSizeZ);
                     it2 = m_obstacles.erase(it2);
                     if (it2 != m_obstacles.begin())
                         it2--;
@@ -1205,10 +1316,10 @@ void VoxelGridTracking::joinCommonVolumes()
 
 void VoxelGridTracking::updateSpeedFromObstacles()
 {
-    BOOST_FOREACH(VoxelObstacle & obstacle, m_obstacles) {
+    BOOST_FOREACH(VoxelObstacle::VoxelObstaclePtr & obstacle, m_obstacles) {
 //         obstacle.updateSpeed(m_deltaX, m_deltaY, m_deltaZ);
-        obstacle.updateSpeedFromParticles();
-        obstacle.updateHistogram(m_maxVelX, m_maxVelY, m_maxVelZ, m_factorSpeed);
+        obstacle->updateSpeedFromParticles();
+        obstacle->updateHistogram(m_maxVelX, m_maxVelY, m_maxVelZ, m_factorSpeed);
     }
 }
 
@@ -1218,7 +1329,7 @@ void VoxelGridTracking::filterObstacles()
     while (it != m_obstacles.end()) {
 //         if (((it->centerZ() - (it->sizeZ() / 2.0)) > m_minZ) || 
 //             ((it->centerZ() + (it->sizeZ() / 2.0)) < 0.75)) {
-        if (it->sizeZ() < m_minObstacleHeight) {
+        if ((*it)->sizeZ() < m_minObstacleHeight) {
             it = m_obstacles.erase(it);
 //         }  else if (fabs(it->centerZ() - (it->sizeZ() / 2.0) - m_minZ) > m_cellSizeZ) {
 //             it = m_obstacles.erase(it);
@@ -1696,9 +1807,9 @@ void VoxelGridTracking::publishMainVectors()
 //                     dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 5.0;
 //                     dest.z = voxel->centroidZ() + voxel->vz() * m_deltaTime * 5.0;
                     
-                    dest.x = voxel->centroidX() + voxel->vx() * voxel->magnitude();
-                    dest.y = voxel->centroidY() + voxel->vy() * voxel->magnitude();
-                    dest.z = voxel->centroidZ() + voxel->vz() * voxel->magnitude();
+                    dest.x = voxel->centroidX() + voxel->vx() * voxel->magnitude() * 5.0;
+                    dest.y = voxel->centroidY() + voxel->vy() * voxel->magnitude() * 5.0;
+                    dest.z = voxel->centroidZ() + voxel->vz() * voxel->magnitude() * 5.0;
                     
                     mainVector.points.push_back(origin);
                     mainVector.points.push_back(dest);
@@ -1739,7 +1850,7 @@ void VoxelGridTracking::publishObstacles()
 //         if (m_obstacles[i].magnitude() == 0.0)
 //             continue;
         
-        const vector<Voxel> & voxels = m_obstacles[i].voxels();
+        const vector<Voxel> & voxels = m_obstacles[i]->voxels();
         BOOST_FOREACH(const Voxel & voxel, voxels) {
 //             if (! voxel.empty()) {
                 visualization_msgs::Marker voxelMarker;
@@ -1831,7 +1942,7 @@ void VoxelGridTracking::publishObstacleCubes()
     uint32_t idCount = 0;
     
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-        const VoxelObstacle & obstacle = m_obstacles[i];
+        const VoxelObstacle::VoxelObstaclePtr & obstacle = m_obstacles[i];
         
         visualization_msgs::Marker obstacleCubeMarker;
         obstacleCubeMarker.header.frame_id = m_mapFrame;
@@ -1841,17 +1952,17 @@ void VoxelGridTracking::publishObstacleCubes()
         obstacleCubeMarker.type = visualization_msgs::Marker::CUBE;
         obstacleCubeMarker.action = visualization_msgs::Marker::ADD;
         
-        obstacleCubeMarker.pose.position.x = obstacle.centerX();
-        obstacleCubeMarker.pose.position.y = obstacle.centerY();
-        obstacleCubeMarker.pose.position.z = obstacle.centerZ();
+        obstacleCubeMarker.pose.position.x = obstacle->centerX();
+        obstacleCubeMarker.pose.position.y = obstacle->centerY();
+        obstacleCubeMarker.pose.position.z = obstacle->centerZ();
         
         obstacleCubeMarker.pose.orientation.x = 0.0;
         obstacleCubeMarker.pose.orientation.y = 0.0;
         obstacleCubeMarker.pose.orientation.z = 0.0;
         obstacleCubeMarker.pose.orientation.w = 1.0;
-        obstacleCubeMarker.scale.x = obstacle.sizeX();
-        obstacleCubeMarker.scale.y = obstacle.sizeY();
-        obstacleCubeMarker.scale.z = obstacle.sizeZ();
+        obstacleCubeMarker.scale.x = obstacle->sizeX();
+        obstacleCubeMarker.scale.y = obstacle->sizeY();
+        obstacleCubeMarker.scale.z = obstacle->sizeZ();
         obstacleCubeMarker.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
         obstacleCubeMarker.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
         obstacleCubeMarker.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
@@ -1886,9 +1997,9 @@ void VoxelGridTracking::publishObstacleCubes()
         //         orientation.lifetime = ros::Duration(5.0);
         
         geometry_msgs::Point origin, dest;
-        origin.x = obstacle.centerX();
-        origin.y = obstacle.centerY();
-        origin.z = obstacle.centerZ() + 0.5;        
+        origin.x = obstacle->centerX();
+        origin.y = obstacle->centerY();
+        origin.z = obstacle->centerZ();        
 
         // NOTE: This makes vectors longer than they actually are. 
         // For a realistic visualization, multiply by m_deltaTime
@@ -1896,13 +2007,13 @@ void VoxelGridTracking::publishObstacleCubes()
 //         dest.y = obstacle.minY() + obstacle.vy();
 //         dest.z = obstacle.centerZ() + obstacle.vz();
         
-        dest.x = obstacle.centerX() + obstacle.vx() * obstacle.magnitude();
-        dest.y = obstacle.centerY() + obstacle.vy() * obstacle.magnitude();
-        dest.z = obstacle.centerZ() + obstacle.vz() * obstacle.magnitude() + 0.5;
+        dest.x = obstacle->centerX() + obstacle->vx() * obstacle->magnitude() * 5.0;
+        dest.y = obstacle->centerY() + obstacle->vy() * obstacle->magnitude() * 5.0;
+        dest.z = obstacle->centerZ() + obstacle->vz() * obstacle->magnitude() * 5.0;
 
-//         dest.x = obstacle.centerX() + obstacle.vx() / obstacle.numVoxels() * m_deltaTime;
-//         dest.y = obstacle.minY() + obstacle.vy() / obstacle.numVoxels() * m_deltaTime;
-//         dest.z = obstacle.centerZ() + obstacle.vz() / obstacle.numVoxels() * m_deltaTime;
+//         dest.x = obstacle->centerX() + obstacle->vx() / obstacle->numVoxels() * m_deltaTime;
+//         dest.y = obstacle->minY() + obstacle->vy() / obstacle->numVoxels() * m_deltaTime;
+//         dest.z = obstacle->centerZ() + obstacle->vz() / obstacle->numVoxels() * m_deltaTime;
         
         speedVector.points.push_back(origin);
         speedVector.points.push_back(dest);
@@ -1921,9 +2032,9 @@ void VoxelGridTracking::publishObstacleCubes()
         speedTextVector.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
         speedTextVector.action = visualization_msgs::Marker::ADD;
         
-        speedTextVector.pose.position.x = obstacle.centerX();
-        speedTextVector.pose.position.y = obstacle.centerY();
-        speedTextVector.pose.position.z = obstacle.maxZ() + (m_cellSizeZ / 2.0);
+        speedTextVector.pose.position.x = obstacle->centerX();
+        speedTextVector.pose.position.y = obstacle->centerY();
+        speedTextVector.pose.position.z = obstacle->maxZ() + (m_cellSizeZ / 2.0);
         
         speedTextVector.pose.orientation.x = 0.0;
         speedTextVector.pose.orientation.y = 0.0;
@@ -1935,9 +2046,9 @@ void VoxelGridTracking::publishObstacleCubes()
         speedTextVector.color.g = 1.0;
         speedTextVector.color.b = 0.0;
         
-        const double speedInKmH = obstacle.magnitude() * 3.6;
+        const double speedInKmH = obstacle->magnitude() * 3.6;
         stringstream ss;
-        ss << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle.idx() << endl;//obstacle.winnerNumberOfParticles();
+        ss << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle->idx() << endl;//obstacle->winnerNumberOfParticles();
         speedTextVector.text = ss.str();
                 
         obstacleSpeedTextMarkers.markers.push_back(speedTextVector);
@@ -1961,16 +2072,16 @@ void VoxelGridTracking::publishROI()
     pcl::PointXYZRGB point3d, point;
     
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-        const VoxelObstacle & obstacle = m_obstacles[i];
+        const VoxelObstacle::VoxelObstaclePtr & obstacle = m_obstacles[i];
         
-        const double halfX = obstacle.sizeX() / 2.0;
-        const double halfY = obstacle.sizeY() / 2.0;
-        const double halfZ = obstacle.sizeZ() / 2.0;
+        const double halfX = obstacle->sizeX() / 2.0;
+        const double halfY = obstacle->sizeY() / 2.0;
+        const double halfZ = obstacle->sizeZ() / 2.0;
         
         // A
-        roiMsg.rois3d[i].A.x = (obstacle.centerX() - halfX);
-        roiMsg.rois3d[i].A.y = (obstacle.centerY() - halfY);
-        roiMsg.rois3d[i].A.z = (obstacle.centerZ() + halfZ);
+        roiMsg.rois3d[i].A.x = (obstacle->centerX() - halfX);
+        roiMsg.rois3d[i].A.y = (obstacle->centerY() - halfY);
+        roiMsg.rois3d[i].A.z = (obstacle->centerZ() + halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -1979,9 +2090,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].A.v = point.y;
         
         // B
-        roiMsg.rois3d[i].B.x = (obstacle.centerX() + halfX);
-        roiMsg.rois3d[i].B.y = (obstacle.centerY() - halfY);
-        roiMsg.rois3d[i].B.z = (obstacle.centerZ() + halfZ);
+        roiMsg.rois3d[i].B.x = (obstacle->centerX() + halfX);
+        roiMsg.rois3d[i].B.y = (obstacle->centerY() - halfY);
+        roiMsg.rois3d[i].B.z = (obstacle->centerZ() + halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -1990,9 +2101,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].B.v = point.y;
         
         // C
-        roiMsg.rois3d[i].C.x = (obstacle.centerX() - halfX);
-        roiMsg.rois3d[i].C.y = (obstacle.centerY() - halfY);
-        roiMsg.rois3d[i].C.z = (obstacle.centerZ() - halfZ);
+        roiMsg.rois3d[i].C.x = (obstacle->centerX() - halfX);
+        roiMsg.rois3d[i].C.y = (obstacle->centerY() - halfY);
+        roiMsg.rois3d[i].C.z = (obstacle->centerZ() - halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -2001,9 +2112,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].C.v = point.y;
         
         // D
-        roiMsg.rois3d[i].D.x = (obstacle.centerX() + halfX);
-        roiMsg.rois3d[i].D.y = (obstacle.centerY() - halfY);
-        roiMsg.rois3d[i].D.z = (obstacle.centerZ() - halfZ);
+        roiMsg.rois3d[i].D.x = (obstacle->centerX() + halfX);
+        roiMsg.rois3d[i].D.y = (obstacle->centerY() - halfY);
+        roiMsg.rois3d[i].D.z = (obstacle->centerZ() - halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -2012,9 +2123,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].D.v = point.y;
         
         // E
-        roiMsg.rois3d[i].E.x = (obstacle.centerX() - halfX);
-        roiMsg.rois3d[i].E.y = (obstacle.centerY() + halfY);
-        roiMsg.rois3d[i].E.z = (obstacle.centerZ() + halfZ);
+        roiMsg.rois3d[i].E.x = (obstacle->centerX() - halfX);
+        roiMsg.rois3d[i].E.y = (obstacle->centerY() + halfY);
+        roiMsg.rois3d[i].E.z = (obstacle->centerZ() + halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -2023,9 +2134,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].E.v = point.y;
         
         // F
-        roiMsg.rois3d[i].F.x = (obstacle.centerX() + halfX);
-        roiMsg.rois3d[i].F.y = (obstacle.centerY() + halfY);
-        roiMsg.rois3d[i].F.z = (obstacle.centerZ() + halfZ);
+        roiMsg.rois3d[i].F.x = (obstacle->centerX() + halfX);
+        roiMsg.rois3d[i].F.y = (obstacle->centerY() + halfY);
+        roiMsg.rois3d[i].F.z = (obstacle->centerZ() + halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -2034,9 +2145,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].F.v = point.y;
         
         // G
-        roiMsg.rois3d[i].G.x = (obstacle.centerX() - halfX);
-        roiMsg.rois3d[i].G.y = (obstacle.centerY() + halfY);
-        roiMsg.rois3d[i].G.z = (obstacle.centerZ() - halfZ);
+        roiMsg.rois3d[i].G.x = (obstacle->centerX() - halfX);
+        roiMsg.rois3d[i].G.y = (obstacle->centerY() + halfY);
+        roiMsg.rois3d[i].G.z = (obstacle->centerZ() - halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -2045,9 +2156,9 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].G.v = point.y;
         
         // H
-        roiMsg.rois3d[i].H.x = (obstacle.centerX() + halfX);
-        roiMsg.rois3d[i].H.y = (obstacle.centerY() + halfY);
-        roiMsg.rois3d[i].H.z = (obstacle.centerZ() - halfZ);
+        roiMsg.rois3d[i].H.x = (obstacle->centerX() + halfX);
+        roiMsg.rois3d[i].H.y = (obstacle->centerY() + halfY);
+        roiMsg.rois3d[i].H.z = (obstacle->centerZ() - halfZ);
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
@@ -2055,12 +2166,12 @@ void VoxelGridTracking::publishROI()
         roiMsg.rois2d[i].H.u = point.x;
         roiMsg.rois2d[i].H.v = point.y;
         
-        roiMsg.rois3d[i].speed.x = obstacle.vx();
-        roiMsg.rois3d[i].speed.y = obstacle.vy();
-        roiMsg.rois3d[i].speed.z = obstacle.vz();
-        point3d.x = -obstacle.vx();
-        point3d.y = obstacle.vz();
-        point3d.z = obstacle.vy();
+        roiMsg.rois3d[i].speed.x = obstacle->vx();
+        roiMsg.rois3d[i].speed.y = obstacle->vy();
+        roiMsg.rois3d[i].speed.z = obstacle->vz();
+        point3d.x = -obstacle->vx();
+        point3d.y = obstacle->vz();
+        point3d.z = obstacle->vy();
         project3dTo2d(point3d, point, m_cameraParams);
         roiMsg.rois2d[i].speed.x = point.x;
         roiMsg.rois2d[i].speed.y = point.y;
@@ -2101,24 +2212,24 @@ void VoxelGridTracking::visualizeROI2d()
     pcl::PointXYZRGB point3d, point;
     
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-        const VoxelObstacle & obstacle = m_obstacles[i];
+        const VoxelObstacle::VoxelObstaclePtr & obstacle = m_obstacles[i];
         
-        if ((obstacle.minZ() - (m_cellSizeZ / 2.0)) != m_minZ)
+        if ((obstacle->minZ() - (m_cellSizeZ / 2.0)) != m_minZ)
             continue;
         
-        if (obstacle.magnitude() < 1.0)
+        if (obstacle->magnitude() < 1.0)
             continue;
 
         cv::Point2d pointUL(img.cols, img.rows), pointBR(0, 0);
         
-        const double halfX = obstacle.sizeX() / 2.0;
-        const double halfY = obstacle.sizeY() / 2.0;
-        const double halfZ = obstacle.sizeZ() / 2.0;
+        const double halfX = obstacle->sizeX() / 2.0;
+        const double halfY = obstacle->sizeY() / 2.0;
+        const double halfZ = obstacle->sizeZ() / 2.0;
         
         // A
-        point3d.x = -(obstacle.centerX() - halfX);
-        point3d.y = (obstacle.centerZ() - halfZ);
-        point3d.z = (obstacle.centerY() + halfY);
+        point3d.x = -(obstacle->centerX() - halfX);
+        point3d.y = (obstacle->centerZ() - halfZ);
+        point3d.z = (obstacle->centerY() + halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2127,9 +2238,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // B
-        point3d.x = -(obstacle.centerX() + halfX);
-        point3d.y = (obstacle.centerZ() + halfZ);
-        point3d.z = (obstacle.centerY() - halfY);
+        point3d.x = -(obstacle->centerX() + halfX);
+        point3d.y = (obstacle->centerZ() + halfZ);
+        point3d.z = (obstacle->centerY() - halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2138,9 +2249,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // C
-        point3d.x = -(obstacle.centerX() - halfX);
-        point3d.y = (obstacle.centerZ() - halfZ);
-        point3d.z = (obstacle.centerY() - halfY);
+        point3d.x = -(obstacle->centerX() - halfX);
+        point3d.y = (obstacle->centerZ() - halfZ);
+        point3d.z = (obstacle->centerY() - halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2149,9 +2260,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // D
-        point3d.x = -(obstacle.centerX() + halfX);
-        point3d.y = (obstacle.centerZ() - halfZ);
-        point3d.z = (obstacle.centerY() - halfY);
+        point3d.x = -(obstacle->centerX() + halfX);
+        point3d.y = (obstacle->centerZ() - halfZ);
+        point3d.z = (obstacle->centerY() - halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2160,9 +2271,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // E
-        point3d.x = -(obstacle.centerX() - halfX);
-        point3d.y = (obstacle.centerZ() + halfZ);
-        point3d.z = (obstacle.centerY() + halfY);
+        point3d.x = -(obstacle->centerX() - halfX);
+        point3d.y = (obstacle->centerZ() + halfZ);
+        point3d.z = (obstacle->centerY() + halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2171,9 +2282,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // F
-        point3d.x = -(obstacle.centerX() + halfX);
-        point3d.y = (obstacle.centerZ() + halfZ);
-        point3d.z = (obstacle.centerY() + halfY);
+        point3d.x = -(obstacle->centerX() + halfX);
+        point3d.y = (obstacle->centerZ() + halfZ);
+        point3d.z = (obstacle->centerY() + halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2182,9 +2293,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // G
-        point3d.x = -(obstacle.centerX() - halfX);
-        point3d.y = (obstacle.centerZ() - halfZ);
-        point3d.z = (obstacle.centerY() + halfY);
+        point3d.x = -(obstacle->centerX() - halfX);
+        point3d.y = (obstacle->centerZ() - halfZ);
+        point3d.z = (obstacle->centerY() + halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;
@@ -2193,9 +2304,9 @@ void VoxelGridTracking::visualizeROI2d()
         if (point.y > pointBR.y) pointBR.y = point.y;
         
         // H
-        point3d.x = -(obstacle.centerX() + halfX);
-        point3d.y = (obstacle.centerZ() - halfZ);
-        point3d.z = (obstacle.centerY() + halfY);
+        point3d.x = -(obstacle->centerX() + halfX);
+        point3d.y = (obstacle->centerZ() - halfZ);
+        point3d.z = (obstacle->centerY() + halfY);
         project3dTo2d(point3d, point, m_cameraParams);
         
         if (point.x < pointUL.x) pointUL.x = point.x;

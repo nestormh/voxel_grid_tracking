@@ -56,7 +56,6 @@ protected:
     typedef boost::multi_array<double, 4> ColorMatrix;
     typedef boost::multi_array<double, 2> ColorVector;
     typedef boost::multi_array<cv::Scalar, 1> ParticlesColorVector;
-    typedef vector<VoxelObstacle> ObstacleList;
     typedef tf::MessageFilter<sensor_msgs::PointCloud2> TfPointCloudSynchronizer;
     typedef message_filters::Subscriber<sensor_msgs::PointCloud2> PointCloudSubscriber;
     typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> ExactPolicy;
@@ -202,6 +201,7 @@ protected:
     ros::Publisher m_fakePointCloudPub;
     ros::Publisher m_segmentedPointCloudPub;
     ros::Publisher m_debugSegmentPub;
+    ros::Publisher m_debugProbPub;
 };
 
 }

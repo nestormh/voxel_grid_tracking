@@ -268,10 +268,12 @@ void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY
             }
         }
     
-        m_vx /= totalPoints;
-        m_vy /= totalPoints;
-        m_vz /= totalPoints;
-        
+        if (totalPoints != 0) {
+            m_vx /= totalPoints;
+            m_vy /= totalPoints;
+            m_vz /= totalPoints;
+        }
+            
         cv::Vec3f speedVector(m_vx, m_vy, m_vz);
         m_magnitude = cv::norm(speedVector);
         if (m_magnitude != 0.0f) {

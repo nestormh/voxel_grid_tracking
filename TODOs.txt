@@ -1,4 +1,5 @@
-Revise the way in which the initial obstacles are computed, now I'm just using half of the voxel.
+Rewrite this part using small_clusters.
+Obstacle colors depend on speed.
 Show text with speed gap for each voxel main vector.
 Discretize /map, so voxels always fall in the same positions.
 Once the algorithm is finished, extend it to 3D.

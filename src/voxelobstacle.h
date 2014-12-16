@@ -25,6 +25,8 @@ namespace voxel_grid_tracking {
 class VoxelObstacle
 {
 public:
+    typedef boost::shared_ptr<VoxelObstacle> VoxelObstaclePtr;
+
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
                   const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
                   const double & yawInterval, const double & pitchInterval, 
