@@ -135,6 +135,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxVelY = 2.0;
     m_maxVelZ = 0.0;
     
+    m_maxMagnitude = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ));
+    
     m_factorSpeed = 0.1;
     
     if (m_maxVelZ != 0.0) {
@@ -1099,9 +1101,6 @@ void VoxelGridTracking::segmentWithClustering()
     
     m_obstacles.clear();
     for (int i = 0; i < clusters->size (); ++i) {
-//         if ((*clusters)[i].indices.size() < m_minVoxelsPerObstacle) {
-//             continue;
-//         }
         
         VoxelObstaclePtr obst(new VoxelObstacle(m_obstacles.size(), 
                                 m_threshYaw, m_threshPitch, m_threshMagnitude, 
@@ -1117,7 +1116,6 @@ void VoxelGridTracking::segmentWithClustering()
         m_obstacles.push_back(obst);
     }
     
-    // TODO: Rewrite this part using small_clusters
     for (int i = 0; i < small_clusters->size (); ++i) {
         int clusterIdx = -1;
         for (int j = 0; j < (*small_clusters)[i].indices.size (); ++j) {
@@ -1852,50 +1850,41 @@ void VoxelGridTracking::publishObstacles()
     uint32_t idCount = 0;
     
     BOOST_FOREACH(const VoxelObstaclePtr & obstacle, m_obstacles) {
-        //         if (m_obstacles[i].magnitude() == 0.0)
-//             continue;
-        
         const VoxelList & voxels = obstacle->voxels();
-//         visualization_msgs::Marker::_color_type color;
-//         color.r = (obstacle->vx() / m_maxVelX + 1.0) * 128;
-//         color.g = (obstacle->vy() / m_maxVelY + 1.0) * 128;
-//         color.b = 0.0; //(obstacle->vz() / (m_maxVelZ + 0.00000001) + 1.0) * 128;
+        visualization_msgs::Marker::_color_type color;
+        color.r = (obstacle->vx() / m_maxVelX + 1.0) * 0.5f;
+        color.g = (obstacle->vy() / m_maxVelY + 1.0) * 0.5f;
+        color.b = 0;
+        color.a = (0.8 - (0.4 * obstacle->magnitude() / m_maxMagnitude));
         
         cout << cv::Vec3f(obstacle->vx(), obstacle->vy(), obstacle->vz()) << " => " 
             << cv::Vec3f((obstacle->vx() / m_maxVelX + 1.0) * 0.5f, 
                         (obstacle->vy() / m_maxVelY + 1.0) * 0.5f, 0.0) << endl;
-        
+                        
         BOOST_FOREACH(const VoxelPtr & voxel, voxels) {
-//             if (! voxel.empty()) {
-                visualization_msgs::Marker voxelMarker;
-                voxelMarker.header.frame_id = m_mapFrame;
-                voxelMarker.header.stamp = ros::Time();
-                voxelMarker.id = idCount++;
-                voxelMarker.ns = "obstacles";
-                voxelMarker.type = visualization_msgs::Marker::CUBE;
-                voxelMarker.action = visualization_msgs::Marker::ADD;
-                
-                voxelMarker.pose.position.x = voxel->centroidX();
-                voxelMarker.pose.position.y = voxel->centroidY();
-                voxelMarker.pose.position.z = voxel->centroidZ();
-                
-                voxelMarker.pose.orientation.x = 0.0;
-                voxelMarker.pose.orientation.y = 0.0;
-                voxelMarker.pose.orientation.z = 0.0;
-                voxelMarker.pose.orientation.w = 1.0;
-                voxelMarker.scale.x = m_cellSizeX;
-                voxelMarker.scale.y = m_cellSizeY;
-                voxelMarker.scale.z = m_cellSizeZ;
-                
-//                 voxelMarker.color = color;
-                voxelMarker.color.r = (obstacle->vx() / m_maxVelX + 1.0) * 0.5f;
-                voxelMarker.color.g = (obstacle->vy() / m_maxVelY + 1.0) * 0.5f;
-                voxelMarker.color.b = 0;
-                voxelMarker.color.a = 0.6;
-//                 voxelMarker.color.a = voxel.occupiedProb();
-                
-                voxelMarkers.markers.push_back(voxelMarker);
-//             }
+            visualization_msgs::Marker voxelMarker;
+            voxelMarker.header.frame_id = m_mapFrame;
+            voxelMarker.header.stamp = ros::Time();
+            voxelMarker.id = idCount++;
+            voxelMarker.ns = "obstacles";
+            voxelMarker.type = visualization_msgs::Marker::CUBE;
+            voxelMarker.action = visualization_msgs::Marker::ADD;
+            
+            voxelMarker.pose.position.x = voxel->centroidX();
+            voxelMarker.pose.position.y = voxel->centroidY();
+            voxelMarker.pose.position.z = voxel->centroidZ();
+            
+            voxelMarker.pose.orientation.x = 0.0;
+            voxelMarker.pose.orientation.y = 0.0;
+            voxelMarker.pose.orientation.z = 0.0;
+            voxelMarker.pose.orientation.w = 1.0;
+            voxelMarker.scale.x = m_cellSizeX;
+            voxelMarker.scale.y = m_cellSizeY;
+            voxelMarker.scale.z = m_cellSizeZ;
+            
+            voxelMarker.color = color;
+            
+            voxelMarkers.markers.push_back(voxelMarker);
         }
     }
     

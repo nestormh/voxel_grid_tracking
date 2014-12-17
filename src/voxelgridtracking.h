@@ -140,7 +140,7 @@ protected:
     float m_factorSpeed;
     float m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     float m_voxelSize;
-    double m_maxVelX, m_maxVelY, m_maxVelZ;
+    double m_maxVelX, m_maxVelY, m_maxVelZ, m_maxMagnitude;
     double m_particlesPerVoxel, m_threshProbForCreation;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
     double m_threshYaw, m_threshPitch, m_threshMagnitude;

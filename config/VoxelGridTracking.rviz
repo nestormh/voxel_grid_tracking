@@ -76,17 +76,17 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_footprint:
-          Value: false
+          Value: true
         base_left_cam:
-          Value: false
+          Value: true
         base_link:
-          Value: false
+          Value: true
         left_cam:
-          Value: false
+          Value: true
         map:
           Value: true
         odom:
-          Value: false
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -388,13 +388,13 @@ Visualization Manager:
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
-          Enabled: false
+          Enabled: true
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacleSpeedText
           Name: SpeedText
           Namespaces:
             {}
           Queue Size: 100
-          Value: false
+          Value: true
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/tracks
@@ -673,22 +673,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 30.6417
+      Distance: 10.2489
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 16.4163
-        Y: 1.89459
-        Z: -3.84303
+        X: 17.459
+        Y: -1.93387
+        Z: -1.53972
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.259802
+      Pitch: 1.3048
       Target Frame: map
       Value: Orbit (rviz)
-      Yaw: 3.13831
+      Yaw: 3.15831
     Saved:
       - Class: rviz/XYOrbit
         Distance: 20.0678
