@@ -26,7 +26,7 @@ namespace voxel_grid_tracking {
     VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw, const double& threshPitch, 
                                  const double& threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
                                  const double & yawInterval, const double & pitchInterval,
-                                 Voxel& voxel) :
+                                 VoxelPtr& voxel) :
                                     m_idx(obstIdx), m_threshMagnitude(threshMagnitude), 
                                     m_threshYaw(threshYaw), m_threshPitch(threshPitch),
                                     m_minDensity(minDensity), m_speedMethod(speedMethod),
@@ -50,7 +50,7 @@ VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw,
 
 }
 
-bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
+bool VoxelObstacle::addVoxelToObstacle(VoxelPtr& voxel)
 {
 //     if (voxel.density() < m_minDensity)
 //         return false;
@@ -75,7 +75,7 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
 //             return false;
 //         }
 //     } else {
-        voxel.assignObstacle(m_idx);
+        voxel->assignObstacle(m_idx);
         
         updateWithVoxel(voxel);
         
@@ -85,35 +85,35 @@ bool VoxelObstacle::addVoxelToObstacle(Voxel& voxel)
 //     }
 }
 
-void VoxelObstacle::updateWithVoxel(const Voxel& voxel)
+void VoxelObstacle::updateWithVoxel(const VoxelPtr& voxel)
 {
     if (m_voxels.size() != 0) {
-        m_vx += voxel.vx();
-        m_vy += voxel.vy();
-        m_vz += voxel.vz();
+        m_vx += voxel->vx();
+        m_vy += voxel->vy();
+        m_vz += voxel->vz();
 
-        m_minX = min(m_minX, voxel.centroidX());
-        m_maxX = max(m_maxX, voxel.centroidX());
-        m_minY = min(m_minY, voxel.centroidY());
-        m_maxY = max(m_maxY, voxel.centroidY());
-        m_minZ = min(m_minZ, voxel.centroidZ());
-        m_maxZ = max(m_maxZ, voxel.centroidZ());
+        m_minX = min(m_minX, voxel->centroidX());
+        m_maxX = max(m_maxX, voxel->centroidX());
+        m_minY = min(m_minY, voxel->centroidY());
+        m_maxY = max(m_maxY, voxel->centroidY());
+        m_minZ = min(m_minZ, voxel->centroidZ());
+        m_maxZ = max(m_maxZ, voxel->centroidZ());
         
         updateMotionInformation();
     } else {
-        m_magnitude = voxel.magnitude();
-        m_yaw = voxel.yaw();
-        m_pitch = voxel.pitch();
-        m_vx = voxel.vx();
-        m_vy = voxel.vy();
-        m_vz = voxel.vz();
+        m_magnitude = voxel->magnitude();
+        m_yaw = voxel->yaw();
+        m_pitch = voxel->pitch();
+        m_vx = voxel->vx();
+        m_vy = voxel->vy();
+        m_vz = voxel->vz();
         
-        m_minX = voxel.centroidX();
-        m_maxX = voxel.centroidX();
-        m_minY = voxel.centroidY();
-        m_maxY = voxel.centroidY();
-        m_minZ = voxel.centroidZ();
-        m_maxZ = voxel.centroidZ();
+        m_minX = voxel->centroidX();
+        m_maxX = voxel->centroidX();
+        m_minY = voxel->centroidY();
+        m_maxY = voxel->centroidY();
+        m_minZ = voxel->centroidZ();
+        m_maxZ = voxel->centroidZ();
     }
     
 }
@@ -150,8 +150,8 @@ void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY
     uint32_t totalPoints = 0;
     const float & maxSpeed = cv::norm(cv::Vec3f(maxVelX, maxVelY, maxVelZ));
     const float & speed2IdFactor =  maxSpeed * factorSpeed;
-    BOOST_FOREACH(Voxel voxel, m_voxels) {
-        const ParticleList & particles = voxel.getParticles();
+    BOOST_FOREACH(VoxelPtr voxel, m_voxels) {
+        const ParticleList & particles = voxel->getParticles();
         BOOST_FOREACH(ParticlePtr particle, particles) {
 //             if (particle->age() >= 1) {
                 //             const float & vx = m_centroidX - particle->xOld();
@@ -251,8 +251,8 @@ void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY
         uint32_t totalPoints = 0;
         const float & maxSpeed = cv::norm(cv::Vec3f(maxVelX, maxVelY, maxVelZ));
         const float & speed2IdFactor =  maxSpeed * factorSpeed;
-        BOOST_FOREACH(Voxel voxel, m_voxels) {
-            const ParticleList & particles = voxel.getParticles();
+        BOOST_FOREACH(VoxelPtr voxel, m_voxels) {
+            const ParticleList & particles = voxel->getParticles();
             BOOST_FOREACH(ParticlePtr particle, particles) {
                 //             if (particle->age() >= 1) {
                 const float & vx = particle->vx();
@@ -294,9 +294,9 @@ bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)
 {
     return true;
     
-    BOOST_FOREACH(const Voxel & voxel1, m_voxels) {
-        BOOST_FOREACH(const Voxel & voxel2, obstacle.voxels()) {
-            if (voxel1.nextTo(voxel2)) {
+    BOOST_FOREACH(const VoxelPtr & voxel1, m_voxels) {
+        BOOST_FOREACH(const VoxelPtr & voxel2, obstacle.voxels()) {
+            if (voxel1->nextTo(*voxel2)) {
                 return true;
             }
         }
@@ -307,7 +307,7 @@ bool VoxelObstacle::isObstacleConnected(const VoxelObstacle & obstacle)
 
 void VoxelObstacle::joinObstacles(VoxelObstacle& obstacle)
 {
-    BOOST_FOREACH(Voxel voxel, obstacle.voxels()) {
+    BOOST_FOREACH(VoxelPtr voxel, obstacle.voxels()) {
         addVoxelToObstacle(voxel);
     }
 }
@@ -356,12 +356,12 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDelt
             m_pitch = 0.0;
             m_magnitude = 0.0;
             
-            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                m_vx += voxel.vx();
-                m_vy += voxel.vy();
-                m_vz += voxel.vz();
+            BOOST_FOREACH(const VoxelPtr & voxel, m_voxels) {
+                m_vx += voxel->vx();
+                m_vy += voxel->vy();
+                m_vz += voxel->vz();
                 
-                cv::Vec3d tmpV(voxel.vx(), voxel.vy(), voxel.vz());
+                cv::Vec3d tmpV(voxel->vx(), voxel->vy(), voxel->vz());
                 m_magnitude += cv::norm(tmpV);
                 
 //                 cout << "voxel.vx() " << voxel.vx() << endl;
@@ -394,15 +394,15 @@ void VoxelObstacle::updateSpeed(const double & egoDeltaX, const double & egoDelt
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
             
-            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                double yaw = voxel.yaw();
-                double pitch = voxel.pitch();
+            BOOST_FOREACH(const VoxelPtr & voxel, m_voxels) {
+                double yaw = voxel->yaw();
+                double pitch = voxel->pitch();
                 
                 uint32_t idxYaw = yaw / m_yawInterval;
                 uint32_t idxPitch = pitch / m_pitchInterval;
                 
                 histogram[idxPitch][idxYaw].numPoints++;
-                histogram[idxPitch][idxYaw].magnitudeSum += voxel.magnitude();
+                histogram[idxPitch][idxYaw].magnitudeSum += voxel->magnitude();
             }
             
             uint32_t maxIdxPitch = 0;
@@ -492,17 +492,17 @@ void VoxelObstacle::updateSpeedFromParticles()
             uint32_t countParticles = 0;
             
             m_centerX = m_centerY = m_centerZ = 0.0;
-            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                BOOST_FOREACH(const ParticlePtr & particle, voxel.getParticles()) {
+            BOOST_FOREACH(const VoxelPtr & voxel, m_voxels) {
+                BOOST_FOREACH(const ParticlePtr & particle, voxel->getParticles()) {
                     m_vx += particle->vx();
                     m_vy += particle->vy();
                     m_vz += particle->vz();
                     
                     countParticles++;
                 }
-                m_centerX += voxel.centroidX();
-                m_centerY += voxel.centroidY();
-                m_centerZ += voxel.centroidZ();
+                m_centerX += voxel->centroidX();
+                m_centerY += voxel->centroidY();
+                m_centerZ += voxel->centroidZ();
             }
             m_centerX /= m_voxels.size();
             m_centerY /= m_voxels.size();
@@ -530,8 +530,8 @@ void VoxelObstacle::updateSpeedFromParticles()
             
             // We check the results
             double stdevX = 0.0, stdevY = 0.0, stdevZ = 0.0;
-            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                BOOST_FOREACH(const ParticlePtr & particle, voxel.getParticles()) {
+            BOOST_FOREACH(const VoxelPtr & voxel, m_voxels) {
+                BOOST_FOREACH(const ParticlePtr & particle, voxel->getParticles()) {
                     const double & diffX = particle->vx() - m_vx;
                     const double & diffY = particle->vy() - m_vy;
                     const double & diffZ = particle->vz() - m_vz;
@@ -565,8 +565,8 @@ void VoxelObstacle::updateSpeedFromParticles()
             CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
             
             m_centerX = m_centerY = m_centerZ = 0.0;
-            BOOST_FOREACH(const Voxel & voxel, m_voxels) {
-                BOOST_FOREACH(const ParticlePtr & particle, voxel.getParticles()) {
+            BOOST_FOREACH(const VoxelPtr & voxel, m_voxels) {
+                BOOST_FOREACH(const ParticlePtr & particle, voxel->getParticles()) {
                     if (particle->age() > 1) {
                         double yaw, pitch;
                         particle->getYawPitch(yaw, pitch);
@@ -578,9 +578,9 @@ void VoxelObstacle::updateSpeedFromParticles()
                         histogram[idxPitch][idxYaw].magnitudeSum += cv::norm(cv::Vec3f(particle->vx(), particle->vy(), particle->vz()));
                     }
                 }
-                m_centerX += voxel.centroidX();
-                m_centerY += voxel.centroidY();
-                m_centerZ += voxel.centroidZ();
+                m_centerX += voxel->centroidX();
+                m_centerY += voxel->centroidY();
+                m_centerZ += voxel->centroidZ();
             }
             m_centerX /= m_voxels.size();
             m_centerY /= m_voxels.size();

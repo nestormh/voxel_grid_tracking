@@ -1,4 +1,3 @@
-Rewrite this part using small_clusters.
 Obstacle colors depend on speed.
 Show text with speed gap for each voxel main vector.
 Discretize /map, so voxels always fall in the same positions.

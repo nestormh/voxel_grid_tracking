@@ -21,20 +21,22 @@
 #include "voxel.h"
 
 namespace voxel_grid_tracking {
+
+class VoxelObstacle;
+typedef boost::shared_ptr<VoxelObstacle> VoxelObstaclePtr;
+typedef vector<VoxelObstaclePtr> VoxelObstacleList;
     
 class VoxelObstacle
 {
 public:
-    typedef boost::shared_ptr<VoxelObstacle> VoxelObstaclePtr;
-
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
                   const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
                   const double & yawInterval, const double & pitchInterval, 
-                  Voxel & voxel);
+                  VoxelPtr & voxel);
     VoxelObstacle(const uint32_t & obstIdx, const double & threshYaw, const double & threshPitch, 
                   const double & threshMagnitude, const double & minDensity, const SpeedMethod & speedMethod,
                   const double & yawInterval, const double & pitchInterval);
-    bool addVoxelToObstacle(Voxel & voxel);
+    bool addVoxelToObstacle(VoxelPtr & voxel);
     void update(const double & m_voxelSizeX, const double & m_voxelSizeY, const double & m_voxelSizeZ);
     
     double centerX() const { return m_centerX; }
@@ -58,7 +60,7 @@ public:
     
     double magnitude() const { return m_magnitude; }
     
-    vector<Voxel> voxels() const { return m_voxels; }
+    VoxelList voxels() const { return m_voxels; }
     
     uint32_t idx() const { return m_idx; }
     
@@ -78,9 +80,9 @@ public:
     
 protected:
     void updateMotionInformation();
-    void updateWithVoxel(const Voxel & voxel);
+    void updateWithVoxel(const VoxelPtr & voxel);
     
-    vector<Voxel> m_voxels;
+    VoxelList m_voxels;
     
     uint32_t m_idx;
     double m_magnitude;

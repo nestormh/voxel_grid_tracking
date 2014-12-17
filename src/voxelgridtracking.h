@@ -130,7 +130,7 @@ protected:
     
     tf::TransformListener m_tfListener;
     
-    ObstacleList m_obstacles;
+    VoxelObstacleList m_obstacles;
     
     uint32_t m_currentId;
     
