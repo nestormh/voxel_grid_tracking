@@ -35,6 +35,9 @@
 #include <pcl_ros/features/normal_3d.h>
 #include <pcl-1.7/pcl/segmentation/conditional_euclidean_clustering.h>
 
+#include <pcl/point_cloud.h>
+#include <pcl/octree/octree.h>
+
 #include <boost/foreach.hpp>
 #include <boost/graph/graph_concepts.hpp>
 
@@ -136,6 +139,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxVelZ = 0.0;
     
     m_maxMagnitude = cv::norm(cv::Vec3f(m_maxVelX, m_maxVelY, m_maxVelZ));
+    m_minMagnitude = 0.3; // ~ 1.08 Km/h
     
     m_factorSpeed = 0.1;
     
@@ -248,6 +252,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
     m_ROIPub = nh.advertise<polar_grid_tracking::roiArray>("roiArray", 1);
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
+    m_dynObjectsPub = nh.advertise<sensor_msgs::PointCloud2> ("dynamic_objects", 1);
     
     m_segmentedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("segmentedPointCloud", 1);
     m_debugSegmentPub = nh.advertise<sensor_msgs::PointCloud2> ("debugSegment", 1);
@@ -280,6 +285,7 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     m_deltaTime = (msgPointCloud->header.stamp - m_lastPointCloudTime).toSec();
     
     pcl::fromROSMsg<pcl::PointXYZRGB>(*msgPointCloud, *m_pointCloud);
+    
     m_currentId = msgPointCloud->header.seq;
     
     m_lastPointCloudTime = msgPointCloud->header.stamp;
@@ -323,6 +329,12 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     END_CLOCK(totalCompute1, startCompute1)
     ROS_INFO("[%s] %d, reset: %f seconds", __FUNCTION__, __LINE__, totalCompute1);
     
+//     INIT_CLOCK(startExtractDynamicObjects)
+//     extractDynamicObjects(pointCloud);
+//     END_CLOCK(totalExtractDynamicObjects, startExtractDynamicObjects)
+//     ROS_INFO("[%s] %d, extractDynamicObjects: %f seconds", __FUNCTION__, __LINE__, totalExtractDynamicObjects);
+    
+// START OF COMMENT
     // Having a point cloud, the voxel grid is computed
     INIT_CLOCK(startCompute2)
 //     constructOctomapFromPointCloud(pointCloud);
@@ -373,9 +385,14 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     initialization();
     END_CLOCK(totalCompute9, startCompute9)
     ROS_INFO("[%s] %d, initialization: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
+// END OF COMMENT
+    
+    
 //     publishParticles(m_oldParticlesPub, 2.0);
     
 //     initialization();
+    
+    
 
     END_CLOCK(totalCompute, startCompute)
     
@@ -394,6 +411,8 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     cout << __FILE__ << ":" << __LINE__ << endl;
     publishObstacleCubes();
     cout << __FILE__ << ":" << __LINE__ << endl;
+
+    
 //     publishROI();
 //     publishFakePointCloud();
 //     visualizeROI2d();
@@ -569,6 +588,62 @@ void VoxelGridTracking::constructOctomapFromPointCloud(const PointCloudPtr& poin
    m_segmentedPointCloudPub.publish(cloudMsg);
 }
 
+void VoxelGridTracking::extractDynamicObjects(const VoxelGridTracking::PointCloudPtr& pointCloud)
+{
+    cout << "m_lastPointCloud " << m_lastPointCloud << endl;
+    if (! m_lastPointCloud) {
+        m_lastPointCloud.reset(pointCloud.get());
+        
+        return;
+    }
+    
+    cout << __FILE__ << ":" << __LINE__ << endl;
+    // Octree resolution - side length of octree voxels
+    float resolution = 0.025f;
+    
+    // Instantiate octree-based point cloud change detection class
+    pcl::octree::OctreePointCloudChangeDetector<PointType> octree (resolution);
+    
+    // Add points from cloudA to octree
+    octree.setInputCloud(m_lastPointCloud);
+    octree.addPointsFromInputCloud();
+    
+    // Switch octree buffers: This resets octree but keeps previous tree structure in memory.
+    octree.switchBuffers();
+    
+    // Add points from cloudB to octree
+    octree.setInputCloud (pointCloud);
+    octree.addPointsFromInputCloud ();
+    
+    std::vector<int> idxVector;
+    
+    // Get vector of point indices from octree voxels which did not exist in previous buffer
+    octree.getPointIndicesFromNewVoxels (idxVector);
+    
+    PointCloudPtr pointCloudOutput(new PointCloud);
+    pointCloudOutput->reserve(idxVector.size ());
+    
+    cout << "Extracted " << idxVector.size () << " points" << endl;
+    
+    for (int i = 0; i < idxVector.size (); i++) {
+        PointType point = pointCloud->at(i);
+        point.r = 255.0;
+        
+        pointCloudOutput->push_back(point);
+    }
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*pointCloudOutput, cloudMsg);
+    cloudMsg.header.frame_id = m_mapFrame;
+    cloudMsg.header.stamp = ros::Time::now();
+    cloudMsg.header.seq = rand() / RAND_MAX;
+    
+    m_dynObjectsPub.publish(cloudMsg);
+
+    m_lastPointCloud = pointCloud;
+}
+
+
 void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud)
 {
     INIT_CLOCK(startCompute)
@@ -620,13 +695,13 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
     const float halfSizeY = m_cellSizeY / 2.0f;
     const float halfSizeZ = m_cellSizeZ / 2.0f;
     
-    m_minX = floor(minPoint.x / halfSizeX) * halfSizeX;
-    m_minY = floor(minPoint.y / halfSizeY) * halfSizeY;
-    m_minZ = floor(minPoint.z / halfSizeZ) * halfSizeZ;
+    m_minX = floor(minPoint.x / m_cellSizeX) * m_cellSizeX;
+    m_minY = floor(minPoint.y / m_cellSizeY) * m_cellSizeY;
+    m_minZ = floor(minPoint.z / m_cellSizeZ) * m_cellSizeZ;
     
-    m_maxX = ceil(maxPoint.x / halfSizeX) * halfSizeX;
-    m_maxY = ceil(maxPoint.y / halfSizeY) * halfSizeY;
-    m_maxZ = ceil(maxPoint.z / halfSizeZ) * halfSizeZ;
+    m_maxX = ceil(maxPoint.x / m_cellSizeX) * m_cellSizeX;
+    m_maxY = ceil(maxPoint.y / m_cellSizeY) * m_cellSizeY;
+    m_maxZ = ceil(maxPoint.z / m_cellSizeZ) * m_cellSizeZ;
     
     m_dimX = (m_maxX - m_minX) / m_cellSizeX;
     m_dimY = (m_maxY - m_minY) / m_cellSizeY;
@@ -657,10 +732,11 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
     std::vector<float> pointRadiusSquaredDistance;
     
     PointType searchPoint;
-    for (searchPoint.x = minPoint.x + halfSizeX; searchPoint.x < maxPoint.x; searchPoint.x += m_cellSizeX) {
-        for (searchPoint.y = minPoint.y + halfSizeY; searchPoint.y < maxPoint.y; searchPoint.y += m_cellSizeY) {
-            for (searchPoint.z = minPoint.z + halfSizeZ; searchPoint.z < maxPoint.z; searchPoint.z += m_cellSizeZ) {
-
+    for (searchPoint.x = m_minX + halfSizeX; searchPoint.x < m_maxX; searchPoint.x += m_cellSizeX) {
+        for (searchPoint.y = m_minY + halfSizeY; searchPoint.y < m_maxY; searchPoint.y += m_cellSizeY) {
+            for (searchPoint.z = m_minZ + halfSizeZ; searchPoint.z < m_maxZ; searchPoint.z += m_cellSizeZ) {
+                
+    
                 const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize / 2.0, 
                                                                 pointIdxRadiusSearch, pointRadiusSquaredDistance);
                 
@@ -686,30 +762,13 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                 
                 const float & prob = neighbours / sqrt(sigmaX * sigmaY);
                 
-                {
-                    const float & x = floor((searchPoint.x - minPoint.x) / m_cellSizeX);
-                    const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
-                    const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
-                    
-                    cout << "idx " << cv::Vec3f(x, y, z) << 
-                        "u " << cv::Vec4f(u0, u, u1, u1 - u0) << 
-                        ", v " << cv::Vec4f(v0, v, v1, v1 - v0) << 
-                        ", sigmaX " << sigmaX << ", sigmaY " << sigmaY <<
-                        ", sqrt(sX * sY) " << sqrt(sigmaX * sigmaY) << ", prob " << prob << 
-                        ", neighbours " << neighbours << endl;
-                    
-                    searchPoint.r = std::min(prob, 1.0f) * 255;
-                    searchPoint.g = 255.0f - searchPoint.r;
-                    searchPoint.b = 0.0f;
-                }
-                
                 debugPointCloud->push_back(searchPoint);
                 
                 // Just voxels with enough probability are added to the list
                 if (prob > m_threshOccupancyProb) {
-                    const float & x = floor((searchPoint.x - minPoint.x) / m_cellSizeX);
-                    const float & y = floor((searchPoint.y - minPoint.y)  / m_cellSizeY);
-                    const float & z = floor((searchPoint.z - minPoint.z)  / m_cellSizeZ);
+                    const float & x = floor((searchPoint.x - m_minX) / m_cellSizeX);
+                    const float & y = floor((searchPoint.y - m_minY)  / m_cellSizeY);
+                    const float & z = floor((searchPoint.z - m_minZ)  / m_cellSizeZ);
                     
                     // FIXME: This is just for debugging
 //                     if (z == 1.0) {
@@ -774,7 +833,7 @@ void VoxelGridTracking::updateFromOFlow()
 }
 
 // TODO: This part is not meant to be used in the future. I leave it for compatibility, but 
-// it will dissappear in the future.
+// it will dissappear.
 void VoxelGridTracking::getMeasurementModel()
 {
     for (uint32_t x = 0; x < m_dimX; x++) {
@@ -917,7 +976,7 @@ void VoxelGridTracking::measurementBasedUpdate()
 //                     voxel->setMainVectors(m_deltaX, m_deltaY, m_deltaZ);
                     voxel->updateHistogram();
                     voxel->reduceParticles(m_maxNumberOfParticles);
-                    voxel->centerParticles();
+//                     voxel->centerParticles();
                 }
             }
         }
@@ -1047,12 +1106,12 @@ bool customRegionGrowing(const VoxelGridTracking::PointNormalType& point1, const
     Eigen::Vector2f v1(point1.normal[0], point1.normal[1]); 
     Eigen::Vector2f v2(point2.normal[0], point2.normal[1]);
     float angle = angleBetweenVectors(v1, v2);
-    cout << cv::Vec3f(point1.x, point1.y, point1.z)  << " , " << cv::Vec3f(point2.x, point2.y, point2.z) << " => " 
-    << normal1 << " , " << normal2 << " => " << (angle * 180.0 / CV_PI);
-    if (angle < CV_PI / 2.0)
-        cout << "=> True" << endl;
-    else
-        cout << "=> False" << endl;
+//     cout << cv::Vec3f(point1.x, point1.y, point1.z)  << " , " << cv::Vec3f(point2.x, point2.y, point2.z) << " => " 
+//     << normal1 << " , " << normal2 << " => " << (angle * 180.0 / CV_PI);
+//     if (angle < CV_PI / 2.0)
+//         cout << "=> True" << endl;
+//     else
+//         cout << "=> False" << endl;
     if (angle < CV_PI / 2.0)
         return true;
     
@@ -1125,7 +1184,7 @@ void VoxelGridTracking::segmentWithClustering()
                 if (currVoxel->assignedToObstacle())
                     continue;
                 
-                cout << "Trying " << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << endl;
+//                 cout << "Trying " << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << endl;
                 
                 VoxelList neighbourList;
                 neighbourList.reserve(27);
@@ -1139,33 +1198,33 @@ void VoxelGridTracking::segmentWithClustering()
                             const int posY = currVoxel->y() + incY;
                             const int posZ = currVoxel->z() + incZ;
                             
-                            cout << cv::Vec3f(posX, posY, posZ) << ", " <<
-                                cv::Vec3f(m_dimX, m_dimY, m_dimZ) << endl;
+//                             cout << cv::Vec3f(posX, posY, posZ) << ", " <<
+//                                 cv::Vec3f(m_dimX, m_dimY, m_dimZ) << endl;
                             
                             if (IS_INBOUND_AND_3D(posX, 0, m_dimX - 1, 
                                         posY, 0, m_dimY - 1, posZ, 0, m_dimZ -1) &&
                                     ((incX != 0) || (incY != 0) || (incZ != 0))) {
 
-                                cout << "\tTesting " << cv::Vec3f(posX, posY, posZ) << ", " << m_grid[posX][posY][posZ] << endl;
+//                                 cout << "\tTesting " << cv::Vec3f(posX, posY, posZ) << ", " << m_grid[posX][posY][posZ] << endl;
                                 
                                 VoxelPtr & newVoxel = m_grid[posX][posY][posZ];
                                 
                                 if ((newVoxel) && (newVoxel->assignedToObstacle())) {
                                     VoxelObstaclePtr & obst = m_obstacles.at(newVoxel->obstIdx());
-                                    cout << "\tIN" << endl;
-                                    cout << "\tnewVoxel->obstIdx() " << newVoxel->obstIdx() << endl;
-                                    cout << "\tm_obstacles.sz " << m_obstacles.size() << endl;
-                                    cout << "\tobst->numVoxels() " << obst->numVoxels() << endl;
-                                    cout << "\tmaxObstacleIdx " << maxObstacleIdx << endl;
+//                                     cout << "\tIN" << endl;
+//                                     cout << "\tnewVoxel->obstIdx() " << newVoxel->obstIdx() << endl;
+//                                     cout << "\tm_obstacles.sz " << m_obstacles.size() << endl;
+//                                     cout << "\tobst->numVoxels() " << obst->numVoxels() << endl;
+//                                     cout << "\tmaxObstacleIdx " << maxObstacleIdx << endl;
                                     
                                     if ((int)(obst->numVoxels()) > maxNumberOfObstacles) {
                                         maxNumberOfObstacles = obst->numVoxels();
                                         maxObstacleIdx = newVoxel->obstIdx();
-                                        cout << "maxObstacleIdx " << maxObstacleIdx << endl;
+//                                         cout << "maxObstacleIdx " << maxObstacleIdx << endl;
                                     }
                                 } else if (newVoxel) {
                                     neighbourList.push_back(newVoxel);
-                                    cout << "neighbourList.size " << neighbourList.size() << endl;
+//                                     cout << "neighbourList.size " << neighbourList.size() << endl;
                                 }
                             }
                         }
@@ -1176,25 +1235,25 @@ void VoxelGridTracking::segmentWithClustering()
                     VoxelObstaclePtr & obst = m_obstacles.at(maxObstacleIdx);
                     obst->addVoxelToObstacle(currVoxel);
                     
-                    cout << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << 
-                                "[" << maxObstacleIdx << "] => ";
+//                     cout << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << 
+//                                 "[" << maxObstacleIdx << "] => ";
                     BOOST_FOREACH (VoxelPtr & neighbour, neighbourList) {
                         obst->addVoxelToObstacle(neighbour);
-                        cout << cv::Vec3f(neighbour->x(), neighbour->y(), neighbour->z()) << ", ";
+//                         cout << cv::Vec3f(neighbour->x(), neighbour->y(), neighbour->z()) << ", ";
                     }
-                    cout << endl;
+//                     cout << endl;
                 } else {
                     VoxelObstaclePtr obst(new VoxelObstacle(m_obstacles.size(), 
                                                 m_threshYaw, m_threshPitch, m_threshMagnitude, 
                                                 m_minVoxelDensity, m_obstacleSpeedMethod, 
                                                 m_yawInterval, m_pitchInterval));
                     obst->addVoxelToObstacle(currVoxel);
-                    cout << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << 
-                        "[" << maxObstacleIdx << "] => ";
+//                     cout << cv::Vec3f(currVoxel->x(), currVoxel->y(), currVoxel->z()) << 
+//                         "[" << maxObstacleIdx << "] => ";
                     BOOST_FOREACH (VoxelPtr & neighbour, neighbourList) {
                         obst->addVoxelToObstacle(neighbour);
                     }
-                    cout << endl;
+//                     cout << endl;
                     m_obstacles.push_back(obst);
                 }
             }
@@ -1322,7 +1381,7 @@ void VoxelGridTracking::updateSpeedFromObstacles()
     BOOST_FOREACH(VoxelObstaclePtr & obstacle, m_obstacles) {
 //         obstacle.updateSpeed(m_deltaX, m_deltaY, m_deltaZ);
         obstacle->updateSpeedFromParticles();
-        obstacle->updateHistogram(m_maxVelX, m_maxVelY, m_maxVelZ, m_factorSpeed);
+        obstacle->updateHistogram(m_maxVelX, m_maxVelY, m_maxVelZ, m_factorSpeed, m_minMagnitude);
     }
 }
 
@@ -1804,7 +1863,7 @@ void VoxelGridTracking::publishMainVectors()
                     origin.y = voxel->centroidY();
                     origin.z = voxel->centroidZ();
                     
-                    cout << cv::Vec4f(voxel->vx(), voxel->vy(), voxel->vz(), voxel->magnitude()) << endl;
+//                     cout << cv::Vec4f(voxel->vx(), voxel->vy(), voxel->vz(), voxel->magnitude()) << endl;
                     
 //                     dest.x = voxel->centroidX() + voxel->vx() * m_deltaTime * 5.0;
 //                     dest.y = voxel->centroidY() + voxel->vy() * m_deltaTime * 5.0;
@@ -1854,12 +1913,16 @@ void VoxelGridTracking::publishObstacles()
         visualization_msgs::Marker::_color_type color;
         color.r = (obstacle->vx() / m_maxVelX + 1.0) * 0.5f;
         color.g = (obstacle->vy() / m_maxVelY + 1.0) * 0.5f;
-        color.b = 0;
+        color.b = 1.0;
         color.a = (0.8 - (0.4 * obstacle->magnitude() / m_maxMagnitude));
         
-        cout << cv::Vec3f(obstacle->vx(), obstacle->vy(), obstacle->vz()) << " => " 
-            << cv::Vec3f((obstacle->vx() / m_maxVelX + 1.0) * 0.5f, 
-                        (obstacle->vy() / m_maxVelY + 1.0) * 0.5f, 0.0) << endl;
+        if (obstacle->magnitude() == 0.0) {
+            color.r = color.g = color.b = 0.0;
+        }
+        
+//         cout << cv::Vec3f(obstacle->vx(), obstacle->vy(), obstacle->vz()) << " => " 
+//             << cv::Vec3f((obstacle->vx() / m_maxVelX + 1.0) * 0.5f, 
+//                         (obstacle->vy() / m_maxVelY + 1.0) * 0.5f, 0.0) << endl;
                         
         BOOST_FOREACH(const VoxelPtr & voxel, voxels) {
             visualization_msgs::Marker voxelMarker;
@@ -2050,7 +2113,7 @@ void VoxelGridTracking::publishObstacleCubes()
         
         const double speedInKmH = obstacle->magnitude() * 3.6;
         stringstream ss;
-        ss << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle->idx() << endl;//obstacle->winnerNumberOfParticles();
+        ss << m_currentId << " => " << std::setprecision(3) << speedInKmH << " Km/h" << " - " << obstacle->idx() << endl;//obstacle->winnerNumberOfParticles();
         speedTextVector.text = ss.str();
                 
         obstacleSpeedTextMarkers.markers.push_back(speedTextVector);

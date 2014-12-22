@@ -74,6 +74,7 @@ protected:
     // Method functions
     void compute(const PointCloudPtr & pointCloud);
     void reset();
+    void extractDynamicObjects(const PointCloudPtr& pointCloud);
     void constructOctomapFromPointCloud(const PointCloudPtr& pointCloud);
     void getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud);
     void getMeasurementModel();
@@ -108,6 +109,7 @@ protected:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_fakePointCloud;
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr m_oFlowCloud;
+    PointCloudPtr m_lastPointCloud;
     
     double m_deltaYaw, m_deltaPitch, m_speed, m_deltaTime;
     ros::Time m_lastPointCloudTime;
@@ -140,7 +142,7 @@ protected:
     float m_factorSpeed;
     float m_cellSizeX, m_cellSizeY, m_cellSizeZ;
     float m_voxelSize;
-    double m_maxVelX, m_maxVelY, m_maxVelZ, m_maxMagnitude;
+    double m_maxVelX, m_maxVelY, m_maxVelZ, m_maxMagnitude, m_minMagnitude;
     double m_particlesPerVoxel, m_threshProbForCreation;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
@@ -181,6 +183,7 @@ protected:
     InfoSubscriber m_cameraInfoSub;
     
     // Publishers
+    ros::Publisher m_dynObjectsPub;
     ros::Publisher m_voxelsPub;
     ros::Publisher m_voxelsIdxPub;
     ros::Publisher m_pointsPerVoxelPub;

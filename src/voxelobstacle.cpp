@@ -139,7 +139,8 @@ void VoxelObstacle::updateMotionInformation()
 }
 
 void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY, 
-                                    const float & maxVelZ, const float & factorSpeed)
+                                    const float & maxVelZ, const float & factorSpeed,
+                                    const float & minVel)
 {
 //     cout << "-----------------------------------------" << endl;
 //     cout << "Analyzing " << m_idx << endl;
@@ -254,17 +255,17 @@ void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY
         BOOST_FOREACH(VoxelPtr voxel, m_voxels) {
             const ParticleList & particles = voxel->getParticles();
             BOOST_FOREACH(ParticlePtr particle, particles) {
-                //             if (particle->age() >= 1) {
+                            if (particle->age() >= 2) {
                 const float & vx = particle->vx();
                 const float & vy = particle->vy();
                 const float & vz = particle->vz();
-
+                
                 uint32_t increment = particle->age(); 
                 m_vx += vx * increment;
                 m_vy += vy * increment;
                 m_vz += vz * increment;
                 totalPoints += increment;
-                //             }
+                            }
             }
         }
     
@@ -283,7 +284,11 @@ void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY
             m_vy = speedVector[1];
             m_vz = speedVector[2];
         }
-
+        
+        if (m_magnitude < minVel) {
+            m_vx = m_vy = m_vz = m_magnitude = 0.0;
+        }
+        
 //         cout << cv::Vec4f(m_vx, m_vy, m_vz, m_magnitude)  << endl;
     }
     

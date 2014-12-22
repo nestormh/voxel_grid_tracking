@@ -1,6 +1,8 @@
-Obstacle colors depend on speed.
-Show text with speed gap for each voxel main vector.
-Discretize /map, so voxels always fall in the same positions.
+Clean code
+Generate a node for mainStereoAndOdom
+Prepare a benchmark using KITTI images (tracklets are just available for cars, or tracking benchmark).
+Try these also: http://www.vision.ee.ethz.ch/~aess/dataset/
+Evaluate and compare with KITTI and Danescu.
 Once the algorithm is finished, extend it to 3D.
 velodyne_height_map/HeightMapNodelet: Is it really necessary?
-Accumulate frmes using PlarRectification in order to clean input
+Accumulate frames using PolarRectification in order to clean input ???
