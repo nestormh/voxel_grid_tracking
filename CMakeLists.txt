@@ -97,6 +97,8 @@ generate_messages(
   geometry_msgs
 )
 
+# generate_messages()
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -109,7 +111,16 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES polar_grid_tracking_ros
- CATKIN_DEPENDS roscpp std_msgs tf tf2_ros cv_bridge image_transport camera_calibration_parsers message_runtime
+ CATKIN_DEPENDS 
+    roscpp 
+    std_msgs 
+    tf 
+    tf2_ros 
+    cv_bridge 
+    image_transport 
+    camera_calibration_parsers 
+    message_runtime 
+    message_generation
 #  DEPENDS system_lib
 )
 

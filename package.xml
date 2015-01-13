@@ -45,6 +45,8 @@
   <build_depend>elas</build_depend>
   <build_depend>octomap</build_depend>
   <build_depend>octomap_ros</build_depend>
+  <build_depend>message_generation</build_depend>
+  
   <run_depend>std_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>tf2_ros</run_depend>
@@ -56,6 +58,7 @@
   <run_depend>elas</run_depend>
   <run_depend>octomap</run_depend>
   <run_depend>octomap_ros</run_depend>
+  <run_depend>message_generation</run_depend>
   
   <!-- The export tag contains other, unspecified, tags -->
   <export>

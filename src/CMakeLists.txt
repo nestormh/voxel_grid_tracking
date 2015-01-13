@@ -75,6 +75,7 @@ add_executable(stereo_and_odom
 #     polarcell.cpp 
 #     polargridtrackingros.cpp
     ObstaclesFromStereo.cpp
+    MainStereoAndOdom/ReadCalibrationParameters.cpp
 #     polargridtracking.cpp
 #     particle.cpp
 #     cell.cpp

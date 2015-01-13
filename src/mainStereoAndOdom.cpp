@@ -39,6 +39,8 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <camera_calibration_parsers/parse_yml.h>
 
+#include "MainStereoAndOdom/ReadCalibrationParameters.h"
+
 #include <boost/foreach.hpp>
 
 #include <rosgraph_msgs/Clock.h>
@@ -54,6 +56,7 @@
 #define BASE_CAMERA_FRAME_ID "base_left_cam"
 
 using namespace std;
+using namespace sequence_reader;
 
 // Function declarations
 void visualizePointCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pointCloud);
@@ -214,7 +217,8 @@ void testStereoTracking() {
     // Just for debugging. If repeatFrame != -1, the frame number repeatFrame will be shown again and again
     int32_t repeatFrame = -1; //27;
     
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+//     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::BAHNHOFSTRASSE;
     
     ros::NodeHandle nh("~");
     ros::Publisher pointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudStereo", 1);
@@ -226,8 +230,8 @@ void testStereoTracking() {
     tf::TransformBroadcaster map2odomTfBroadcaster;
     
     image_transport::ImageTransport it(nh);
-    image_transport::Publisher leftImgPub = it.advertise("left/image", 1);
-    image_transport::Publisher rightImgPub = it.advertise("right/image", 1);
+    image_transport::Publisher leftImgPub = it.advertise("left/image_raw", 1);
+    image_transport::Publisher rightImgPub = it.advertise("right/image_raw", 1);
     
     ros::Publisher leftInfoPub = nh.advertise<sensor_msgs::CameraInfo>("left/camera_info", 1);
     ros::Publisher righttInfoPub = nh.advertise<sensor_msgs::CameraInfo>("right/camera_info", 1);
@@ -312,8 +316,8 @@ void testStereoTracking() {
             lastIdx = 1000;
             correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
             seqName = boost::filesystem::path("bahnhof");
-            rightImagePattern = "seq03-img-left/image_%08d_0.png";
-            leftImagePattern = "seq03-img-right/image_%08d_1.png";
+            leftImagePattern = "seq03-img-left/image_%08d_0.png";
+            rightImagePattern = "seq03-img-right/image_%08d_1.png";
             
             ObstaclesFromStereo::getParams("/local/imaged/stixels/bahnhof", cameraParams, ObstaclesFromStereo::BAHNHOFSTRASSE);
             
@@ -324,10 +328,21 @@ void testStereoTracking() {
             string rightCalibFileName = "/local/imaged/stixels/bahnhof/right_calib.yaml";
             string rightCameraName = "right_camera";
             camera_calibration_parsers::readCalibrationYml(rightCalibFileName, rightCameraName, rightCameraInfo);
+
+            char imgName[1024];
+            sprintf(imgName, leftImagePattern.c_str(), initialIdx);
+            boost::filesystem::path leftPath = correspondencesPath / seqName / boost::filesystem::path(imgName);
             
-            leftCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
-            rightCameraInfo.header.frame_id = BASE_CAMERA_FRAME_ID;
+            string leftCalibFile = "/local/imaged/stixels/bahnhof/cam1.cal";
+            string rightCalibFile = "/local/imaged/stixels/bahnhof/cam2.cal";
+            ReadCalibrationParameters::readETHCalibrationParams(leftCalibFile, rightCalibFile, 
+                                                    leftPath.c_str(), BASE_CAMERA_FRAME_ID,
+                                                    leftCameraInfo, rightCameraInfo);
             
+            cout << leftCameraInfo << endl;
+            cout << rightCameraInfo << endl;
+
+            // TODO
             markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
             
             break;
@@ -394,13 +409,9 @@ void testStereoTracking() {
             sprintf(imgNameL, leftImagePattern.c_str(), repeatFrame);
             sprintf(imgNameR, rightImagePattern.c_str(), repeatFrame);
         }
-        
-    
 
         boost::filesystem::path leftPath = correspondencesPath / seqName / boost::filesystem::path(imgNameL);
         boost::filesystem::path rightPath = correspondencesPath / seqName / boost::filesystem::path(imgNameR);
-        
-        
         
         cout << leftPath << endl;
         cout << rightPath << endl;

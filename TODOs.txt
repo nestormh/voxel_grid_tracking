@@ -1,3 +1,5 @@
+Generate a new launch for ETH dataset.
+Prepare a benchmark using ETH sequence
 Clean code
 Generate a node for mainStereoAndOdom
 Prepare a benchmark using KITTI images (tracklets are just available for cars, or tracking benchmark).

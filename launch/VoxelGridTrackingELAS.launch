@@ -4,7 +4,9 @@
     
     <!-- <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 1.57 0 0 map odom 100" /> -->
     <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 100" />
-    <!-- <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 100" /> -->
+    
+<!--     <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 100" /> -->
+    
     <node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 -1.57 0 0 base_footprint base_link 100" />
     <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.45 0 0 -1.57079632679489661923 base_link base_left_cam 100" />
     <node pkg="tf" type="static_transform_publisher" name="leftcam2baseleftcam" args="0 0 0 0 0 0 base_left_cam left_cam 100" />
@@ -24,12 +26,15 @@
         
     </node>-->
     
-    <node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
-        <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/>
+    <node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen" required="true">
+<!--         <remap from="stereo" to="$(arg namespace)/stereo_and_odom"/> -->
         <param name="base_link_frame_id" value="base_footprint" />
         <param name="odom_frame_id" value="odom" />
         
-        <!--     <remap from="image" to="image_rect"/> -->
+        <remap from="stereo/left/image" to="$(arg namespace)/stereo_and_odom/left/image_rect"/>
+        <remap from="stereo/right/image" to="$(arg namespace)/stereo_and_odom/right/image_rect"/>
+        <remap from="stereo/left/camera_info" to="$(arg namespace)/stereo_and_odom/left/camera_info"/>
+        <remap from="stereo/right/camera_info" to="$(arg namespace)/stereo_and_odom/right/camera_info"/>
     </node>
     
     <group ns="$(arg namespace)">
@@ -38,22 +43,27 @@
         <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
         </node> 
         
-<!--       <node pkg="grull_elas_ros" type="elas_ros" name="elas_ros" output="screen">
+        <group ns="stereo_and_odom">
+            <node name="stereo_image_proc" pkg="stereo_image_proc" type="stereo_image_proc" output="screen" required="true" >
+            </node>
+        </group>
+        
+       <node pkg="grull_elas_ros" type="elas_ros" name="elas_ros" output="screen">
             <remap from="stereo" to="stereo_and_odom" />
-            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
-            <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image" />
+            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image_rect_color" />
+            <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image_rect_color" />
             
             <param name="approximate_sync" value="true" />
             
-            <remap from="base_frame_id" to="left_cam" />
+<!--             <remap from="base_frame_id" to="left_cam" /> -->
             <param name="base_frame_id" value="left_cam" />
-            <param name="pose_frame_id" value="base_link" />
-        </node>-->
+            <param name="pose_frame_id" value="base_link" /> 
+        </node>
         
-        <node pkg="rsgm_ros" type="rsgm_ros" name="rsgm_ros" output="screen" required="true">
+        <node pkg="rsgm_ros" type="rsgm_ros" name="rsgm_ros" output="screen" required="false">
             <remap from="stereo" to="stereo_and_odom" />
-            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image" />
-            <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image" />
+            <remap from="stereo_and_odom/left/$(arg namespace)/image" to="stereo_and_odom/left/image_rect_color" />
+            <remap from="stereo_and_odom/right/$(arg namespace)/image" to="stereo_and_odom/right/image_rect_color" />
             <remap from="~depth" to="/$(arg namespace)/depth" />
             <remap from="~disparity" to="/$(arg namespace)/disparity" />
             
@@ -73,7 +83,7 @@
         
 <!--         <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
 <!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-        <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
+        <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="false" >
             <remap from="~/deltaTime"
                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
@@ -88,6 +98,7 @@
     </group>
     
     <!--     I must place the remap here. For some reason, it is ignored in other location -->
+<!--     <remap from="/filters/filter_manager/disparity_input" to="/$(arg namespace)/elas_ros/disparity" /> -->
     <remap from="/filters/filter_manager/disparity_input" to="/$(arg namespace)/disparity" />
     <remap from="/filters/filter_manager/left/camera_info" to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
     <remap from="/filters/filter_manager/right/camera_info" to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
@@ -104,7 +115,7 @@
             <node pkg="nodelet" type="nodelet" name="Depth2PointCloudNodelet" 
                   args="load depth_image_proc/point_cloud_xyzrgb filter_manager" output="screen">
                 
-                <remap from="rgb/image_rect_color" to="/$(arg namespace)/stereo_and_odom/left/image" />
+                <remap from="rgb/image_rect_color" to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
                 <remap from="rgb/camera_info" to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
 <!--                 <remap from="depth_registered/image_rect" to="/$(arg namespace)/depth" /> -->
                 <remap from="depth_registered/image_rect" to="/filters/filter_manager/depth" />
