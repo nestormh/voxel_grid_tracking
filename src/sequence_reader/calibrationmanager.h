@@ -30,7 +30,7 @@ using namespace std;
 
 namespace sequence_reader {
     
-class ReadCalibrationParameters
+class CalibrationManager
 {
 public:
     template <class T> class point2 {
@@ -40,16 +40,14 @@ public:
         T x, y;
     };
     
-    ReadCalibrationParameters() {}
-    
-    static void readETHCalibrationParams(const string & filename1, 
+    static void readETHZCalibrationParams(const string & filename1, 
                                          const string & filename2, 
                                          const string & firstFrame,
                                          const string & frameId,
                                          sensor_msgs::CameraInfo& leftCameraInfo, 
                                          sensor_msgs::CameraInfo& rightCameraInfo);
 protected:
-    static void readETHCalibrationFile(string filename, cv::Mat & K, cv::Mat & D, 
+    static void readETHZCalibrationFile(string filename, cv::Mat & K, cv::Mat & D, 
                                        cv::Mat & R, cv::Mat & T);
     
     static void getROSCalibration(const int & width, const int & height, 

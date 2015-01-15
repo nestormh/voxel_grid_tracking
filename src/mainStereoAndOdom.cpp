@@ -39,7 +39,8 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <camera_calibration_parsers/parse_yml.h>
 
-#include "MainStereoAndOdom/ReadCalibrationParameters.h"
+#include "sequence_reader/calibrationmanager.h"
+#include "sequence_reader/groundtruthmanager.h"
 
 #include <boost/foreach.hpp>
 
@@ -217,6 +218,8 @@ void testStereoTracking() {
     // Just for debugging. If repeatFrame != -1, the frame number repeatFrame will be shown again and again
     int32_t repeatFrame = -1; //27;
     
+    GroundTruthManager gtManager;
+    
 //     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::BAHNHOFSTRASSE;
     
@@ -312,7 +315,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::BAHNHOFSTRASSE:
         {
-            initialIdx = 1; //55;
+            initialIdx = 295; //1; 295; //55;
             lastIdx = 1000;
             correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
             seqName = boost::filesystem::path("bahnhof");
@@ -335,14 +338,17 @@ void testStereoTracking() {
             
             string leftCalibFile = "/local/imaged/stixels/bahnhof/cam1.cal";
             string rightCalibFile = "/local/imaged/stixels/bahnhof/cam2.cal";
-            ReadCalibrationParameters::readETHCalibrationParams(leftCalibFile, rightCalibFile, 
-                                                    leftPath.c_str(), BASE_CAMERA_FRAME_ID,
-                                                    leftCameraInfo, rightCameraInfo);
+            CalibrationManager::readETHZCalibrationParams(leftCalibFile, rightCalibFile, 
+                                                        leftPath.c_str(), BASE_CAMERA_FRAME_ID,
+                                                        leftCameraInfo, rightCameraInfo);
             
             cout << leftCameraInfo << endl;
             cout << rightCameraInfo << endl;
 
             // TODO
+            boost::filesystem::path annotationsFile("eth01.idl");
+            boost::filesystem::path annotationsPath = correspondencesPath / seqName / annotationsFile;
+            gtManager.readETHZSequence(annotationsPath.c_str());
             markers = ObstaclesFromStereo::readMarkerList("/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/tracklet_labels.xml", lastIdx);
             
             break;

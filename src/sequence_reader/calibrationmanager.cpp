@@ -14,12 +14,9 @@
  *  limitations under the License.
  */
 
-#include "ReadCalibrationParameters.h"
-#include <boost/graph/graph_concepts.hpp>
+#include "calibrationmanager.h"
 
 #include <eigen3/Eigen/Dense>
-
-#include <opencv2/core/eigen.hpp>
 
 #include <sensor_msgs/distortion_models.h>
 
@@ -27,7 +24,7 @@ using namespace std;
 
 namespace sequence_reader {
 
-void ReadCalibrationParameters::readETHCalibrationParams(const string & filename1, 
+void CalibrationManager::readETHZCalibrationParams(const string & filename1, 
                                                          const string & filename2, 
                                                          const string & firstFrame,
                                                          const string & frameId,
@@ -38,14 +35,14 @@ void ReadCalibrationParameters::readETHCalibrationParams(const string & filename
     cv::Mat D1, D2;
     cv::Mat T1, T2;
     
-    readETHCalibrationFile(filename1, K1, D1, R1, T1);
-    readETHCalibrationFile(filename2, K2, D2, R2, T2);
+    readETHZCalibrationFile(filename1, K1, D1, R1, T1);
+    readETHZCalibrationFile(filename2, K2, D2, R2, T2);
     
     cv::Mat frame = cv::imread(firstFrame.c_str());
     getROSCalibration(frame.cols, frame.rows, frameId, K1, R1, K2, R2, D1, D2, T1, T2, leftCameraInfo, rightCameraInfo);
 }
 
-void ReadCalibrationParameters::readETHCalibrationFile(string filename, cv::Mat& K, cv::Mat& D, cv::Mat& R, cv::Mat& T)
+void CalibrationManager::readETHZCalibrationFile(string filename, cv::Mat& K, cv::Mat& D, cv::Mat& R, cv::Mat& T)
 {
     ifstream f(filename.c_str());
     
@@ -84,7 +81,7 @@ void ReadCalibrationParameters::readETHCalibrationFile(string filename, cv::Mat&
     f.close();
 }
 
-void ReadCalibrationParameters::getROSCalibration(const int & width, const int & height, 
+void CalibrationManager::getROSCalibration(const int & width, const int & height, 
                                                   const string & base_frame,
                                                   const cv::Mat & K1, cv::Mat & R1, 
                                                   const cv::Mat & K2, cv::Mat & R2,

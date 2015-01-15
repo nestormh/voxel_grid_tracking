@@ -75,7 +75,8 @@ add_executable(stereo_and_odom
 #     polarcell.cpp 
 #     polargridtrackingros.cpp
     ObstaclesFromStereo.cpp
-    MainStereoAndOdom/ReadCalibrationParameters.cpp
+    sequence_reader/calibrationmanager.cpp
+    sequence_reader/groundtruthmanager.cpp
 #     polargridtracking.cpp
 #     particle.cpp
 #     cell.cpp
@@ -108,6 +109,8 @@ target_link_libraries(stereo_and_odom
   ${Boost_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+add_dependencies(stereo_and_odom ${PROJECT_NAME}_generate_messages_cpp)
 
 ###########################################################
 # voxel_grid_tracking
