@@ -105,6 +105,9 @@
             
             <param name="use_oflow" value="false" />
         </node>
+        
+        <node name="voxel_tracker_evaluation" pkg="voxel_tracker_evaluation" type="voxel_tracker_evaluation" output="screen" required="false" >
+        </node>
     </group>
     
     <!--     I must place the remap here. For some reason, it is ignored in other location -->
@@ -186,8 +189,8 @@
     </group>
     
     <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
-<!--     <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
-<!--           $(find polar_grid_tracking)/config/VoxelGridTracking.rviz"/> -->
+    <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+          $(find polar_grid_tracking)/config/VoxelGridTracking.rviz"/>
     <!--<node pkg="rosbag" type="record"  name="rosbag"
     args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     

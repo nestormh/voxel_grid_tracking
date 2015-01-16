@@ -250,7 +250,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstacleCubesPub = nh.advertise<visualization_msgs::MarkerArray>("cubes", 1);
     m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
     m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
-    m_ROIPub = nh.advertise<polar_grid_tracking::roiArray>("roiArray", 1);
+    m_ROIPub = nh.advertise<polar_grid_tracking::roiArray>("result_rois", 1);
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
     m_dynObjectsPub = nh.advertise<sensor_msgs::PointCloud2> ("dynamic_objects", 1);
     
@@ -272,6 +272,8 @@ void VoxelGridTracking::getCameraInfo(const sensor_msgs::CameraInfoConstPtr& cam
     cout << "m_centerX " << m_centerX << endl;
     cout << "m_centerY " << m_centerY << endl;
 }
+
+
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud) 
 {
@@ -411,9 +413,8 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     cout << __FILE__ << ":" << __LINE__ << endl;
     publishObstacleCubes();
     cout << __FILE__ << ":" << __LINE__ << endl;
-
     
-//     publishROI();
+    publishROI();
 //     publishFakePointCloud();
 //     visualizeROI2d();
     END_CLOCK(totalVis, startVis)

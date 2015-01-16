@@ -21,6 +21,10 @@
 
 #include "polar_grid_tracking/roiArray.h"
 
+#include <sensor_msgs/CameraInfo.h>
+
+#include <ros/ros.h>
+
 using namespace std;
 
 namespace sequence_reader {
@@ -30,10 +34,21 @@ class GroundTruthManager
 public:
     GroundTruthManager();
     
-    void readETHZSequence(string filename);
+    void readETHZSequence(const string & filename, 
+                          const sensor_msgs::CameraInfo leftCameraInfo, 
+                          const sensor_msgs::CameraInfo rightCameraInfo);
+    
+    void publishROI(const int & index);
     
 private:
-    vector<polar_grid_tracking::roiArrayPtr> mp_rois;
+    void fillRois2D();
+    
+    // Properties
+    vector<polar_grid_tracking::roiArrayPtr> m_rois;
+    sensor_msgs::CameraInfo m_leftCameraInfo, m_rightCameraInfo;
+    
+    ros::Publisher m_groundTruthPub;
+    
 };
 
 }

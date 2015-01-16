@@ -92,19 +92,19 @@ void CalibrationManager::getROSCalibration(const int & width, const int & height
 {
     cv::Mat P1, P2, Q;
     
-    
     cv::stereoRectify(K1, D1, K2, D2, cv::Size(width, height), R2, T2, R1, R2, P1, P2, Q);
     
     P1.at<double>(0, 3) = P1.at<double>(0, 3) / K1.at<double>(0, 0);
     P2.at<double>(0, 3) = P2.at<double>(0, 3) / K2.at<double>(0, 0);
     
-    
     leftCameraInfo.header.frame_id = base_frame;
     leftCameraInfo.width = width;
     leftCameraInfo.height = height;
     leftCameraInfo.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
-    for (int i = 0; i < D1.rows; i++)
+    leftCameraInfo.D.resize(D1.rows);
+    for (int i = 0; i < D1.rows; i++) {
         leftCameraInfo.D[i] = D1.at<double>(i, 0);
+    }
     for (int i = 0, idx = 0; i < K1.rows; i++)
         for (int j = 0; j < K1.cols; j++, idx++)
             leftCameraInfo.K[idx] = K1.at<double>(i, j);
@@ -119,6 +119,7 @@ void CalibrationManager::getROSCalibration(const int & width, const int & height
     rightCameraInfo.width = width;
     rightCameraInfo.height = height;
     rightCameraInfo.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
+    rightCameraInfo.D.resize(D2.rows);
     for (int i = 0; i < D2.rows; i++)
         rightCameraInfo.D[i] = D2.at<double>(i, 0);
     for (int i = 0, idx = 0; i < K2.rows; i++)

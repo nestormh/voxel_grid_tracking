@@ -5,3 +5,4 @@ int32 id                             # object ID
 string filename
 roi_and_speed_2d[] rois2d
 roi_and_speed_3d[] rois3d
+int32[] prevRois
