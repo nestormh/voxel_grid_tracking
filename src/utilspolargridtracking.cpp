@@ -75,3 +75,30 @@ void project3dTo2d(const pcl::PointXYZRGB& point3d, pcl::PointXYZRGB& point2d,
     point2d.g = point3d.g;
     point2d.b = point3d.b;
 }
+
+void project3dTo2d(const pcl::PointXYZRGB& point3d, pcl::PointXYZRGB& point2d, 
+                   const image_geometry::StereoCameraModel& stereoCameraModel,
+                   const tf::StampedTransform & map2CamTransform)
+{
+    const double & focalX = stereoCameraModel.left().fx();
+    const double & focalY = stereoCameraModel.left().fy();
+    const double & centerX = stereoCameraModel.left().cx();
+    const double & centerY = stereoCameraModel.left().cy();
+    const double & baseline = stereoCameraModel.baseline();
+    
+    tf::Vector3 point = map2CamTransform * tf::Vector3(point3d.x, point3d.y, point3d.z);
+    const float & X = point[0];
+    const float & Y = point[1];
+    const float & Z = point[2];
+    
+    const float d = focalX * baseline / Z;
+    const float u = centerX + (X * d / baseline);
+    const float v = centerY + ((Y * focalY * d) / (focalX * baseline));
+    
+    point2d.x = u;
+    point2d.y = v;
+    point2d.z = d;
+    point2d.r = point3d.r;
+    point2d.g = point3d.g;
+    point2d.b = point3d.b;
+}

@@ -19,6 +19,10 @@
 #define VOXELOBSTACLE_H
 
 #include "voxel.h"
+#include <polar_grid_tracking/roiArray.h>
+
+#include <opencv2/opencv.hpp>
+#include <image_geometry/stereo_camera_model.h>
 
 namespace voxel_grid_tracking {
 
@@ -58,6 +62,11 @@ public:
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
     
+    void getROI(const image_geometry::StereoCameraModel & stereoCameraModel,
+                const tf::StampedTransform & map2CamTransform,
+                polar_grid_tracking::roi_and_speed_2d & roi2D, 
+                polar_grid_tracking::roi_and_speed_3d & roi3D);
+    
     double magnitude() const { return m_magnitude; }
     
     VoxelList voxels() const { return m_voxels; }
@@ -79,9 +88,25 @@ public:
     
     string winnerNumberOfParticles() const { return m_winnerNumberOfParticles; }
     
+    friend ostream& operator<<(ostream & stream, const VoxelObstacle & in);
 protected:
     void updateMotionInformation();
     void updateWithVoxel(const VoxelPtr & voxel);
+    geometry_msgs::Point32 toPoint32(const pcl::PointXYZRGB & point) {
+        geometry_msgs::Point32 newPoint;
+        newPoint.x = point.x;
+        newPoint.y = point.y;
+        newPoint.z = point.z;
+        
+        return newPoint;
+    }
+    polar_grid_tracking::point_2d toPoint2D(const pcl::PointXYZRGB & point) {
+        polar_grid_tracking::point_2d newPoint;
+        newPoint.u = point.x;
+        newPoint.v = point.y;
+        
+        return newPoint;
+    }
     
     VoxelList m_voxels;
     

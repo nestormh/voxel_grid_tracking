@@ -88,7 +88,7 @@ namespace voxel_grid_tracking {
 VoxelGridTracking::VoxelGridTracking()
 {
     
-    // TODO: Get from params
+    // TODO: Remove m_cameraParams and use CameraInfo
     m_cameraParams.minX = 0.0;
     m_cameraParams.minY = 0.0;
     m_cameraParams.width = 1244;
@@ -119,11 +119,6 @@ VoxelGridTracking::VoxelGridTracking()
     m_maxY = 5.0;
     m_minZ = 0.25;
     m_maxZ = 3.5; //3.5;
-    
-    m_focalX = 956.948;
-    m_focalY = 952.235;
-    m_centerX = 693.977;
-    m_centerY = 238.608;
     
     m_cellSizeX = 0.5; //0.25;
     m_cellSizeY = 0.5; //0.25;
@@ -211,26 +206,64 @@ VoxelGridTracking::VoxelGridTracking()
     nh.param<string>("pose_frame", m_poseFrame, "/base_footprint");
     nh.param<string>("camera_frame", m_cameraFrame, "/base_left_cam");
     
-    nh.param("use_oflow", m_useOFlow, true);
+    nh.param("use_oflow", m_useOFlow, false);
     
+    // Topics
+    std::string left_info_topic = "left/camera_info";
+    std::string right_info_topic = "right/camera_info";
+    
+    m_leftCameraInfoSub.subscribe(nh, left_info_topic, 1);
+    m_rightCameraInfoSub.subscribe(nh, right_info_topic, 1);
+    m_pointCloudSub.subscribe(nh, "pointCloud", 10);
+    
+    // Synchronize input topics. Optionally do approximate synchronization or not.
+    bool approx;
+    int queue_size;
+    nh.param("approximate_sync", approx, true);
+    nh.param("queue_size", queue_size, 10);
     if (m_useOFlow) {
-        m_pointCloudSub.subscribe(nh, "pointCloud", 10);
         m_oFlowSub.subscribe(nh, "flow_vectors", 10);
         m_oFlowCloud.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
         
-        m_synchronizer.reset(new ExactSync(ExactPolicy(10), m_pointCloudSub, m_oFlowSub));
-        m_synchronizer->registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1, _2));
+        if (approx)
+        {
+            m_approxSynchronizerOFlow.reset( new ApproximateSyncOFlow(ApproximatePolicyOFlow(queue_size),
+                                                                      m_pointCloudSub, m_oFlowSub, 
+                                                                      m_leftCameraInfoSub, 
+                                                                      m_rightCameraInfoSub) );
+            m_approxSynchronizerOFlow->registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, 
+                                                                    this, _1, _2, _3, _4));
+        }
+        else
+        {
+            m_exactSynchronizerOFlow.reset( new ExactSyncOFlow(ExactPolicyOFlow(queue_size),
+                                                                      m_pointCloudSub, m_oFlowSub, 
+                                                                      m_leftCameraInfoSub, 
+                                                                      m_rightCameraInfoSub) );
+            m_exactSynchronizerOFlow->registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, 
+                                                                   this, _1, _2, _3, _4));
+        }
     } else {
-        m_pointCloudSub.subscribe(nh, "pointCloud", 10);
-        m_pointCloudSub.registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+        if (approx)
+        {
+            m_approxSynchronizer.reset( new ApproximateSync(ApproximatePolicy(queue_size),
+                                                            m_pointCloudSub, 
+                                                            m_leftCameraInfoSub, 
+                                                            m_rightCameraInfoSub) );
+            m_approxSynchronizer->registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, 
+                                                               this, _1, _2, _3));
+        }
+        else
+        {
+            m_exactSynchronizer.reset( new ExactSync(ExactPolicy(queue_size),
+                                                        m_pointCloudSub,
+                                                        m_leftCameraInfoSub, 
+                                                        m_rightCameraInfoSub) );
+            m_exactSynchronizer->registerCallback(boost::bind(&VoxelGridTracking::pointCloudCallback, 
+                                                              this, _1, _2, _3));
+        }
     }
-    
-//     m_cameraInfoSub.subscribe(nh, "camera_info", NULL, &VoxelGridTracking::getCameraInfo);
-// //     ros::NodeHandle&, const string&, uint32_t, const ros::TransportHints&, ros::CallbackQueueInterface*
-//     m_cameraInfoSub.registerCallback<sensor_msgs::CameraInfo>(&VoxelGridTracking::getCameraInfo, this);
-    m_cameraInfoSub.subscribe(nh, "camera_info", 1);
-    m_cameraInfoSub.registerCallback(boost::bind(&VoxelGridTracking::getCameraInfo, this, _1));
-    
+        
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     
@@ -260,22 +293,9 @@ VoxelGridTracking::VoxelGridTracking()
 //     ros::spin();
 }
 
-void VoxelGridTracking::getCameraInfo(const sensor_msgs::CameraInfoConstPtr& cameraInfoMsg)
-{
-    m_focalX = cameraInfoMsg->K.at(0);
-    m_focalY = cameraInfoMsg->K.at(4);
-    m_centerX = cameraInfoMsg->K.at(2);
-    m_centerY = cameraInfoMsg->K.at(5);
-
-    cout << "m_focalX " << m_focalX << endl;
-    cout << "m_focalY " << m_focalY << endl;
-    cout << "m_centerX " << m_centerX << endl;
-    cout << "m_centerY " << m_centerY << endl;
-}
-
-
-
-void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud) 
+void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud,
+                                           const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
+                                           const sensor_msgs::CameraInfoConstPtr& rightCameraInfo) 
 {
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
@@ -288,16 +308,20 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     
     pcl::fromROSMsg<pcl::PointXYZRGB>(*msgPointCloud, *m_pointCloud);
     
-    m_currentId = msgPointCloud->header.seq;
     
     m_lastPointCloudTime = msgPointCloud->header.stamp;
+    
+    m_stereoCameraModel.fromCameraInfo(*leftCameraInfo, *rightCameraInfo);
+    m_currentId = leftCameraInfo->header.seq;
     
     compute(m_pointCloud);
     
 }
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
-                                           const sensor_msgs::PointCloud2::ConstPtr& msgOFlow) 
+                                           const sensor_msgs::PointCloud2::ConstPtr& msgOFlow,
+                                           const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
+                                           const sensor_msgs::CameraInfoConstPtr& rightCameraInfo) 
 {
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
@@ -306,12 +330,14 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
     }
     m_deltaTime = (msgPointCloud->header.stamp - m_lastPointCloudTime).toSec();
     
-    m_currentId = msgPointCloud->header.seq;
     
     pcl::fromROSMsg<pcl::PointXYZRGB>(*msgPointCloud, *m_pointCloud);
     pcl::fromROSMsg<pcl::PointXYZRGBNormal>(*msgOFlow, *m_oFlowCloud);
     
     m_lastPointCloudTime = msgPointCloud->header.stamp;
+    m_currentId = leftCameraInfo->header.seq;
+    
+    m_stereoCameraModel.fromCameraInfo(*leftCameraInfo, *rightCameraInfo);
     
     compute(m_pointCloud);
 }
@@ -416,7 +442,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     
     publishROI();
 //     publishFakePointCloud();
-//     visualizeROI2d();
+    visualizeROI2d();
     END_CLOCK(totalVis, startVis)
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
@@ -732,6 +758,9 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
     std::vector<int> pointIdxRadiusSearch;
     std::vector<float> pointRadiusSquaredDistance;
     
+    const double & focalX = m_stereoCameraModel.left().fx();
+    const double & focalY = m_stereoCameraModel.left().fy();
+    
     PointType searchPoint;
     for (searchPoint.x = m_minX + halfSizeX; searchPoint.x < m_maxX; searchPoint.x += m_cellSizeX) {
         for (searchPoint.y = m_minY + halfSizeY; searchPoint.y < m_maxY; searchPoint.y += m_cellSizeY) {
@@ -749,13 +778,13 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                 const float & Y = point[1];
                 const float & Z = point[2];
                 
-                const float & fX_Z = m_focalX / Z;
+                const float & fX_Z = focalX / Z;
                 const float & u = X * fX_Z;
                 const float & u0 = (X - m_cellSizeX) * fX_Z;
                 const float & u1 = (X + m_cellSizeX) * fX_Z;
                 const float & sigmaX = (u1 - u0) + 1;//2 * (u1 - u0) + 1;
                 
-                const float & fY_Z = m_focalY / Z;
+                const float & fY_Z = focalY / Z;
                 const float & v = Y * fY_Z;
                 const float & v0 = (Y - m_cellSizeY) * fY_Z;
                 const float & v1 = (Y + m_cellSizeY) * fY_Z;
@@ -1918,7 +1947,7 @@ void VoxelGridTracking::publishObstacles()
         color.a = (0.8 - (0.4 * obstacle->magnitude() / m_maxMagnitude));
         
         if (obstacle->magnitude() == 0.0) {
-            color.r = color.g = color.b = 0.0;
+            color.r = color.g = color.b = color.a = 0.0;
         }
         
 //         cout << cv::Vec3f(obstacle->vx(), obstacle->vy(), obstacle->vz()) << " => " 
@@ -2026,9 +2055,12 @@ void VoxelGridTracking::publishObstacleCubes()
         obstacleCubeMarker.pose.orientation.y = 0.0;
         obstacleCubeMarker.pose.orientation.z = 0.0;
         obstacleCubeMarker.pose.orientation.w = 1.0;
-        obstacleCubeMarker.scale.x = obstacle->sizeX();
-        obstacleCubeMarker.scale.y = obstacle->sizeY();
-        obstacleCubeMarker.scale.z = obstacle->sizeZ();
+        obstacleCubeMarker.scale.x = 2 * max(fabs(obstacle->maxX() - obstacle->centerX()),
+                                             fabs(obstacle->minX() - obstacle->centerX()));
+        obstacleCubeMarker.scale.y = 2 * max(fabs(obstacle->maxY() - obstacle->centerY()),
+                                             fabs(obstacle->minY() - obstacle->centerY()));
+        obstacleCubeMarker.scale.z = 2 * max(fabs(obstacle->maxZ() - obstacle->centerZ()),
+                                             fabs(obstacle->minZ() - obstacle->centerZ()));
         obstacleCubeMarker.color.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0];
         obstacleCubeMarker.color.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1];
         obstacleCubeMarker.color.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2];
@@ -2151,7 +2183,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].A.u = point.x;
         roiMsg.rois2d[i].A.v = point.y;
         
@@ -2162,7 +2194,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].B.u = point.x;
         roiMsg.rois2d[i].B.v = point.y;
         
@@ -2173,7 +2205,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].C.u = point.x;
         roiMsg.rois2d[i].C.v = point.y;
         
@@ -2184,7 +2216,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].D.u = point.x;
         roiMsg.rois2d[i].D.v = point.y;
         
@@ -2195,7 +2227,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].E.u = point.x;
         roiMsg.rois2d[i].E.v = point.y;
         
@@ -2206,7 +2238,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].F.u = point.x;
         roiMsg.rois2d[i].F.v = point.y;
         
@@ -2217,7 +2249,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].G.u = point.x;
         roiMsg.rois2d[i].G.v = point.y;
         
@@ -2228,7 +2260,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -roiMsg.rois3d[i].A.x;
         point3d.y = roiMsg.rois3d[i].A.z;
         point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].H.u = point.x;
         roiMsg.rois2d[i].H.v = point.y;
         
@@ -2238,7 +2270,7 @@ void VoxelGridTracking::publishROI()
         point3d.x = -obstacle->vx();
         point3d.y = obstacle->vz();
         point3d.z = obstacle->vy();
-        project3dTo2d(point3d, point, m_cameraParams);
+        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
         roiMsg.rois2d[i].speed.x = point.x;
         roiMsg.rois2d[i].speed.y = point.y;
     }
@@ -2259,13 +2291,13 @@ void VoxelGridTracking::publishFakePointCloud()
 
 void VoxelGridTracking::visualizeROI2d()
 {
-    string imgPattern = "/local/imaged/Karlsruhe/2011_09_28/2011_09_28_drive_0038_sync/image_02/data/%010d.png";
+    string imgPattern = "/local/imaged/stixels/bahnhof/seq03-img-left/image_%08d_0.png";
 //     string imgPattern = "/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/image_02/data/%010d.png";
     char imgNameL[1024];
-    sprintf(imgNameL, imgPattern.c_str(), m_currentId + 1);
+    sprintf(imgNameL, imgPattern.c_str(), m_currentId + 295);
     
     stringstream ss;
-    ss << "/home/nestor/Vídeos/VoxelTracking/pedestrian/output";
+    ss << "/tmp/output";
     ss.width(10);
     ss.fill('0');
     ss << m_currentId;
@@ -2280,11 +2312,13 @@ void VoxelGridTracking::visualizeROI2d()
     for (uint32_t i = 0; i < m_obstacles.size(); i++) {
         const VoxelObstaclePtr & obstacle = m_obstacles[i];
         
-        if ((obstacle->minZ() - (m_cellSizeZ / 2.0)) != m_minZ)
-            continue;
+//         cout << *obstacle << endl;
         
-        if (obstacle->magnitude() < 1.0)
-            continue;
+//         if ((obstacle->minZ() - (m_cellSizeZ / 2.0)) != m_minZ)
+//             continue;
+//         
+//         if (obstacle->magnitude() < 1.0)
+//             continue;
 
         cv::Point2d pointUL(img.cols, img.rows), pointBR(0, 0);
         
@@ -2292,122 +2326,49 @@ void VoxelGridTracking::visualizeROI2d()
         const double halfY = obstacle->sizeY() / 2.0;
         const double halfZ = obstacle->sizeZ() / 2.0;
         
-        // A
-        point3d.x = -(obstacle->centerX() - halfX);
-        point3d.y = (obstacle->centerZ() - halfZ);
-        point3d.z = (obstacle->centerY() + halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
+        polar_grid_tracking::roi_and_speed_2d roi2D;
+        polar_grid_tracking::roi_and_speed_3d roi3D;
         
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
+        obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
+                         roi2D, roi3D);
         
-        // B
-        point3d.x = -(obstacle->centerX() + halfX);
-        point3d.y = (obstacle->centerZ() + halfZ);
-        point3d.z = (obstacle->centerY() - halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
+        pointUL.x = min(roi2D.A.u, roi2D.E.u);
+        pointUL.y = min(roi2D.A.v, roi2D.E.v);
         
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        // C
-        point3d.x = -(obstacle->centerX() - halfX);
-        point3d.y = (obstacle->centerZ() - halfZ);
-        point3d.z = (obstacle->centerY() - halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
-        
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        // D
-        point3d.x = -(obstacle->centerX() + halfX);
-        point3d.y = (obstacle->centerZ() - halfZ);
-        point3d.z = (obstacle->centerY() - halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
-        
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        // E
-        point3d.x = -(obstacle->centerX() - halfX);
-        point3d.y = (obstacle->centerZ() + halfZ);
-        point3d.z = (obstacle->centerY() + halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
-        
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        // F
-        point3d.x = -(obstacle->centerX() + halfX);
-        point3d.y = (obstacle->centerZ() + halfZ);
-        point3d.z = (obstacle->centerY() + halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
-        
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        // G
-        point3d.x = -(obstacle->centerX() - halfX);
-        point3d.y = (obstacle->centerZ() - halfZ);
-        point3d.z = (obstacle->centerY() + halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
-        
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        // H
-        point3d.x = -(obstacle->centerX() + halfX);
-        point3d.y = (obstacle->centerZ() - halfZ);
-        point3d.z = (obstacle->centerY() + halfY);
-        project3dTo2d(point3d, point, m_cameraParams);
-        
-        if (point.x < pointUL.x) pointUL.x = point.x;
-        if (point.y < pointUL.y) pointUL.y = point.y;
-        if (point.x > pointBR.x) pointBR.x = point.x;
-        if (point.y > pointBR.y) pointBR.y = point.y;
-        
-        cv::rectangle(img, pointUL, pointBR, cv::Scalar((double)rand() / RAND_MAX * 128 + 128, (double)rand() / RAND_MAX * 128 + 128, (double)rand() / RAND_MAX * 128 + 128), 1);
+        pointBR.x = max(roi2D.D.u, roi2D.H.u);
+        pointBR.y = max(roi2D.D.v, roi2D.H.v);
+
+        cv::Scalar color((double)rand() / RAND_MAX * 128 + 128, 
+                         (double)rand() / RAND_MAX * 128 + 128, 
+                         (double)rand() / RAND_MAX * 128 + 128);
+        cv::rectangle(img, pointUL, pointBR, color, 2);
     }
     
-    cv::imwrite(ss.str(), img);
+//     cv::imwrite(ss.str(), img);
     
-    Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
-    
-    BOOST_FOREACH(const pcl::PointXYZRGB & point, m_pointCloud->points) {
-        //         pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.y, m_cameraParams.t(2) + point.z;
-        pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.z, m_cameraParams.t(2) + point.y;
-        //         pointMat << m_cameraParams.t(0) + point.x, m_cameraParams.t(1) - point.z, m_cameraParams.t(2) + point.y;
-        
-        pointMat = m_cameraParams.R.inverse() * pointMat;
-        
-        
-        const double d = m_cameraParams.ku * m_cameraParams.baseline / pointMat(2);
-        const double u = m_cameraParams.u0 - ((pointMat(0) * d) / m_cameraParams.baseline);
-        const double v = m_cameraParams.v0 - ((pointMat(1) * m_cameraParams.kv * d) / (m_cameraParams.ku * m_cameraParams.baseline));
-        
-        //         cout << cv::Point3d(- point.x, point.y, point.z) << " -> " << pointMat.transpose() 
-        //         << " -> " << cv::Point3d(u, v, d) << endl;
-        
-        if ((u >= 0) && (u < img.cols) &&
-            (v >= 0) && (v < img.rows)) {
-            
-            img.at<cv::Vec3b>(v, u) = cv::Vec3b(point.b, point.g, 255);
-            }
-    }
+//     Eigen::Matrix< double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> pointMat(3, 1);
+//     
+//     BOOST_FOREACH(const pcl::PointXYZRGB & point, m_pointCloud->points) {
+//         //         pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.y, m_cameraParams.t(2) + point.z;
+//         pointMat << m_cameraParams.t(0) - point.x, m_cameraParams.t(1) + point.z, m_cameraParams.t(2) + point.y;
+//         //         pointMat << m_cameraParams.t(0) + point.x, m_cameraParams.t(1) - point.z, m_cameraParams.t(2) + point.y;
+//         
+//         pointMat = m_cameraParams.R.inverse() * pointMat;
+//         
+//         
+//         const double d = m_cameraParams.ku * m_cameraParams.baseline / pointMat(2);
+//         const double u = m_cameraParams.u0 - ((pointMat(0) * d) / m_cameraParams.baseline);
+//         const double v = m_cameraParams.v0 - ((pointMat(1) * m_cameraParams.kv * d) / (m_cameraParams.ku * m_cameraParams.baseline));
+//         
+//         //         cout << cv::Point3d(- point.x, point.y, point.z) << " -> " << pointMat.transpose() 
+//         //         << " -> " << cv::Point3d(u, v, d) << endl;
+//         
+//         if ((u >= 0) && (u < img.cols) &&
+//             (v >= 0) && (v < img.rows)) {
+//             
+//             img.at<cv::Vec3b>(v, u) = cv::Vec3b(point.b, point.g, 255);
+//             }
+//     }
     
     cv::imshow("rois2d", img);
     

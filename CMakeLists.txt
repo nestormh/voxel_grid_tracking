@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   camera_calibration_parsers
   message_generation
   message_filters
+  image_geometry
   elas
   octomap
   octomap_ros

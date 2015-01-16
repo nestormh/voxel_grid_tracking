@@ -93,17 +93,23 @@
         
 <!--         <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
 <!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-        <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="false" >
+        <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
                    to="/$(arg namespace)/obstaclesPointCloud" />
             <remap from="~/flow_vectors"
                    to="/$(arg namespace)/flow_vectors" />
-            <remap from="~/camera_info"
+<!--             <remap from="~/camera_info" -->
+<!--                    to="/$(arg namespace)/stereo_and_odom/left/camera_info" /> -->
+            <remap from="~/left/camera_info"
                    to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
+            <remap from="~/right/camera_info"
+                   to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
             
             <param name="use_oflow" value="false" />
+            <param name="approximate_sync" value="true" />
+            <param name="queue_size" value="10" />
         </node>
         
         <node name="voxel_tracker_evaluation" pkg="voxel_tracker_evaluation" type="voxel_tracker_evaluation" output="screen" required="false" >

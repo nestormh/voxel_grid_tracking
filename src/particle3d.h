@@ -72,6 +72,7 @@ public:
     
     bool operator < (const Particle3d & particle) const;
     
+    friend ostream& operator<<(ostream & stream, const Particle3d & in);
     
 private:
     double m_x, m_y, m_z, m_vx, m_vy, m_vz;
@@ -85,8 +86,6 @@ private:
     
     tf::StampedTransform m_pose2mapTransform;
 };
-
-ostream& operator<<(ostream & stream, const Particle3d & in);
     
 }
 #endif // PARTICLE_H

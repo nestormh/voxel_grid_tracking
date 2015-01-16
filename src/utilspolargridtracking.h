@@ -25,6 +25,8 @@
 // clock_t uptime = clock() / (CLOCKS_PER_SEC / 1000);
 
 #include "polargridtracking.h"
+#include <image_geometry/stereo_camera_model.h>
+#include <tf/transform_datatypes.h>
 
 using namespace std;
 
@@ -51,6 +53,9 @@ cv::Mat getCvMatFromProbabilityMap(/*const*/ polar_grid_tracking::CellGrid & map
 double calculateDifferenceBetweenAngles(const double & ang1, const double & ang2);
 void project3dTo2d(const pcl::PointXYZRGB & point3d, pcl::PointXYZRGB & point2d, 
                    const polar_grid_tracking::t_Camera_params & cameraParams);
+void project3dTo2d(const pcl::PointXYZRGB & point3d, pcl::PointXYZRGB & point2d, 
+                   const image_geometry::StereoCameraModel & stereoCameraModel,
+                   const tf::StampedTransform & map2CamTransform);
 
 // From http://stackoverflow.com/questions/16451111/cvmat-conversion-to-eigen-matrix-and-back
 template<typename _Tp, int _rows, int _cols, int _options, int _maxRows, int _maxCols>

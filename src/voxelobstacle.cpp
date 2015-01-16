@@ -33,6 +33,8 @@ namespace voxel_grid_tracking {
                                     m_yawInterval(yawInterval), m_pitchInterval(pitchInterval)
 {
     
+    m_minX = m_minY = m_minZ = std::numeric_limits<double>::max();
+    m_maxX = m_maxY = m_maxZ = std::numeric_limits<double>::min();
     
     addVoxelToObstacle(voxel);
     
@@ -47,7 +49,8 @@ VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw,
                                 m_minDensity(minDensity), m_speedMethod(speedMethod),
                                 m_yawInterval(yawInterval), m_pitchInterval(pitchInterval)
 {
-
+    m_minX = m_minY = m_minZ = std::numeric_limits<double>::max();
+    m_maxX = m_maxY = m_maxZ = std::numeric_limits<double>::min();
 }
 
 bool VoxelObstacle::addVoxelToObstacle(VoxelPtr& voxel)
@@ -87,17 +90,18 @@ bool VoxelObstacle::addVoxelToObstacle(VoxelPtr& voxel)
 
 void VoxelObstacle::updateWithVoxel(const VoxelPtr& voxel)
 {
+    
     if (m_voxels.size() != 0) {
         m_vx += voxel->vx();
         m_vy += voxel->vy();
         m_vz += voxel->vz();
 
-        m_minX = min(m_minX, voxel->centroidX());
-        m_maxX = max(m_maxX, voxel->centroidX());
-        m_minY = min(m_minY, voxel->centroidY());
-        m_maxY = max(m_maxY, voxel->centroidY());
-        m_minZ = min(m_minZ, voxel->centroidZ());
-        m_maxZ = max(m_maxZ, voxel->centroidZ());
+        m_minX = min(m_minX, voxel->centroidX() - (voxel->sizeX() / 2.0));
+        m_maxX = max(m_maxX, voxel->centroidX() + (voxel->sizeX() / 2.0));
+        m_minY = min(m_minY, voxel->centroidY() - (voxel->sizeY() / 2.0));
+        m_maxY = max(m_maxY, voxel->centroidY() + (voxel->sizeY() / 2.0));
+        m_minZ = min(m_minZ, voxel->centroidZ() - (voxel->sizeZ() / 2.0));
+        m_maxZ = max(m_maxZ, voxel->centroidZ() + (voxel->sizeZ() / 2.0));
         
         updateMotionInformation();
     } else {
@@ -664,6 +668,88 @@ void VoxelObstacle::updateSpeedFromParticles()
 //         m_yaw = -m_yaw;
 //     
 //     m_pitch = asin(m_vz / normPitch);
+}
+
+void VoxelObstacle::getROI(const image_geometry::StereoCameraModel & stereoCameraModel,
+                           const tf::StampedTransform & map2CamTransform,
+                           polar_grid_tracking::roi_and_speed_2d & roi2D, 
+                           polar_grid_tracking::roi_and_speed_3d & roi3D)
+{
+    pcl::PointXYZRGB point3d, point2d;
+    
+    // A
+    point3d.x = m_minX;
+    point3d.y = m_maxY;
+    point3d.z = m_maxZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.A = toPoint32(point3d);
+    roi2D.A = toPoint2D(point2d);
+    
+    // B
+    point3d.x = m_minX;
+    point3d.y = m_minY;
+    point3d.z = m_maxZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.B = toPoint32(point3d);
+    roi2D.B = toPoint2D(point2d);
+    
+    // C
+    point3d.x = m_minX;
+    point3d.y = m_maxY;
+    point3d.z = m_minZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.C = toPoint32(point3d);
+    roi2D.C = toPoint2D(point2d);
+    
+    // D
+    point3d.x = m_minX;
+    point3d.y = m_minY;
+    point3d.z = m_minZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.D = toPoint32(point3d);
+    roi2D.D = toPoint2D(point2d);
+    
+    // E
+    point3d.x = m_maxX;
+    point3d.y = m_maxY;
+    point3d.z = m_maxZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.E = toPoint32(point3d);
+    roi2D.E = toPoint2D(point2d);
+    
+    // F
+    point3d.x = m_maxX;
+    point3d.y = m_minY;
+    point3d.z = m_maxZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.F = toPoint32(point3d);
+    roi2D.F = toPoint2D(point2d);
+    
+    // G
+    point3d.x = m_maxX;
+    point3d.y = m_maxY;
+    point3d.z = m_minZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.G = toPoint32(point3d);
+    roi2D.G = toPoint2D(point2d);
+    
+    // H
+    point3d.x = m_maxX;
+    point3d.y = m_minY;
+    point3d.z = m_minZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    roi3D.H = toPoint32(point3d);
+    roi2D.H = toPoint2D(point2d);
+}
+
+
+ostream& operator<<(ostream& stream, const VoxelObstacle& in)
+{
+    stream << in.idx() << ": " << 
+                "centroid: " << cv::Vec3f(in.centerX(), in.centerY(), in.centerZ()) <<
+                ", min: " << cv::Vec3f(in.minX(), in.minY(), in.minZ()) <<
+                ", max: " << cv::Vec3f(in.maxX(), in.maxY(), in.maxZ()) << endl;
+    return stream;
 }
 
 

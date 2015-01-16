@@ -121,6 +121,10 @@ public:
     double y() const { return m_y; }
     double z() const { return m_z; }
     
+    double sizeX() const { return m_sizeX; }
+    double sizeY() const { return m_sizeY; }
+    double sizeZ() const { return m_sizeZ; }
+    
     uint32_t oldestParticle() { return m_oldestParticle; }
     
     uint32_t neighborOcc() const { return m_neighborOcc; };
@@ -136,6 +140,8 @@ public:
     void assignObstacle(const int32_t & obstIdx) { m_obstIdx = obstIdx; }
     
     void reset();
+    
+    friend ostream& operator<<(ostream & stream, const Voxel & in);
     
 protected:
     double m_x, m_y, m_z;
@@ -169,8 +175,6 @@ protected:
 
     SpeedHistogram m_speedHistogram;
 };
-
-ostream& operator<<(ostream & stream, const Voxel & in);
 
 }
 #endif // CELL_H

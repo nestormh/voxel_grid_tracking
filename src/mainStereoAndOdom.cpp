@@ -582,6 +582,7 @@ void testStereoTracking() {
         cv_bridge::CvImage tmpRight(msgRight.header, sensor_msgs::image_encodings::BGR8, right);
         tmpLeft.header.frame_id = CAMERA_FRAME_ID;
         tmpRight.header.frame_id = CAMERA_FRAME_ID;
+        leftCameraInfo.header.seq = rightCameraInfo.header.seq = i;
         leftCameraInfo.header.stamp = tmpLeft.header.stamp = ros::Time(accTime); //ros::Time::now();
         rightCameraInfo.header.stamp = tmpRight.header.stamp = ros::Time(accTime); //ros::Time::now();
         

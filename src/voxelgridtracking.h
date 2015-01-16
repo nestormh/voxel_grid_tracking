@@ -26,7 +26,10 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
+#include <message_filters/sync_policies/approximate_time.h>
 #include <sensor_msgs/CameraInfo.h>
+
+#include <image_geometry/stereo_camera_model.h>
 
 #include <pcl_ros/point_cloud.h>
 
@@ -58,18 +61,29 @@ protected:
     typedef boost::multi_array<cv::Scalar, 1> ParticlesColorVector;
     typedef tf::MessageFilter<sensor_msgs::PointCloud2> TfPointCloudSynchronizer;
     typedef message_filters::Subscriber<sensor_msgs::PointCloud2> PointCloudSubscriber;
-    typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> ExactPolicy;
+    typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::CameraInfo, sensor_msgs::CameraInfo> ExactPolicyOFlow;
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::CameraInfo, sensor_msgs::CameraInfo> ApproximatePolicyOFlow;
+    typedef message_filters::Synchronizer<ExactPolicyOFlow> ExactSyncOFlow;
+    typedef message_filters::Synchronizer<ApproximatePolicyOFlow> ApproximateSyncOFlow;
+    typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2, sensor_msgs::CameraInfo, sensor_msgs::CameraInfo> ExactPolicy;
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::CameraInfo, sensor_msgs::CameraInfo> ApproximatePolicy;
     typedef message_filters::Synchronizer<ExactPolicy> ExactSync;
+    typedef message_filters::Synchronizer<ApproximatePolicy> ApproximateSync;
+    
+    typedef message_filters::Subscriber<sensor_msgs::CameraInfo> InfoSubscriber;
     
     typedef pcl::PointXYZRGB PointType;
     typedef pcl::PointCloud< PointType > PointCloud;
     typedef PointCloud::Ptr PointCloudPtr;
     
     // Callbacks
-    void getCameraInfo(const sensor_msgs::CameraInfoConstPtr& cameraInfoMsg);
-    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud);
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud,
+                            const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
+                            const sensor_msgs::CameraInfoConstPtr& rightCameraInfo);
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
-                            const sensor_msgs::PointCloud2::ConstPtr& msgOFlow);
+                            const sensor_msgs::PointCloud2::ConstPtr& msgOFlow,
+                            const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
+                            const sensor_msgs::CameraInfoConstPtr& rightCameraInfo);
     
     // Method functions
     void compute(const PointCloudPtr & pointCloud);
@@ -136,6 +150,8 @@ protected:
     
     uint32_t m_currentId;
     
+    image_geometry::StereoCameraModel m_stereoCameraModel;
+    
     // Parameters
     polar_grid_tracking::t_Camera_params m_cameraParams;
     float m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
@@ -163,7 +179,7 @@ protected:
     
     uint32_t m_threads;
     
-    float m_focalX, m_focalY, m_centerX, m_centerY;
+//     float m_focalX, m_focalY, m_centerX, m_centerY;
     
     string m_mapFrame;
     string m_poseFrame;
@@ -174,13 +190,17 @@ protected:
 
     // Synchronizers
     boost::shared_ptr<TfPointCloudSynchronizer> m_tfPointCloudSync;
-    boost::shared_ptr<ExactSync> m_synchronizer;
+    boost::shared_ptr<ExactSync> m_exactSynchronizer;
+    boost::shared_ptr<ExactSyncOFlow> m_exactSynchronizerOFlow;
+    boost::shared_ptr<ApproximateSync> m_approxSynchronizer;
+    boost::shared_ptr<ApproximateSyncOFlow> m_approxSynchronizerOFlow;
     
     // Subscribers
     PointCloudSubscriber m_pointCloudSub;
     PointCloudSubscriber m_oFlowSub;
-    typedef message_filters::Subscriber<sensor_msgs::CameraInfo> InfoSubscriber;
     InfoSubscriber m_cameraInfoSub;
+    InfoSubscriber m_leftCameraInfoSub;
+    InfoSubscriber m_rightCameraInfoSub;
     
     // Publishers
     ros::Publisher m_dynObjectsPub;
