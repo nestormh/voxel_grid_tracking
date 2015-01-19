@@ -740,6 +740,29 @@ void VoxelObstacle::getROI(const image_geometry::StereoCameraModel & stereoCamer
     project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
     roi3D.H = toPoint32(point3d);
     roi2D.H = toPoint2D(point2d);
+    
+    // Speed 3d
+    roi3D.speed.x = m_vx;
+    roi3D.speed.y = m_vy;
+    roi3D.speed.z = m_vz;
+    
+    // Speed 2d
+    point3d.x = -m_centerX;
+    point3d.y = m_centerY;
+    point3d.z = m_centerZ;
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    cv::Point2d p1(point2d.x, point2d.y);
+    
+    point3d.x = -(m_centerX + m_vx);
+    point3d.y = (m_centerY + m_vy);
+    point3d.z = (m_centerZ + m_vz);
+    project3dTo2d(point3d, point2d, stereoCameraModel, map2CamTransform);
+    cv::Point2d p2(point2d.x, point2d.y);
+    
+    p2 -= p1;
+    
+    roi2D.speed.x = p2.x;
+    roi2D.speed.y = p2.y;
 }
 
 

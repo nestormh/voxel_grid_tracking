@@ -38,6 +38,10 @@
 #include <pcl/point_cloud.h>
 #include <pcl/octree/octree.h>
 
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/image_encodings.h>
+#include <cv_bridge/cv_bridge.h>
+
 #include <boost/foreach.hpp>
 #include <boost/graph/graph_concepts.hpp>
 
@@ -155,7 +159,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_threshPitch = 9999999.0; //0.0;
     m_threshMagnitude = 9999999.0;
     
-    m_minVoxelsPerObstacle = 3; //2;
+    m_minVoxelsPerObstacle = 2 * 2 * 2;//3; //2;
     m_minObstacleDensity = 20.0;
     m_minVoxelDensity = 10.0;
     m_maxCommonVolume = 0.8;
@@ -263,6 +267,13 @@ VoxelGridTracking::VoxelGridTracking()
                                                               this, _1, _2, _3));
         }
     }
+    
+    image_transport::ImageTransport it(nh);
+    m_debugImgSub = it.subscribe("dbg/image_rect_color", 1, 
+                                                   boost::bind(&VoxelGridTracking::debugImageCallback, 
+                                                               this, _1),
+                                                   ros::VoidPtr(), 
+                                                   image_transport::TransportHints("raw"));
         
     m_pointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
     m_fakePointCloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -291,6 +302,13 @@ VoxelGridTracking::VoxelGridTracking()
     m_debugSegmentPub = nh.advertise<sensor_msgs::PointCloud2> ("debugSegment", 1);
     m_debugProbPub = nh.advertise<sensor_msgs::PointCloud2> ("debugProbPub", 1);
 //     ros::spin();
+}
+
+void VoxelGridTracking::debugImageCallback(const sensor_msgs::ImageConstPtr& imgMsg)
+{
+    cv_bridge::CvImageConstPtr imgPtr;
+    imgPtr = cv_bridge::toCvShare(imgMsg, sensor_msgs::image_encodings::MONO8);
+    m_dbgImg = imgPtr->image;
 }
 
 void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud,
@@ -2178,101 +2196,16 @@ void VoxelGridTracking::publishROI()
         
         // A
         roiMsg.rois3d[i].A.x = (obstacle->centerX() - halfX);
-        roiMsg.rois3d[i].A.y = (obstacle->centerY() - halfY);
-        roiMsg.rois3d[i].A.z = (obstacle->centerZ() + halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].A.u = point.x;
-        roiMsg.rois2d[i].A.v = point.y;
         
-        // B
-        roiMsg.rois3d[i].B.x = (obstacle->centerX() + halfX);
-        roiMsg.rois3d[i].B.y = (obstacle->centerY() - halfY);
-        roiMsg.rois3d[i].B.z = (obstacle->centerZ() + halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].B.u = point.x;
-        roiMsg.rois2d[i].B.v = point.y;
+        polar_grid_tracking::roi_and_speed_2d roi2D;
+        polar_grid_tracking::roi_and_speed_3d roi3D;
         
-        // C
-        roiMsg.rois3d[i].C.x = (obstacle->centerX() - halfX);
-        roiMsg.rois3d[i].C.y = (obstacle->centerY() - halfY);
-        roiMsg.rois3d[i].C.z = (obstacle->centerZ() - halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].C.u = point.x;
-        roiMsg.rois2d[i].C.v = point.y;
+        obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
+                         roi2D, roi3D);
         
-        // D
-        roiMsg.rois3d[i].D.x = (obstacle->centerX() + halfX);
-        roiMsg.rois3d[i].D.y = (obstacle->centerY() - halfY);
-        roiMsg.rois3d[i].D.z = (obstacle->centerZ() - halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].D.u = point.x;
-        roiMsg.rois2d[i].D.v = point.y;
+        roiMsg.rois3d[i] = roi3D;
+        roiMsg.rois2d[i] = roi2D;
         
-        // E
-        roiMsg.rois3d[i].E.x = (obstacle->centerX() - halfX);
-        roiMsg.rois3d[i].E.y = (obstacle->centerY() + halfY);
-        roiMsg.rois3d[i].E.z = (obstacle->centerZ() + halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].E.u = point.x;
-        roiMsg.rois2d[i].E.v = point.y;
-        
-        // F
-        roiMsg.rois3d[i].F.x = (obstacle->centerX() + halfX);
-        roiMsg.rois3d[i].F.y = (obstacle->centerY() + halfY);
-        roiMsg.rois3d[i].F.z = (obstacle->centerZ() + halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].F.u = point.x;
-        roiMsg.rois2d[i].F.v = point.y;
-        
-        // G
-        roiMsg.rois3d[i].G.x = (obstacle->centerX() - halfX);
-        roiMsg.rois3d[i].G.y = (obstacle->centerY() + halfY);
-        roiMsg.rois3d[i].G.z = (obstacle->centerZ() - halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].G.u = point.x;
-        roiMsg.rois2d[i].G.v = point.y;
-        
-        // H
-        roiMsg.rois3d[i].H.x = (obstacle->centerX() + halfX);
-        roiMsg.rois3d[i].H.y = (obstacle->centerY() + halfY);
-        roiMsg.rois3d[i].H.z = (obstacle->centerZ() - halfZ);
-        point3d.x = -roiMsg.rois3d[i].A.x;
-        point3d.y = roiMsg.rois3d[i].A.z;
-        point3d.z = roiMsg.rois3d[i].A.y;
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].H.u = point.x;
-        roiMsg.rois2d[i].H.v = point.y;
-        
-        roiMsg.rois3d[i].speed.x = obstacle->vx();
-        roiMsg.rois3d[i].speed.y = obstacle->vy();
-        roiMsg.rois3d[i].speed.z = obstacle->vz();
-        point3d.x = -obstacle->vx();
-        point3d.y = obstacle->vz();
-        point3d.z = obstacle->vy();
-        project3dTo2d(point3d, point, m_stereoCameraModel, m_map2CamTransform);
-        roiMsg.rois2d[i].speed.x = point.x;
-        roiMsg.rois2d[i].speed.y = point.y;
     }
     
     m_ROIPub.publish(roiMsg);
@@ -2291,10 +2224,10 @@ void VoxelGridTracking::publishFakePointCloud()
 
 void VoxelGridTracking::visualizeROI2d()
 {
-    string imgPattern = "/local/imaged/stixels/bahnhof/seq03-img-left/image_%08d_0.png";
+//     string imgPattern = "/local/imaged/stixels/bahnhof/seq03-img-left/image_%08d_0.png";
 //     string imgPattern = "/local/imaged/Karlsruhe/2011_09_26/2011_09_26_drive_0091_sync/image_02/data/%010d.png";
-    char imgNameL[1024];
-    sprintf(imgNameL, imgPattern.c_str(), m_currentId + 295);
+//     char imgNameL[1024];
+//     sprintf(imgNameL, imgPattern.c_str(), m_currentId + 295);
     
     stringstream ss;
     ss << "/tmp/output";
@@ -2303,9 +2236,11 @@ void VoxelGridTracking::visualizeROI2d()
     ss << m_currentId;
     ss << ".png";
     
-    cout << "rois2d: " << imgNameL << endl;
+//     cout << "rois2d: " << imgNameL << endl;
     
-    cv::Mat img = cv::imread(string(imgNameL));
+//     cv::Mat img = cv::imread(string(imgNameL));
+    cv::Mat img = m_dbgImg;
+    cv::cvtColor(img, img, CV_GRAY2BGR);
     
     pcl::PointXYZRGB point3d, point;
     
@@ -2338,9 +2273,21 @@ void VoxelGridTracking::visualizeROI2d()
         pointBR.x = max(roi2D.D.u, roi2D.H.u);
         pointBR.y = max(roi2D.D.v, roi2D.H.v);
 
-        cv::Scalar color((double)rand() / RAND_MAX * 128 + 128, 
-                         (double)rand() / RAND_MAX * 128 + 128, 
-                         (double)rand() / RAND_MAX * 128 + 128);
+        const float MAX_SPEED = 20.0f;
+        float speedX = roi2D.speed.x;
+        float speedY = roi2D.speed.y;
+        cv::Scalar color;
+        if ((speedX == 0.0f) && (speedY == 0.0f)) {
+            color = cv::Scalar::all(0);
+        } else {
+            if (speedX > MAX_SPEED) speedX = MAX_SPEED;
+            if (speedX < -MAX_SPEED) speedX = -MAX_SPEED;
+            if (speedY > MAX_SPEED) speedY = MAX_SPEED;
+            if (speedY < -MAX_SPEED) speedY = -MAX_SPEED;
+            color = cv::Scalar(speedX / MAX_SPEED * 128 + 128, 
+                                speedY / MAX_SPEED * 128 + 128, 
+                                128);
+        }
         cv::rectangle(img, pointUL, pointBR, color, 2);
     }
     

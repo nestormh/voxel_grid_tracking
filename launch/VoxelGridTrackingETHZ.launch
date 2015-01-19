@@ -106,6 +106,8 @@
                    to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
             <remap from="~/right/camera_info"
                    to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
+            <remap from="~/dbg/image_rect_color"
+                   to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
             
             <param name="use_oflow" value="false" />
             <param name="approximate_sync" value="true" />

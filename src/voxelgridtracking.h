@@ -29,6 +29,8 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <sensor_msgs/CameraInfo.h>
 
+#include <image_transport/subscriber_filter.h>
+
 #include <image_geometry/stereo_camera_model.h>
 
 #include <pcl_ros/point_cloud.h>
@@ -84,6 +86,7 @@ protected:
                             const sensor_msgs::PointCloud2::ConstPtr& msgOFlow,
                             const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
                             const sensor_msgs::CameraInfoConstPtr& rightCameraInfo);
+    void debugImageCallback(const sensor_msgs::ImageConstPtr& imgMsg);
     
     // Method functions
     void compute(const PointCloudPtr & pointCloud);
@@ -149,6 +152,8 @@ protected:
     VoxelObstacleList m_obstacles;
     
     uint32_t m_currentId;
+    
+    cv::Mat m_dbgImg;
     
     image_geometry::StereoCameraModel m_stereoCameraModel;
     
@@ -225,6 +230,7 @@ protected:
     ros::Publisher m_segmentedPointCloudPub;
     ros::Publisher m_debugSegmentPub;
     ros::Publisher m_debugProbPub;
+    image_transport::Subscriber m_debugImgSub;
 };
 
 }
