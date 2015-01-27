@@ -14,4 +14,6 @@ point_2d F
 point_2d G
 point_2d H
 
+point_2d center
+
 Vector2 speed

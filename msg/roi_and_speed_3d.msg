@@ -14,4 +14,6 @@ geometry_msgs/Point32 F
 geometry_msgs/Point32 G
 geometry_msgs/Point32 H
 
+geometry_msgs/Point32 center
+
 geometry_msgs/Vector3 speed

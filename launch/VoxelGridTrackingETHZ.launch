@@ -3,6 +3,7 @@
     <arg name="test_name" default="eth"/>
     <arg name="use_elas" default="true"/>
     <arg name="use_rsgm" default="false"/>
+    <arg name="do_evaluation" default="true"/>
 
     <param name="use_sim_time" value="true"/>
     
@@ -114,8 +115,18 @@
             <param name="queue_size" value="10" />
         </node>
         
-        <node name="voxel_tracker_evaluation" pkg="voxel_tracker_evaluation" type="voxel_tracker_evaluation" output="screen" required="false" >
-        </node>
+        <group if="$(arg do_evaluation)">
+            <node name="voxel_tracker_evaluation" pkg="voxel_tracker_evaluation" type="voxel_tracker_evaluation" output="screen" required="false" >
+                <remap from="/$(arg namespace)/stereo" to="/$(arg namespace)/stereo_and_odom" />
+                <remap from="~/rois_array_rt"
+                       to="/$(arg namespace)/voxel_grid_tracking/result_rois" />
+                <remap from="~/rois_array_gt"
+                       to="/$(arg namespace)/stereo_and_odom/ground_truth" />
+                <remap from="~/time_stats"
+                       to="/$(arg namespace)/voxel_grid_tracking/time_stats" />
+                
+            </node>
+        </group>
     </group>
     
     <!--     I must place the remap here. For some reason, it is ignored in other location -->

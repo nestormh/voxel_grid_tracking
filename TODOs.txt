@@ -1,5 +1,4 @@
-Repair utilspolargridtracking.cpp:79 ->project3dTo2d
-Fill 2D and 3D vectors
+
 Prepare a benchmark using ETH sequence
 Clean code
 Generate a node for mainStereoAndOdom

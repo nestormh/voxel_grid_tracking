@@ -83,6 +83,7 @@
 #include <pcl-1.7/pcl/impl/point_types.hpp>
 
 #include "polar_grid_tracking/roiArray.h"
+#include "polar_grid_tracking/voxel_tracker_time_stats.h"
 #include "utilspolargridtracking.h"
 
 using namespace std;
@@ -223,7 +224,7 @@ VoxelGridTracking::VoxelGridTracking()
     // Synchronize input topics. Optionally do approximate synchronization or not.
     bool approx;
     int queue_size;
-    nh.param("approximate_sync", approx, true);
+    nh.param("approximate_sync", approx, false);
     nh.param("queue_size", queue_size, 10);
     if (m_useOFlow) {
         m_oFlowSub.subscribe(nh, "flow_vectors", 10);
@@ -295,6 +296,7 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
     m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
     m_ROIPub = nh.advertise<polar_grid_tracking::roiArray>("result_rois", 1);
+    m_timeStatsPub = nh.advertise<polar_grid_tracking::voxel_tracker_time_stats>("time_stats", 1);
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
     m_dynObjectsPub = nh.advertise<sensor_msgs::PointCloud2> ("dynamic_objects", 1);
     
@@ -366,6 +368,10 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
  */
 void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 {
+    polar_grid_tracking::voxel_tracker_time_stats timeStatsMsg;
+    timeStatsMsg.header.seq = m_currentId;
+    timeStatsMsg.header.stamp = ros::Time::now();
+    
     INIT_CLOCK(startCompute)
     cout << "m_useOFlow " << m_useOFlow << endl;
     
@@ -387,16 +393,20 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     getVoxelGridFromPointCloud(pointCloud);
     END_CLOCK(totalCompute2, startCompute2)
     ROS_INFO("[%s] %d, getVoxelGridFromPointCloud: %f seconds", __FUNCTION__, __LINE__, totalCompute2);
+    timeStatsMsg.getVoxelGridFromPointCloud = totalCompute2;
+    
     if(m_useOFlow) {
         INIT_CLOCK(startCompute3)
         updateFromOFlow();
         END_CLOCK(totalCompute3, startCompute3)
         ROS_INFO("[%s] %d, updateFromOFlow: %f seconds", __FUNCTION__, __LINE__, totalCompute3);
+        timeStatsMsg.updateFromOFlow = totalCompute3;
     }
     INIT_CLOCK(startCompute4)
     getMeasurementModel();
     END_CLOCK(totalCompute4, startCompute4)
     ROS_INFO("[%s] %d, getMeasurementModel: %f seconds", __FUNCTION__, __LINE__, totalCompute4);
+    timeStatsMsg.getMeasurementModel = totalCompute4;
     
     // TODO:
     // Improve the way in which flow vectors are computed
@@ -406,10 +416,13 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
         prediction();
         END_CLOCK(totalCompute5, startCompute5)
         ROS_INFO("[%s] %d, prediction: %f seconds", __FUNCTION__, __LINE__, totalCompute5);
+        timeStatsMsg.prediction = totalCompute5;
+        
         INIT_CLOCK(startCompute6)
         measurementBasedUpdate();
         END_CLOCK(totalCompute6, startCompute6)
         ROS_INFO("[%s] %d, measurementBasedUpdate: %f seconds", __FUNCTION__, __LINE__, totalCompute6);
+        timeStatsMsg.measurementBasedUpdate = totalCompute6;
 
         publishParticles();
         
@@ -418,6 +431,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
         segmentWithClustering();
         END_CLOCK(totalCompute7, startCompute7)
         ROS_INFO("[%s] %d, segment: %f seconds", __FUNCTION__, __LINE__, totalCompute7);
+        timeStatsMsg.segment = totalCompute7;
 //         
 //         updateObstacles();
 //         filterObstacles();
@@ -425,12 +439,14 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
         updateSpeedFromObstacles();
         END_CLOCK(totalCompute8, startCompute8)
         ROS_INFO("[%s] %d, updateSpeedFromObstacles: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
+        timeStatsMsg.updateSpeedFromObstacles = totalCompute8;
         INIT_CLOCK(startCompute2)
     }
     INIT_CLOCK(startCompute9)
     initialization();
     END_CLOCK(totalCompute9, startCompute9)
     ROS_INFO("[%s] %d, initialization: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
+    timeStatsMsg.initialization = totalCompute9;
 // END OF COMMENT
     
     
@@ -443,6 +459,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     END_CLOCK(totalCompute, startCompute)
     
     ROS_INFO("[%s] Total time: %f seconds", __FUNCTION__, totalCompute);
+    timeStatsMsg.totalCompute = totalCompute;
     
     INIT_CLOCK(startVis)
     cout << __FILE__ << ":" << __LINE__ << endl;
@@ -460,10 +477,13 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     
     publishROI();
 //     publishFakePointCloud();
-    visualizeROI2d();
+//     visualizeROI2d();
     END_CLOCK(totalVis, startVis)
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
+    timeStatsMsg.totalVisualization = totalVis;
+    
+    m_timeStatsPub.publish(timeStatsMsg);
 }
 
 
@@ -2181,7 +2201,7 @@ void VoxelGridTracking::publishROI()
     roiMsg.rois3d.resize(m_obstacles.size());
     roiMsg.rois2d.resize(m_obstacles.size());
     
-    roiMsg.id = m_currentId;
+    roiMsg.header.seq = m_currentId;
     roiMsg.header.frame_id = m_baseFrame;
     roiMsg.header.stamp = ros::Time::now();
     

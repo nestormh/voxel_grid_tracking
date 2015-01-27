@@ -226,6 +226,7 @@ protected:
     ros::Publisher m_obstacleSpeedPub;
     ros::Publisher m_obstacleSpeedTextPub;
     ros::Publisher m_ROIPub;
+    ros::Publisher m_timeStatsPub;
     ros::Publisher m_fakePointCloudPub;
     ros::Publisher m_segmentedPointCloudPub;
     ros::Publisher m_debugSegmentPub;

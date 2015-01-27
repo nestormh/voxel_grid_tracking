@@ -82,6 +82,7 @@ add_message_files(
   roi_and_speed_2d.msg
   roi_and_speed_3d.msg
   roiArray.msg
+  voxel_tracker_time_stats.msg
 )
 
 ## Generate services in the 'srv' folder

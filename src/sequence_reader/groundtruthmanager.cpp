@@ -65,6 +65,7 @@ void GroundTruthManager::readETHZSequence(const string & filename,
             polar_grid_tracking::roi_and_speed_2d roi2d;
 
             int x1, y1, x2, y2;
+            int xA, yA, xB, yB;
 //               +------+
 //              /|     /|
 //         (x1, y1)---+ |
@@ -72,12 +73,17 @@ void GroundTruthManager::readETHZSequence(const string & filename,
 //             | +----|-+
 //             |/     |/
 //             +--(x2, y2)
-            x1 = atoi(tokens2[0].c_str());
-            y1 = atoi(tokens2[1].c_str());
-            x2 = atoi(tokens2[2].c_str());
+            xA = atoi(tokens2[0].c_str());
+            yA = atoi(tokens2[1].c_str());
+            xB = atoi(tokens2[2].c_str());
             vector<string> tokens3;
             boost::split(tokens3, tokens2[3], boost::is_any_of(")"));
-            y2 = atoi(tokens3[0].c_str());
+            yB = atoi(tokens3[0].c_str());
+            
+            x1 = min(xA, xB);
+            x2 = max(xA, xB);
+            y1 = min(yA, yB);
+            y2 = max(yA, yB);
             
             roi2d.A.u = x1;
             roi2d.A.v = y1;
@@ -90,7 +96,19 @@ void GroundTruthManager::readETHZSequence(const string & filename,
             
             roi2d.D.u = x2;
             roi2d.D.v = y2;
-
+            
+            roi2d.E.u = x1;
+            roi2d.E.v = y1;
+            
+            roi2d.F.u = x2;
+            roi2d.F.v = y1;
+            
+            roi2d.G.u = x1;
+            roi2d.G.v = y2;
+            
+            roi2d.H.u = x2;
+            roi2d.H.v = y2;
+            
             roiArray->rois2d.push_back(roi2d);
         }
         m_rois.push_back(roiArray);
@@ -153,42 +171,38 @@ void GroundTruthManager::fillRois2D()
         m_rois.at(i)->prevRois.resize(m_rois.at(i)->rois2d.size());
         for (uint32_t j = 0; j < m_rois.at(i)->rois2d.size(); j++) {
             polar_grid_tracking::roi_and_speed_2d currRoi = m_rois.at(i)->rois2d[j];
-            cv::Mat mask1 = cv::Mat::zeros(m_leftCameraInfo.height, m_leftCameraInfo.width, CV_8UC1);
-            cv::rectangle(mask1, cv::Point2f(currRoi.A.u, 
-                                             currRoi.A.v), cv::Point2f(currRoi.D.u, currRoi.D.v),
-                                             cv::Scalar::all(255), -1);
+            cv::Point2d pointUL_curr, pointBR_curr;
+            pointUL_curr.x = min(currRoi.A.u, currRoi.E.u);
+            pointUL_curr.y = min(currRoi.A.v, currRoi.E.v);
+            
+            pointBR_curr.x = max(currRoi.D.u, currRoi.H.u);
+            pointBR_curr.y = max(currRoi.D.v, currRoi.H.v);
+            
             int maxIntersection = 0;
             int maxIndex = -1;
             for (uint32_t k = 0; k < m_rois.at(i - 1)->rois2d.size(); k++) {
                 polar_grid_tracking::roi_and_speed_2d prevRoi = m_rois.at(i - 1)->rois2d[k];
-                cv::Mat mask2 = cv::Mat::zeros(m_leftCameraInfo.height, m_leftCameraInfo.width, CV_8UC1);
-                cv::rectangle(mask2, 
-                              cv::Point2f(prevRoi.A.u, prevRoi.A.v), cv::Point2f(prevRoi.D.u, prevRoi.D.v),
-                              cv::Scalar::all(255), -1);
                 
-                cv::bitwise_and(mask1, mask2, mask2);
+                cv::Point2d pointUL_prev, pointBR_prev;
+                pointUL_prev.x = min(prevRoi.A.u, prevRoi.E.u);
+                pointUL_prev.y = min(prevRoi.A.v, prevRoi.E.v);
                 
-                const float &x11 = currRoi.A.u;
-                const float &y11 = currRoi.A.v;
-                const float &x12 = currRoi.D.u;
-                const float &y12 = currRoi.D.v;
+                pointBR_prev.x = max(prevRoi.D.u, prevRoi.H.u);
+                pointBR_prev.y = max(prevRoi.D.v, prevRoi.H.v);
                 
-                const float &x21 = prevRoi.A.u;
-                const float &y21 = currRoi.A.v;
-                const float &x22 = currRoi.D.u;
-                const float &y22 = currRoi.D.v;
+                float x_overlap = max(0.0, min(pointBR_prev.x, pointBR_curr.x) - max(pointUL_prev.x, pointUL_curr.x));
+                float y_overlap = max(0.0, min(pointBR_prev.y, pointBR_curr.y) - max(pointUL_prev.y, pointUL_curr.y));
                 
-                float x_overlap = max(0.0f, min(x12,x22) - max(x12,x21));
-                float y_overlap = max(0.0f, min(y12,y22) - max(y11,y21));
-                
-                // TODO: Check
-                int intersection = x_overlap * y_overlap; //cv::countNonZero(mask2);
+                int intersection = x_overlap * y_overlap;
                 if (intersection > maxIntersection ) {
                     maxIntersection = intersection;
                     maxIndex = k;
                 }
             }
-            float totalCovered = maxIntersection / (float)cv::countNonZero(mask1);
+            
+            float x_size = max(0.0, pointBR_curr.x - pointUL_curr.x);
+            float y_size = max(0.0, pointBR_curr.y - pointUL_curr.y);
+            float totalCovered = maxIntersection / (x_size * y_size);
             if (totalCovered > 0.8) {
                 if (maxIndex != -1) {
                     polar_grid_tracking::roi_and_speed_2d prevRoi = m_rois.at(i - 1)->rois2d[maxIndex];
