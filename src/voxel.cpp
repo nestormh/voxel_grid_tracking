@@ -41,7 +41,7 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
              const double & centroidX, const double & centroidY, const double & centroidZ,
              const double & sizeX, const double & sizeY, const double & sizeZ, 
              const double & maxVelX, const double & maxVelY, const double & maxVelZ,
-             const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
+             const image_geometry::StereoCameraModel & stereoCameraModel, const SpeedMethod & speedMethod,
              const double & yawInterval, const double & pitchInterval, const float & factorSpeed) : 
                     m_x(x), m_y(y), m_z(z), 
                     m_centroidX(centroidX), m_centroidY(centroidY), m_centroidZ(centroidZ), 
@@ -59,7 +59,8 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
         double yReal = m_y * m_sizeY;
         double zReal = m_z * m_sizeZ;
         
-        const double sigmaY = (m_centroidY * yReal * DISPARITY_COMPUTATION_ERROR) / (params.baseline * params.ku);
+        const double sigmaY = (m_centroidY * yReal * DISPARITY_COMPUTATION_ERROR) / 
+                                (stereoCameraModel.baseline() * stereoCameraModel.left().fx());
         const double sigmaX = (m_centroidX * sigmaY) / m_centroidY;
         const double sigmaZ = (m_centroidZ * sigmaY) / m_centroidY;
         
@@ -92,11 +93,11 @@ void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTran
 ParticleList Voxel::createParticlesStatic(const tf::StampedTransform& pose2mapTransform)
 {
     ParticleList particleList;
-    for (int32_t vx = -1; vx <= 1; vx++) {
-        for (int32_t vy = -1; vy <= 1; vy++) {
-            int32_t vz = 0;
+    for (double vx = -1; vx <= 1; vx += m_yawInterval) {
+        for (double vy = -1; vy <= 1; vy += m_pitchInterval) {
+            double vz = 0.0;
             
-            if (vx == vy == vz == 0)
+            if (vx == vy == vz == 0.0)
                 continue;
 //             for (int32_t vz = -1; vz <= 1; vz++) {
             for (double factorSpeed = m_factorSpeed; factorSpeed <= 1.0; factorSpeed += m_factorSpeed) {

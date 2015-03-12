@@ -19,8 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
   image_geometry
   elas
-  octomap
-  octomap_ros
   pcl_ros
 )
 
@@ -56,7 +54,6 @@ find_package(PCL 1.6 REQUIRED)
 # find_package(CGAL REQUIRED)
 # find_package(GMP REQUIRED)
 # find_package(MPFR REQUIRED)
-find_package(octomap REQUIRED)
 
 INCLUDE("${POLAR_CALIBRATION_PATH}/PolarCalibration.cmake")
 INCLUDE("libs/libElas.cmake")

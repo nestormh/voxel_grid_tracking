@@ -1,0 +1,76 @@
+# Synchonization: Approximate or exact
+approximate_sync: true
+queue_size: 10
+
+# Number of execution threads
+num_threads: 8
+
+# Use / not use optical flow for the generation of particles
+use_oflow: false
+
+# Reference frames: map, pose (vehicle frame), camera frame
+map_frame: "/map"
+pose_frame: "/base_footprint"
+camera_frame: "/base_left_cam"
+
+# Dimensions of the voxels
+cell_size_x: 0.5
+cell_size_y: 0.5
+cell_size_z: 0.5
+
+# Max number of particles allowed after measurement based update
+max_particles_number_per_voxel: 30
+
+# Max speed expected for an obstacles
+max_vel_x: 2.0
+max_vel_y: 2.0
+max_vel_z: 0.0
+
+# Min speed to consider an obstacle as non-static
+min_vel_x: 0.3
+min_vel_y: 0.3
+min_vel_z: 0.0
+
+# Intervals used for the generation of particles
+yaw_interval: 1.0       # -1, ..., +1 posible vectors
+pitch_interval: 1.0     # -1, ..., +1 posible vectors
+speed_factor: 0.1       # Percentage (between 0..1) of the maximal speed
+
+# Used to decide if a point is a real point or just noise
+occupancy_prob_tresh: 0.5  
+
+# Distance used to consider voxels as neighbors in the segmentation stage
+l1_distance_for_neighbor_thresh_x: 1
+l1_distance_for_neighbor_thresh_y: 1
+l1_distance_for_neighbor_thresh_z: 1
+
+# Method used to compute the speed of obstacles
+#speed_method_mean, speed_method_circ_hist
+obstacle_speed_method: "speed_method_circ_hist"
+
+# Just with original particle filter
+# Max number of particles generated per voxel
+random_particles_per_voxel: 100.0
+
+# BEGIN: Just with flood_fill_segment
+# Comparison in yaw between voxels to assign them to the same obstacle
+yaw_thresh_to_join_voxels: 90.0 * M_PI / 180.0
+# Comparison in pitch between voxels to assign them to the same obstacle
+pitch_thresh_to_join_voxels: 9999999.0
+# Comparison in magnitude between voxels to assign them to the same obstacle
+magnitude_thresh_to_join_voxels: 9999999.0
+
+# Minimal number of voxels in an obstacle to allow it
+min_voxels_per_obstacle: 2 * 2 * 2
+
+# Minimal density of points allowed per voxel
+min_voxel_density: 10.0
+# Measurement to join obstacles into a single one
+max_common_value_to_join: 0.8
+# Min allowed height for obstacles
+min_obstacle_height: 1.25
+# END: Just with use_flood_fill_segment
+
+# Just with original segmentation method
+#speed_method_mean, speed_method_circ_hist
+voxel_speed_method: speed_method_circ_hist

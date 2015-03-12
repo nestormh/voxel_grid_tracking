@@ -27,6 +27,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <image_geometry/stereo_camera_model.h>
+
 #include <vector>
 #include <tiff.h>
 
@@ -54,7 +56,7 @@ public:
           const double & centroidX, const double & centroidY, const double & centroidZ, 
           const double & sizeX, const double & sizeY, const double & sizeZ, 
           const double & maxVelX, const double & maxVelY, const double & maxVelZ,
-          const polar_grid_tracking::t_Camera_params & params, const SpeedMethod & speedMethod,
+          const image_geometry::StereoCameraModel & stereoCameraModel, const SpeedMethod & speedMethod,
           const double & yawInterval, const double & pitchInterval, const float & factorSpeed);
     
     void createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform);

@@ -34,6 +34,7 @@
 #include <image_geometry/stereo_camera_model.h>
 
 #include <pcl_ros/point_cloud.h>
+#include <pcl-1.7/pcl/search/kdtree.h>
 
 #include "polargridtracking.h"
 
@@ -72,6 +73,11 @@ protected:
     typedef message_filters::Synchronizer<ExactPolicy> ExactSync;
     typedef message_filters::Synchronizer<ApproximatePolicy> ApproximateSync;
     
+//     typedef message_filters::sync_policies::ExactTime<sensor_msgs::PointCloud2> ExactPolicyJustPointCloud;
+//     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2> ApproximatePolicyJustPointCloud;
+//     typedef message_filters::Synchronizer<ExactPolicyJustPointCloud> ExactSyncJustPointCloud;
+//     typedef message_filters::Synchronizer<ApproximatePolicyJustPointCloud> ApproximateSyncJustPointCloud;
+    
     typedef message_filters::Subscriber<sensor_msgs::CameraInfo> InfoSubscriber;
     
     typedef pcl::PointXYZRGB PointType;
@@ -79,7 +85,8 @@ protected:
     typedef PointCloud::Ptr PointCloudPtr;
     
     // Callbacks
-    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud,
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud);
+    void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
                             const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
                             const sensor_msgs::CameraInfoConstPtr& rightCameraInfo);
     void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr& msgPointCloud, 
@@ -91,8 +98,6 @@ protected:
     // Method functions
     void compute(const PointCloudPtr & pointCloud);
     void reset();
-    void extractDynamicObjects(const PointCloudPtr& pointCloud);
-    void constructOctomapFromPointCloud(const PointCloudPtr& pointCloud);
     void getVoxelGridFromPointCloud(const PointCloudPtr& pointCloud);
     void getMeasurementModel();
     void initialization();
@@ -108,7 +113,6 @@ protected:
     void filterObstacles();
     void joinCommonVolumes();
     void updateSpeedFromObstacles();
-    void generateFakePointClouds();
     
     void updateFromOFlow();
     
@@ -124,9 +128,9 @@ protected:
     void visualizeROI2d();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_fakePointCloud;
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr m_oFlowCloud;
     PointCloudPtr m_lastPointCloud;
+    pcl::search::KdTree<PointType> m_kdtreeLastPointCloud;
     
     double m_deltaYaw, m_deltaPitch, m_speed, m_deltaTime;
     ros::Time m_lastPointCloudTime;
@@ -158,51 +162,53 @@ protected:
     image_geometry::StereoCameraModel m_stereoCameraModel;
     
     // Parameters
-    polar_grid_tracking::t_Camera_params m_cameraParams;
-    float m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
-    float m_factorSpeed;
     float m_cellSizeX, m_cellSizeY, m_cellSizeZ;
-    float m_voxelSize;
-    double m_maxVelX, m_maxVelY, m_maxVelZ, m_maxMagnitude, m_minMagnitude;
-    double m_particlesPerVoxel, m_threshProbForCreation;
+    uint32_t m_maxNumberOfParticles;
+    uint32_t m_threads;
+    double m_maxVelX, m_maxVelY, m_maxVelZ;
+    double m_minVelX, m_minVelY, m_minVelZ;
+    double m_maxMagnitude, m_minMagnitude;
+    double m_yawInterval, m_pitchInterval, m_factorSpeed;
+    SpeedMethod m_obstacleSpeedMethod;
+    double m_threshOccupancyProb;
     uint32_t m_neighBorX, m_neighBorY, m_neighBorZ;
+    
+    double m_particlesPerVoxel;
     double m_threshYaw, m_threshPitch, m_threshMagnitude;
     uint32_t m_minVoxelsPerObstacle;
-    double m_minObstacleDensity;
     double m_minVoxelDensity;
-    SpeedMethod m_speedMethod;
-    SpeedMethod m_obstacleSpeedMethod;
-    double m_yawInterval;
-    double m_pitchInterval;
     double m_maxCommonVolume;
     double m_minObstacleHeight;
-    double m_maxObstacleHeight;
-    double m_timeIncrementForFakePointCloud;
+    
+    SpeedMethod m_speedMethod;
+    
     bool m_useOFlow;
-    float m_threshOccupancyProb;
-    uint32_t m_maxNumberOfParticles;
     
-    uint32_t m_threads;
-    
-//     float m_focalX, m_focalY, m_centerX, m_centerY;
+    bool m_inputFromCameras;
+
+    // Computed parameters
+    float m_minX, m_maxX, m_minY, m_maxY, m_minZ, m_maxZ;
+    float m_voxelSize;
     
     string m_mapFrame;
     string m_poseFrame;
     string m_cameraFrame;
-    string m_baseFrame;//TODO: Remove
     
     sensor_msgs::CameraInfoConstPtr m_cameraInfo;
 
     // Synchronizers
     boost::shared_ptr<TfPointCloudSynchronizer> m_tfPointCloudSync;
-    boost::shared_ptr<ExactSync> m_exactSynchronizer;
     boost::shared_ptr<ExactSyncOFlow> m_exactSynchronizerOFlow;
-    boost::shared_ptr<ApproximateSync> m_approxSynchronizer;
     boost::shared_ptr<ApproximateSyncOFlow> m_approxSynchronizerOFlow;
+    boost::shared_ptr<ExactSync> m_exactSynchronizer;
+    boost::shared_ptr<ApproximateSync> m_approxSynchronizer;
+//     boost::shared_ptr<ExactSyncJustPointCloud> m_exactSynchronizerJustPointCloud;
+//     boost::shared_ptr<ApproximateSyncJustPointCloud> m_approxSynchronizerJustPointCloud;
     
     // Subscribers
     PointCloudSubscriber m_pointCloudSub;
     PointCloudSubscriber m_oFlowSub;
+    ros::Subscriber m_pointCloudJustPointCloudSub;
     InfoSubscriber m_cameraInfoSub;
     InfoSubscriber m_leftCameraInfoSub;
     InfoSubscriber m_rightCameraInfoSub;
@@ -227,11 +233,12 @@ protected:
     ros::Publisher m_obstacleSpeedTextPub;
     ros::Publisher m_ROIPub;
     ros::Publisher m_timeStatsPub;
-    ros::Publisher m_fakePointCloudPub;
     ros::Publisher m_segmentedPointCloudPub;
     ros::Publisher m_debugSegmentPub;
     ros::Publisher m_debugProbPub;
     image_transport::Subscriber m_debugImgSub;
+    ros::Publisher m_fakePointCloudPub;
+    ros::Publisher m_fakeParticlesPub;
 };
 
 }

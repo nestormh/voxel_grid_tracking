@@ -9,6 +9,7 @@ Panels:
         - /Grid1
         - /TF1/Frames1
         - /TF1/Tree1
+        - /voxel_grid_tracking1
         - /voxel_grid_tracking1/debugPointCloud1
         - /voxel_grid_tracking1/FullScene1
         - /voxel_grid_tracking1/debugSegment1
@@ -22,20 +23,22 @@ Panels:
         - /voxel_grid_tracking1/Particles2/particlesD1
         - /voxel_grid_tracking1/ObstacleCubes1
         - /voxel_grid_tracking1/SpeedText1
-        - /StereoAndOdom1
+        - /voxel_grid_tracking1/fakeParticles1
+        - /voxel_grid_tracking1/fakePointCloud1
         - /StereoAndOdom1/InputCloudStereo1
         - /StereoAndOdom1/LeftImg1
         - /StereoAndOdom1/RightImg1
-        - /dynamic_obstacles1
+        - /StereoAndOdom1/Velodyne1
         - /dynamic_obstacles1/FreeCells1
         - /dynamic_obstacles1/Octomap1
-        - /Evaluation1
         - /Evaluation1/ImageGT1
         - /Evaluation1/ImageRT1
         - /Evaluation1/dbgROIs1
-        - /gtSpeed1
+        - /DemoLZ1/Undistorted1/Right1
+        - /DemoLZ1/Undistorted1/Left1
+        - /DemoLZ1/Rectified1/Left_rectified1
       Splitter Ratio: 0.298137
-    Tree Height: 693
+    Tree Height: 429
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -57,7 +60,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: InputCloudStereo
+    SyncSource: fakePointCloud
 Visualization Manager:
   Class: ""
   Displays:
@@ -65,7 +68,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.03
         Value: Lines
@@ -78,23 +81,47 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 60
       Reference Frame: map
-      Value: true
+      Value: false
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_footprint:
+        back_panel_link:
           Value: true
-        base_left_cam:
+        base_footprint:
           Value: true
         base_link:
           Value: true
-        left_cam:
+        chassis:
+          Value: true
+        control_box_link:
+          Value: true
+        fake_chassis_link:
+          Value: true
+        front_panel_link:
+          Value: true
+        gps:
+          Value: true
+        imu:
+          Value: true
+        left_laser_link:
           Value: true
         map:
           Value: true
         odom:
+          Value: true
+        rear_laser_link:
+          Value: true
+        right_laser_link:
+          Value: true
+        roof_link:
+          Value: true
+        seats_link:
+          Value: true
+        stereo_ps4:
+          Value: true
+        velodyne:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -106,9 +133,33 @@ Visualization Manager:
           odom:
             base_footprint:
               base_link:
-                base_left_cam:
-                  left_cam:
+                chassis:
+                  {}
+                gps:
+                  {}
+                imu:
+                  {}
+                left_laser_link:
+                  {}
+                rear_laser_link:
+                  {}
+                right_laser_link:
+                  {}
+                roof_link:
+                  back_panel_link:
                     {}
+                  control_box_link:
+                    {}
+                  fake_chassis_link:
+                    {}
+                  front_panel_link:
+                    {}
+                  seats_link:
+                    {}
+                stereo_ps4:
+                  {}
+                velodyne:
+                  {}
       Update Interval: 0
       Value: true
     - Class: rviz/Group
@@ -152,25 +203,25 @@ Visualization Manager:
           Channel Name: intensity
           Class: rviz/PointCloud2
           Color: 0; 255; 0
-          Color Transformer: RGB8
+          Color Transformer: Intensity
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
-          Max Intensity: 4096
+          Max Intensity: 129
           Min Color: 0; 0; 0
           Min Intensity: 0
           Name: FullScene
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 3
+          Size (Pixels): 2
           Size (m): 0.01
           Style: Points
-          Topic: /voxel_grid_tracking/elas_ros/point_cloud
+          Topic: /voxel_grid_tracking/obstaclesPointCloud
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -253,13 +304,13 @@ Visualization Manager:
           Queue Size: 100
           Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacles
           Name: Obstacles
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -300,7 +351,7 @@ Visualization Manager:
           Displays:
             - Arrow Length: 0.3
               Class: rviz/PoseArray
-              Color: 255; 0; 0
+              Color: 0; 0; 0
               Enabled: true
               Name: particles0
               Topic: /voxel_grid_tracking/voxel_grid_tracking/particles0
@@ -321,7 +372,7 @@ Visualization Manager:
               Value: true
             - Arrow Length: 0.3
               Class: rviz/PoseArray
-              Color: 255; 255; 0
+              Color: 255; 0; 0
               Enabled: true
               Name: particles3
               Topic: /voxel_grid_tracking/voxel_grid_tracking/particles3
@@ -333,7 +384,7 @@ Visualization Manager:
               Name: particlesD
               Topic: /voxel_grid_tracking/voxel_grid_tracking/particlesD
               Value: true
-          Enabled: true
+          Enabled: false
           Name: Particles
         - Class: rviz/MarkerArray
           Enabled: false
@@ -373,21 +424,21 @@ Visualization Manager:
           Use rainbow: true
           Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/mainVectors
           Name: mainVectors
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/cubes
           Name: ObstacleCubes
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacleSpeed
@@ -397,13 +448,13 @@ Visualization Manager:
           Queue Size: 100
           Value: false
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/obstacleSpeedText
           Name: SpeedText
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
           Enabled: false
           Marker Topic: /voxel_grid_tracking/voxel_grid_tracking/tracks
@@ -412,6 +463,13 @@ Visualization Manager:
             {}
           Queue Size: 100
           Value: false
+        - Arrow Length: 0.3
+          Class: rviz/PoseArray
+          Color: 255; 0; 0
+          Enabled: true
+          Name: fakeParticles
+          Topic: /voxel_grid_tracking/voxel_grid_tracking/fakeParticles
+          Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -421,8 +479,8 @@ Visualization Manager:
           Axis: Z
           Channel Name: intensity
           Class: rviz/PointCloud2
-          Color: 255; 255; 255
-          Color Transformer: RGB8
+          Color: 0; 0; 0
+          Color Transformer: FlatColor
           Decay Time: 0
           Enabled: false
           Invert Rainbow: false
@@ -434,14 +492,14 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 3
-          Size (m): 0.01
+          Size (Pixels): 10
+          Size (m): 0.2
           Style: Points
           Topic: /voxel_grid_tracking/voxel_grid_tracking/fakePointCloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-      Enabled: false
+      Enabled: true
       Name: voxel_grid_tracking
     - Class: rviz/Group
       Displays:
@@ -457,7 +515,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: RGB8
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 2.35099e-38
@@ -473,7 +531,7 @@ Visualization Manager:
           Topic: /voxel_grid_tracking/elas_ros/point_cloud
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Class: rviz/Image
           Enabled: false
           Image Topic: /voxel_grid_tracking/stereo_and_odom/left/image_rect_color
@@ -496,15 +554,34 @@ Visualization Manager:
           Queue Size: 2
           Transport Hint: raw
           Value: false
-        - Angle Tolerance: 0.1
-          Class: rviz/Odometry
-          Color: 255; 25; 0
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
           Enabled: true
-          Keep: 100
-          Length: 1
-          Name: Odometry
-          Position Tolerance: 0.1
-          Topic: /stereo_odometer/odometry
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 137
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: Velodyne
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.01
+          Style: Points
+          Topic: /verdino/velodyne_points
+          Use Fixed Frame: true
+          Use rainbow: true
           Value: true
         - Alpha: 1
           Axes Length: 1
@@ -520,6 +597,16 @@ Visualization Manager:
           Shape: Arrow
           Topic: /stereo_odometer/pose
           Value: false
+        - Angle Tolerance: 0.1
+          Class: rviz/Odometry
+          Color: 255; 25; 0
+          Enabled: true
+          Keep: 100
+          Length: 1
+          Name: Odometry
+          Position Tolerance: 0.1
+          Topic: /stereo_odometer/odometry
+          Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -731,7 +818,7 @@ Visualization Manager:
     - Class: rviz/Group
       Displays:
         - Class: rviz/Image
-          Enabled: false
+          Enabled: true
           Image Topic: /voxel_grid_tracking/gtImgPub/image_raw
           Max Value: 1
           Median window: 5
@@ -740,9 +827,9 @@ Visualization Manager:
           Normalize Range: true
           Queue Size: 2
           Transport Hint: raw
-          Value: false
+          Value: true
         - Class: rviz/Image
-          Enabled: false
+          Enabled: true
           Image Topic: /voxel_grid_tracking/rtImgPub/image_raw
           Max Value: 1
           Median window: 5
@@ -751,7 +838,7 @@ Visualization Manager:
           Normalize Range: true
           Queue Size: 2
           Transport Hint: raw
-          Value: false
+          Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -781,16 +868,149 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
-      Enabled: true
+        - Class: rviz/MarkerArray
+          Enabled: false
+          Marker Topic: /voxel_grid_tracking/dbgSpeedGT
+          Name: gtSpeed
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: false
+      Enabled: false
       Name: Evaluation
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /voxel_grid_tracking/dbgSpeedGT
-      Name: gtSpeed
-      Namespaces:
-        gtSpeed: true
-      Queue Size: 100
-      Value: true
+    - Class: rviz/Group
+      Displays:
+        - Class: rviz/Group
+          Displays:
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/right/image_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Right
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/left/image_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Left
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+          Enabled: false
+          Name: Undistorted
+        - Class: rviz/Group
+          Displays:
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/left/image_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Left_distorted
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/right/image_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Right_distorted
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/left/image_rect_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Left_rectified
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/right/image_rect_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Right_rectified
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+          Enabled: false
+          Name: Rectified
+        - Class: rviz/Group
+          Displays:
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/left/image_rect_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Left
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+            - Class: rviz/Image
+              Enabled: true
+              Image Topic: /voxel_grid_tracking/stereo_and_odom/right/image_rect_color
+              Max Value: 1
+              Median window: 5
+              Min Value: 0
+              Name: Right
+              Normalize Range: true
+              Queue Size: 2
+              Transport Hint: raw
+              Value: true
+            - Alpha: 1
+              Autocompute Intensity Bounds: true
+              Autocompute Value Bounds:
+                Max Value: 10
+                Min Value: -10
+                Value: true
+              Axis: Z
+              Channel Name: intensity
+              Class: rviz/PointCloud2
+              Color: 255; 255; 255
+              Color Transformer: RGB8
+              Decay Time: 0
+              Enabled: true
+              Invert Rainbow: false
+              Max Color: 255; 255; 255
+              Max Intensity: 4096
+              Min Color: 0; 0; 0
+              Min Intensity: 0
+              Name: PointCloud
+              Position Transformer: XYZ
+              Queue Size: 10
+              Selectable: true
+              Size (Pixels): 3
+              Size (m): 0.01
+              Style: Points
+              Topic: /voxel_grid_tracking/elas_ros/point_cloud
+              Use Fixed Frame: true
+              Use rainbow: true
+              Value: true
+          Enabled: false
+          Name: PointCloud
+      Enabled: false
+      Name: DemoLZ
   Enabled: true
   Global Options:
     Background Color: 220; 220; 220
@@ -815,22 +1035,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 33.6227
+      Distance: 19.5526
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 14.8914
-        Y: 10.9371
-        Z: -1.90183
+        X: 13.3299
+        Y: -3.80114
+        Z: -5.80373
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.385398
+      Pitch: 0.645398
       Target Frame: base_footprint
       Value: Orbit (rviz)
-      Yaw: 3.60552
+      Yaw: 2.92553
     Saved:
       - Class: rviz/XYOrbit
         Distance: 20.0678
@@ -919,18 +1139,30 @@ Visualization Manager:
         Yaw: 4.57174
 Window Geometry:
   Displays:
-    collapsed: true
-  Height: 977
-  Hide Left Dock: true
+    collapsed: false
+  Height: 713
+  Hide Left Dock: false
   Hide Right Dock: true
   ImageGT:
     collapsed: false
   ImageRT:
     collapsed: false
+  Left:
+    collapsed: false
   LeftImg:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000029f00000340fc0200000009fb000000100044006900730070006c006100790073000000003300000340000000d801000005fb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000002d0000000a30000006901000005fb0000001200530065006c0065006300740069006f006e00000002d80000009b0000006901000005fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d00650072006100000002450000009e0000000000000000000000010000010f00000340fc0200000003fb0000000a00560069006500770073000000003300000340000000ab01000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b20000000000000000000000020000050000000142fc0100000008fb0000000e0049006d006100670065004700540000000000000005000000006a01000005fb0000000e0049006d006100670065005200540000000000000005000000006a01000005fb0000000e0049006d0061006700650047005401000002610000029f0000000000000000fb0000000e004c0065006600740049006d006700000000000000027f0000006501000005fb00000010005200690067006800740049006d00670000000000000005000000006c01000005fb0000000e004c0065006600740049006d006700000000000000027f0000000000000000fb00000010005200690067006800740049006d00670000000000000005000000000000000000fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005000000003efc0100000002fb0000000800540069006d00650100000000000005000000028201000005fb0000000800540069006d00650100000000000004500000000000000000000005000000034000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Left_distorted:
+    collapsed: false
+  Left_rectified:
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd00000004000000000000029900000238fc0200000009fb000000100044006900730070006c006100790073010000003300000238000000d801000005fb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000002d0000000a30000006901000005fb0000001200530065006c0065006300740069006f006e00000002d80000009b0000006901000005fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d00650072006100000002450000009e0000000000000000000000010000010f00000340fc0200000003fb0000000a00560069006500770073000000003300000340000000ab01000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b20000000000000000000000020000055600000144fc010000000efb00000008004c0065006600740000000000000002640000005001000005fb0000000a005200690067006800740000000267000002990000005701000005fc00000000000002800000000000fffffffaffffffff0200000002fb0000001c004c006500660074005f0072006500630074006900660069006500640000000000ffffffff0000001d01000005fb0000001c004c006500660074005f0064006900730074006f00720074006500640000000033000002050000001d01000005fc000002830000027d0000000000fffffffaffffffff0200000002fb0000001e00520069006700680074005f0072006500630074006900660069006500640000000000ffffffff0000001d01000005fb0000001e00520069006700680074005f0064006900730074006f00720074006500640000000033000002050000001d01000005fb00000008004c0065006600740000000000000002810000005001000005fb0000000a0052006900670068007400000002840000027c0000005701000005fb0000000e0049006d006100670065004700540000000000000005000000006901000005fb0000000e0049006d006100670065005200540000000000000005000000006901000005fb0000000e0049006d0061006700650047005401000002610000029f0000000000000000fb0000000e004c0065006600740049006d006700000000000000027f0000006501000005fb00000010005200690067006800740049006d00670000000000000005560000006c01000005fb0000000e004c0065006600740049006d006700000000000000027f0000000000000000fb00000010005200690067006800740049006d00670000000000000005000000000000000000fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005560000003efc0100000002fb0000000800540069006d00650100000000000005560000027701000005fb0000000800540069006d00650100000000000004500000000000000000000002ba0000023800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Right:
+    collapsed: false
   RightImg:
+    collapsed: false
+  Right_distorted:
+    collapsed: false
+  Right_rectified:
     collapsed: false
   Selection:
     collapsed: false
@@ -940,6 +1172,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1280
-  X: 1364
+  Width: 1366
+  X: -2
   Y: -3

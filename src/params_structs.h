@@ -24,11 +24,16 @@
 #include <pcl/io/pcd_io.h>
 
 #include <stdint.h>
+#include <string>
 #include <Eigen/Core>
 
 using namespace std;
 
+
 namespace voxel_grid_tracking {
+    const string SPEED_METHOD_MEAN_STR = "speed_method_mean";
+    const string SPEED_METHOD_CIRC_HIST_STR = "speed_method_circ_hist";
+    
     enum SpeedMethod { SPEED_METHOD_MEAN = 0, SPEED_METHOD_CIRC_HIST = 1 };
 }
 

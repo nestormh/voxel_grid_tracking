@@ -230,6 +230,9 @@ void testStereoTracking() {
 //     ros::Publisher deltaTimePub = nh.advertise<std_msgs::Float64> ("deltaTime", 1);
     ros::Publisher clockPub = nh.advertise<rosgraph_msgs::Clock> ("/clock", 1);
     
+    int waitTime = 0;
+    nh.param<int>("wait_time", waitTime, 0);
+    
     ros::Publisher markersPub = nh.advertise<visualization_msgs::MarkerArray> ("tmpMarkers", 1);
     tf::TransformBroadcaster map2odomTfBroadcaster;
     
@@ -316,7 +319,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::BAHNHOFSTRASSE:
         {
-            initialIdx = 295; //1; 295; //55;
+            initialIdx = 60; //295; //1; 295; //55;
             lastIdx = 1000;
             correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
             seqName = boost::filesystem::path("bahnhof");
@@ -442,7 +445,7 @@ void testStereoTracking() {
     clockMsg.clock = ros::Time(0.0);
     clockPub.publish(clockMsg);
     ros::spinOnce();
-    for (uint32_t i = initialIdx; i < 1000; i++) {
+    for (uint32_t i = initialIdx; i < lastIdx; i++) {
         //         stringstream ss;
         //         ss << setfill('0') << setw(3) << i;
         //         stringstream ss2;
@@ -626,7 +629,7 @@ void testStereoTracking() {
 //         else
         cout << "deltaTime " << deltaTime << endl;
 //             keycode = cv::waitKey((uint32_t)(deltaTime * 2000));
-            keycode = cv::waitKey(0);
+        keycode = cv::waitKey(waitTime);
         if (keycode == 27) {
             break;
         }

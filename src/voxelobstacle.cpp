@@ -259,17 +259,17 @@ void VoxelObstacle::updateHistogram(const float & maxVelX, const float & maxVelY
         BOOST_FOREACH(VoxelPtr voxel, m_voxels) {
             const ParticleList & particles = voxel->getParticles();
             BOOST_FOREACH(ParticlePtr particle, particles) {
-                            if (particle->age() >= 2) {
-                const float & vx = particle->vx();
-                const float & vy = particle->vy();
-                const float & vz = particle->vz();
-                
-                uint32_t increment = particle->age(); 
-                m_vx += vx * increment;
-                m_vy += vy * increment;
-                m_vz += vz * increment;
-                totalPoints += increment;
-                            }
+                if (particle->age() >= 2) {
+                    const float & vx = particle->vx();
+                    const float & vy = particle->vy();
+                    const float & vz = particle->vz();
+                    
+                    uint32_t increment = particle->age(); 
+                    m_vx += vx * increment;
+                    m_vy += vy * increment;
+                    m_vz += vz * increment;
+                    totalPoints += increment;
+                }
             }
         }
     
@@ -571,7 +571,7 @@ void VoxelObstacle::updateSpeedFromParticles()
             typedef boost::multi_array<polar_grid_tracking::t_histogram, 2> CircularHist;
             const uint32_t totalPitchBins = 2 * M_PI / m_pitchInterval;
             const uint32_t totalYawBins = 2 * M_PI / m_yawInterval;
-            CircularHist histogram(boost::extents[totalPitchBins][totalYawBins]);
+            CircularHist histogram(boost::extents[totalPitchBins + 1][totalYawBins + 1]);
             
             m_centerX = m_centerY = m_centerZ = 0.0;
             BOOST_FOREACH(const VoxelPtr & voxel, m_voxels) {
@@ -745,6 +745,8 @@ void VoxelObstacle::getROI(const image_geometry::StereoCameraModel & stereoCamer
     roi3D.speed.x = m_vx;
     roi3D.speed.y = m_vy;
     roi3D.speed.z = m_vz;
+    
+    roi3D.speed_magnitude = m_magnitude;
     
     // Speed 2d
     point3d.x = -m_centerX;

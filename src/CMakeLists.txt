@@ -130,10 +130,8 @@ include_directories(voxel_grid_tracking
     ${PCL_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
-    ${OCTOMAP_INCLUDE_DIRS}
     /opt/ros/indigo/include
     /home/nestor/Dropbox/ros/indigo/nestormh/devel/include
-    /home/nestor/Dropbox/ros/indigo/nestormh/src/octomap_msgs/include
 #     emon.a
 #     ${CUDA_INCLUDE_DIRS}
 #     /usr/local/dislin
@@ -151,7 +149,6 @@ target_link_libraries(voxel_grid_tracking
 #   ${CUDA_LIBRARIES}
   ${Boost_LIBRARIES}
   ${catkin_LIBRARIES}
-  ${OCTOMAP_LIBRARIES}
 #   ${PROTOBUF_LIBRARIES}
 #   ${CMAKE_THREAD_LIBS_INIT}
 #   ${Boost_

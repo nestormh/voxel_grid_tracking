@@ -17,3 +17,5 @@ geometry_msgs/Point32 H
 geometry_msgs/Point32 center
 
 geometry_msgs/Vector3 speed
+
+float32 speed_magnitude
