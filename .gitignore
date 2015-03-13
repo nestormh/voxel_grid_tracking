@@ -9,4 +9,6 @@ libs/libelas/
 matlab/
 paper/
 papers/
-
+TITS/
+launch/.directory
+params/eth_videos.yaml
