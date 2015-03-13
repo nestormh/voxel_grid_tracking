@@ -12,19 +12,27 @@
     
     <arg name="use_rviz" default="true"/>
 
-    <arg name="use_bag" default="true"/>
-    <arg name="bag_name" default="/home/verdino/ROS/Bolsas/pruebas_velodyne_stereo/testVoxelsNave.bag"/>
+    <arg name="use_bag" default="false"/>
+    <arg name="bag_name" default="/home/verdino/ROS/Bolsas/pruebas_velodyne_stereo/testMotionParkingUp.bag"/>
 
-    <param name="use_sim_time" value="true"/>
+    <group if="$(arg use_bag)" >
+
+        <param name="use_sim_time" value="true"/>
     
-    <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 10" />
-    <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 10" />
-    
-<!--     <node pkg="tf" type="static_transform_publisher" name="basefootprint2baselink" args="0 0 0 -1.57 0 0 base_footprint base_link 100" /> -->
-<!--     <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.45 0 0 -1.57079632679489661923 base_link base_left_cam 100" /> -->
-<!--     <node pkg="tf" type="static_transform_publisher" name="leftcam2baseleftcam" args="0 0 0 0 0 0 base_left_cam left_cam 100" /> -->
-    <!-- <node pkg="tf" type="static_transform_publisher" name="baselink2baseleftcam" args="0.27 0 1.65 0 0 -1.57 base_link base_left_cam 100" /> -->
-    <!-- <node pkg="tf" type="static_transform_publisher" name="baseleftcam2leftcam" args="0 -0.4 0 0 0 1.57 base_left_cam left_cam 100" /> -->
+        <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 10" />
+        <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 10" />
+    </group>
+
+   <group unless="$(arg use_bag)" >
+       <include file="$(find grull_verdino)/launch/localization/parking_localization.launch">
+           <arg name="namespace"   default="verdino"/>
+           <arg name="use_gps"     default="false"/>
+           <arg name="use_filters" default="true"/>
+           <arg name="simulation"  default="false"/>
+           <arg name="velodyne"    default="true"/>
+           <arg name="world_name"  default="$(find grull_gazebo_models)/worlds/parking_etsii.world"/>
+       </include>
+   </group>
     
     <group ns="$(arg namespace)">
        <group if="$(arg use_elas)">
@@ -126,7 +134,7 @@
             <arg name="target_frame"    value="base_footprint"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
         </include>
-        
+
         <!-- Run a passthrough filter to delimit in x direction -->
         <node pkg="nodelet" type="nodelet" name="psx" args="load pcl/PassThrough box_filter_manager" output="screen" required="true">
             <remap from="~input" to="/$(arg namespace)/point_cloud_footprint" />
@@ -145,14 +153,13 @@
             <param name="filter_field_name" value="z" />
         </node>
         
-        <rosparam file="$(find polar_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" />
+       <rosparam file="$(find polar_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" />
         
         <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
             <arg name="nodelet_name"    value="footprint2map_pc_transform" />
             <arg name="input_topic"     value="psz/output" />
-<!--             <arg name="output_topic"    value="/$(arg namespace)/pointCloudTransformed"/> -->
             <arg name="output_topic"    value="/$(arg namespace)/obstaclesPointCloud"/>
-            <arg name="target_frame"    value="map"/>
+            <arg name="target_frame"    value="odom"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
         </include>
     </group>

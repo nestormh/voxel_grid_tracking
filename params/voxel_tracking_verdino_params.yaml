@@ -12,7 +12,7 @@ num_threads: 8
 use_oflow: false
 
 # Reference frames: map, pose (vehicle frame), camera frame
-map_frame: "/map"
+map_frame: "/odom"
 pose_frame: "/base_footprint"
 camera_frame: "/base_left_cam"
 
