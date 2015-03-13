@@ -18,7 +18,7 @@
 #include "polargridtracking.h"
 #include "polargridtrackingros.h"
 // #include "utils.h"
-#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
+// #include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 
 #include <iostream>

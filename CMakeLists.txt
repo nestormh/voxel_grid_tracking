@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(polar_grid_tracking)
 
+# If you are compiling for other versions, change this variable
+set(ROS_VERSION indigo)
+
 INCLUDE("polar_grid_tracking.cmake")
 
 ## Find catkin macros and libraries
@@ -31,7 +34,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math -unroll-loops -march=native 
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(catkin)
-find_package(cmake_modules REQUIRED)
+if (ROS_VERSION EQUALS indigo)
+  find_package(cmake_modules REQUIRED)
+endif (ROS_VERSION EQUALS indigo)
 # find_package(OMPL    REQUIRED )
 # find_package(Boost REQUIRED)
 # set(Boost_USE_STATIC_LIBS OFF) 
@@ -55,7 +60,7 @@ find_package(PCL 1.6 REQUIRED)
 # find_package(GMP REQUIRED)
 # find_package(MPFR REQUIRED)
 
-INCLUDE("${POLAR_CALIBRATION_PATH}/PolarCalibration.cmake")
+# INCLUDE("${POLAR_CALIBRATION_PATH}/PolarCalibration.cmake")
 INCLUDE("libs/libElas.cmake")
 
 ## System dependencies are found with CMake's conventions
@@ -120,7 +125,6 @@ catkin_package(
     image_transport 
     camera_calibration_parsers 
     message_runtime 
-    message_generation
 #  DEPENDS system_lib
 )
 

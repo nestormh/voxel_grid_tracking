@@ -13,7 +13,7 @@
     <arg name="use_rviz" default="true"/>
 
     <arg name="use_bag" default="true"/>
-    <arg name="bag_name" default="/media/nestor/data/research_data/bags/testVoxelsNave.bag"/>
+    <arg name="bag_name" default="/home/verdino/ROS/Bolsas/pruebas_velodyne_stereo/testVoxelsNave.bag"/>
 
     <param name="use_sim_time" value="true"/>
     
@@ -148,7 +148,7 @@
         <rosparam file="$(find polar_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" />
         
         <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
-            <arg name="nodelet_name"     value="footprint2map_pc_transform" />
+            <arg name="nodelet_name"    value="footprint2map_pc_transform" />
             <arg name="input_topic"     value="psz/output" />
 <!--             <arg name="output_topic"    value="/$(arg namespace)/pointCloudTransformed"/> -->
             <arg name="output_topic"    value="/$(arg namespace)/obstaclesPointCloud"/>

@@ -41,7 +41,7 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
              const double & centroidX, const double & centroidY, const double & centroidZ,
              const double & sizeX, const double & sizeY, const double & sizeZ, 
              const double & maxVelX, const double & maxVelY, const double & maxVelZ,
-             const image_geometry::StereoCameraModel & stereoCameraModel, const SpeedMethod & speedMethod,
+             const image_geometry::StereoCameraModel * stereoCameraModel, const SpeedMethod & speedMethod,
              const double & yawInterval, const double & pitchInterval, const float & factorSpeed) : 
                     m_x(x), m_y(y), m_z(z), 
                     m_centroidX(centroidX), m_centroidY(centroidY), m_centroidZ(centroidZ), 
@@ -50,34 +50,45 @@ Voxel::Voxel(const double & x, const double & y, const double & z,
                     m_speedMethod(speedMethod), m_yawInterval(yawInterval), m_pitchInterval(pitchInterval),
                     m_factorSpeed(factorSpeed)
 {
+
     if ((x == 0) || (y == 0) || (z == 0)) {
+
         m_sigmaX = 0.0;
         m_sigmaY = 0.0;
         m_sigmaZ = 0.0;
+
     } else {
+
         double xReal = m_centroidX * m_sizeX;
         double yReal = m_y * m_sizeY;
         double zReal = m_z * m_sizeZ;
-        
-        const double sigmaY = (m_centroidY * yReal * DISPARITY_COMPUTATION_ERROR) / 
-                                (stereoCameraModel.baseline() * stereoCameraModel.left().fx());
-        const double sigmaX = (m_centroidX * sigmaY) / m_centroidY;
-        const double sigmaZ = (m_centroidZ * sigmaY) / m_centroidY;
-        
-        m_sigmaX = sigmaX / m_sizeX;
-        m_sigmaY = sigmaY / m_sizeY;
-        m_sigmaZ = sigmaZ / m_sizeZ;
+
+        if (stereoCameraModel != NULL) {
+
+            const double sigmaY = (m_centroidY * yReal * DISPARITY_COMPUTATION_ERROR) / 
+                                        (stereoCameraModel->baseline() * stereoCameraModel->left().fx());
+
+            const double sigmaX = (m_centroidX * sigmaY) / m_centroidY;
+            const double sigmaZ = (m_centroidZ * sigmaY) / m_centroidY;
+
+            m_sigmaX = sigmaX / m_sizeX;
+            m_sigmaY = sigmaY / m_sizeY;
+            m_sigmaZ = sigmaZ / m_sizeZ;
+
+        }
+
     }
-    
+
     m_magnitude = 0.0;
     m_neighborOcc = 0;
     m_oldestParticle = 0;
-    
+
     m_occupied = true;
     
     m_obstIdx = -1;
     
     m_speedHistogram.resize(boost::extents[3][3][3][((int)ceil(1.0 / m_factorSpeed)) + 1]);
+
 }
 
 void Voxel::createParticles(const uint32_t & numParticles, const tf::StampedTransform & pose2mapTransform)

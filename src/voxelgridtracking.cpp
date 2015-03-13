@@ -618,41 +618,46 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
     kdtree.setInputCloud (pointCloud);
     END_CLOCK_2(totalCompute, startCompute)
     ROS_INFO("[%s] %d: %f seconds", __FUNCTION__, __LINE__, totalCompute);
-    
+
     RESET_CLOCK(startCompute)
-    
+
     std::vector<int> pointIdxRadiusSearch;
     std::vector<float> pointRadiusSquaredDistance;
-    
-    const double & focalX = m_stereoCameraModel.left().fx();
-    const double & focalY = m_stereoCameraModel.left().fy();
-    
+
+    double focalX = 0.0, focalY = 0.0;
+    if (m_inputFromCameras) {
+        focalX = m_stereoCameraModel.left().fx();
+        focalY = m_stereoCameraModel.left().fy();
+    }
+
     PointCloudPtr currPointCloud(new PointCloud);
-    
+
     PointType searchPoint;
     for (searchPoint.x = m_minX + halfSizeX; searchPoint.x < m_maxX; searchPoint.x += m_cellSizeX) {
         for (searchPoint.y = m_minY + halfSizeY; searchPoint.y < m_maxY; searchPoint.y += m_cellSizeY) {
             for (searchPoint.z = m_minZ + halfSizeZ; searchPoint.z < m_maxZ; searchPoint.z += m_cellSizeZ) {
-                
-    
+
                 float prob = 1.0;
                 const uint32_t neighbours = kdtree.radiusSearch(searchPoint, m_voxelSize / 2.0, 
                                                                 pointIdxRadiusSearch, pointRadiusSquaredDistance);
-                
+
                 if (neighbours == 0)
                     continue;
-                
+
                 currPointCloud->push_back(searchPoint);
-                
+
                 if (m_lastPointCloud) {
+
                     const uint32_t & prevNeighbours = m_kdtreeLastPointCloud.radiusSearch(searchPoint, m_voxelSize / 2.0, 
                                                                                     pointIdxRadiusSearch, pointRadiusSquaredDistance);
+
                     if (prevNeighbours != 0)
                         continue;
+
                 }
-                
+
                 if (m_inputFromCameras) {
-                    
+
                     tf::Vector3 point = m_map2CamTransform * tf::Vector3(searchPoint.x, searchPoint.y, searchPoint.z);
                     const float & X = point[0];
                     const float & Y = point[1];
@@ -671,35 +676,43 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
                     const float & sigmaY = (u1 - u0) + 1; //2 * (v1 - v0) + 1;
                     
                     prob = neighbours / sqrt(sigmaX * sigmaY);
+
                 }
-                
+
                 // Just voxels with enough probability are added to the list
                 if (prob > m_threshOccupancyProb) {
+
                     const float & x = floor((searchPoint.x - m_minX) / m_cellSizeX);
                     const float & y = floor((searchPoint.y - m_minY)  / m_cellSizeY);
                     const float & z = floor((searchPoint.z - m_minZ)  / m_cellSizeZ);
-                    
+
                     // FIXME: This is just for debugging
 //                     if (z == 1.0) {
-                    
+
+                    image_geometry::StereoCameraModel * stereoCameraModel = NULL;
+                    if (m_inputFromCameras)
+                        stereoCameraModel = &m_stereoCameraModel;
+    
                         VoxelPtr voxelPtr( new Voxel(x, y, z, 
                                             searchPoint.x, searchPoint.y, searchPoint.z, 
                                             m_cellSizeX, m_cellSizeY, m_cellSizeZ, 
                                             m_maxVelX, m_maxVelY, m_maxVelZ, 
-                                            m_stereoCameraModel, m_speedMethod,
+                                            stereoCameraModel, m_speedMethod,
                                             m_yawInterval, m_pitchInterval, m_factorSpeed));
-                        
+
                         if (! m_inputFromCameras)
                             voxelPtr->setOccupiedProb(1.0);
-                        
+
                         m_voxelList.push_back(voxelPtr);
                         m_grid[x][y][z] = voxelPtr;
+
 //                     }
                 }
+
             }
         }
     }
-    
+
     m_lastPointCloud.reset(new PointCloud);
     pcl::copyPointCloud(*currPointCloud, *m_lastPointCloud);
     BOOST_FOREACH (VoxelPtr & voxel, m_voxelList) {
@@ -2023,38 +2036,40 @@ void VoxelGridTracking::publishObstacleCubes()
 
 void VoxelGridTracking::publishROI()
 {
-    polar_grid_tracking::roiArray roiMsg;
-    roiMsg.rois3d.resize(m_obstacles.size());
-    roiMsg.rois2d.resize(m_obstacles.size());
-    
-    roiMsg.header.seq = m_currentId;
-    roiMsg.header.frame_id = m_cameraFrame;
-    roiMsg.header.stamp = ros::Time::now();
-    
-    pcl::PointXYZRGB point3d, point;
-    
-    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
-        const VoxelObstaclePtr & obstacle = m_obstacles[i];
-        
-        const double halfX = obstacle->sizeX() / 2.0;
-        const double halfY = obstacle->sizeY() / 2.0;
-        const double halfZ = obstacle->sizeZ() / 2.0;
-        
-        // A
-        roiMsg.rois3d[i].A.x = (obstacle->centerX() - halfX);
-        
-        polar_grid_tracking::roi_and_speed_2d roi2D;
-        polar_grid_tracking::roi_and_speed_3d roi3D;
-        
-        obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
-                         roi2D, roi3D);
-        
-        roiMsg.rois3d[i] = roi3D;
-        roiMsg.rois2d[i] = roi2D;
-        
+    if (m_inputFromCameras) {
+        polar_grid_tracking::roiArray roiMsg;
+        roiMsg.rois3d.resize(m_obstacles.size());
+        roiMsg.rois2d.resize(m_obstacles.size());
+
+        roiMsg.header.seq = m_currentId;
+        roiMsg.header.frame_id = m_cameraFrame;
+        roiMsg.header.stamp = ros::Time::now();
+
+        pcl::PointXYZRGB point3d, point;
+
+        for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+            const VoxelObstaclePtr & obstacle = m_obstacles[i];
+
+            const double halfX = obstacle->sizeX() / 2.0;
+            const double halfY = obstacle->sizeY() / 2.0;
+            const double halfZ = obstacle->sizeZ() / 2.0;
+
+            // A
+            roiMsg.rois3d[i].A.x = (obstacle->centerX() - halfX);
+
+            polar_grid_tracking::roi_and_speed_2d roi2D;
+            polar_grid_tracking::roi_and_speed_3d roi3D;
+
+            obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
+                             roi2D, roi3D);
+
+            roiMsg.rois3d[i] = roi3D;
+            roiMsg.rois2d[i] = roi2D;
+
+        }
+
+        m_ROIPub.publish(roiMsg);
     }
-    
-    m_ROIPub.publish(roiMsg);
 }
 
 void VoxelGridTracking::visualizeROI2d()

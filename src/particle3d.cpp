@@ -15,7 +15,7 @@
  */
 
 #include "particle3d.h"
-#include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
+// #include </home/nestor/Dropbox/projects/GPUCPD/src/LU-Decomposition/Libs/Cuda/include/device_launch_parameters.h>
 
 #include <stdlib.h>
 #include <math.h>
