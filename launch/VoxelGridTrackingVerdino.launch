@@ -1,16 +1,16 @@
 <launch>
-    <arg name="namespace" default="voxel_grid_tracking"/>
+    <arg name="namespace" default="verdino"/>
     <arg name="test_name" default="verdino"/>
+    <arg name="use_ps4" default="true"/>
     <arg name="use_elas" default="false"/>
     <arg name="use_rsgm" default="false"/>
     <arg name="use_velodyne" default="true"/>
+    <arg name="show_rviz" default="true"/>
 
-    <arg name="voxel_tracking_params_file" 
+    <arg name="voxel_tracking_params_file"
          default="$(find polar_grid_tracking)/params/voxel_tracking_verdino_params.yaml"/>
-    <arg name="disparity_filters_params_file" 
+    <arg name="disparity_filters_params_file"
          default="$(find disparity_filters)/params/disparity_filters_params.yaml"/>
-    
-    <arg name="use_rviz" default="true"/>
 
     <arg name="use_bag" default="false"/>
     <arg name="bag_name" default="/home/verdino/ROS/Bolsas/pruebas_velodyne_stereo/testVoxelsNave.bag"/>
@@ -22,16 +22,35 @@
         <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 10" />
         <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 10" />
     </group>
-
+    <!-- else -->
    <group unless="$(arg use_bag)" >
        <include file="$(find grull_verdino)/launch/navigation/parking_navigation.launch">
-           <arg name="namespace"   default="verdino"/>
-           <arg name="use_gps"     default="false"/>
-           <arg name="use_filters" default="true"/>
-           <arg name="simulation"  default="false"/>
-           <arg name="velodyne"    default="true"/>
-           <arg name="world_name"  default="$(find grull_gazebo_models)/worlds/parking_etsii.world"/>
+           <arg name="namespace"    value="verdino"/>
+           <arg name="use_gps"      value="false"/>
+           <arg name="use_filters"  value="true"/>
+           <arg name="simulation"   value="false"/>
+           <arg name="velodyne"     value="true"/>
+           <arg name="show_rviz"    value="false"/>
+           <arg name="show_rqt"     value="false"/>
+           <arg name="show_console" value="false"/>
+           <arg name="world_name"   value="$(find grull_gazebo_models)/worlds/parking_etsii.world"/>
+           
+           <!-- Params File Names -->
+           <arg name="costmap_local"
+               value="$(find polar_grid_tracking)/params/local_costmap_params_verdino.yaml"/>
+           
        </include>
+   </group>
+
+   <group if="$(arg use_ps4)">
+       <include file="$(find grull_stereo)/launch/stereo.launch" >
+           <arg name="DEVICE_LEFT" value="/dev/video1"/>
+           <arg name="DEVICE_RIGHT" value="/dev/video0"/>
+           <arg name="FRAME_NAME" value="stereo_ps4"/>
+       </include>
+       
+       <remap from="image_rect_color" to="image_rect_eyefish" />
+       
    </group>
     
     <group ns="$(arg namespace)">
@@ -52,8 +71,10 @@
         
         <group if="$(arg use_rsgm)">
             <node pkg="rsgm_ros" type="rsgm_ros" name="rsgm_ros" output="screen" required="false">
-                <remap from="stereo/left/$(arg namespace)/image" to="/stereo/left/image_rect_color/compressed" />
-                <remap from="stereo/right/$(arg namespace)/image" to="/stereo/right/image_rect_color/compressed" />
+                <remap if="$(arg use_bag)" from="stereo/left/$(arg namespace)/image" to="/stereo/left/image_rect_color/compressed" />
+                <remap if="$(arg use_bag)" from="stereo/right/$(arg namespace)/image" to="/stereo/right/image_rect_color/compressed" />
+                <remap unless="$(arg use_bag)" from="stereo/left/$(arg namespace)/image" to="/stereo/left/image_rect_color" />
+                <remap unless="$(arg use_bag)" from="stereo/right/$(arg namespace)/image" to="/stereo/right/image_rect_color" />
                 <remap from="stereo/left/camera_info" to="/stereo/left/camera_info" />
                 <remap from="stereo/right/camera_info" to="/stereo/right/camera_info" />
 
@@ -81,6 +102,8 @@
                    to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
             <remap from="~/dbg/image_rect_color"
                    to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
+           <remap from="~fakePointCloud"
+                   to="/verdino/fakePointCloud" />
             
             <rosparam file="$(arg voxel_tracking_params_file)" command="load" ns="" />
         </node>
@@ -167,7 +190,7 @@
         </include>
     </group>
     
-    <group if="$(arg use_rviz)">
+    <group if="$(arg show_rviz)">
         <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
         <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
             $(find polar_grid_tracking)/config/VoxelGridTracking.rviz"/>

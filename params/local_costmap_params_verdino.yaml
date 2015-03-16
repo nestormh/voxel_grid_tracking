@@ -1,0 +1,67 @@
+local_costmap:
+  map_type: costmap
+  global_frame: map
+  robot_base_frame: base_footprint
+  static_map: false
+  rolling_window: true
+  update_frequency: 5.0  # The frequency in Hz for the map to be updated.
+  publish_frequency: 5.0 # The frequency in Hz for the map to publish display information.
+
+  width: 40
+  height: 40
+  resolution: 0.1
+#  origin_x: 0.0
+#  origin_y: 0.0
+
+
+  plugins:
+   #- {name: static_layer, type: 'costmap_1d::StaticLayer'}
+   - {name: obstacle_layer, type: 'costmap_2d::ObstacleLayer'}
+   - {name: inflation_layer, type: 'costmap_2d::InflationLayer'}
+
+  #static_layer:
+  #  unknown_cost_value: 1 # The value for which a cost should be considered unknown when reading in a map from the map server.
+  #                      # If the costmap is not tracking unknown space, costs of this value will be considered occupied.
+  #                      # A value of zero also results in this parameter being unused.
+  #  lethal_cost_threshold: 100 # The threshold value at which to consider a cost lethal when reading in a map from the map server.
+  #  map_topic: nav_map
+
+  obstacle_layer:
+    # Here you can put sensor specific parameters for this layer.
+    obstacle_range: 19.8   # Determines the maximum range sensor reading that will result in an obstacle being put into the costmap.
+                           # Setting it to 2.5 meters means that the robot will only update its map with information about
+                           # obstacles that are within 2.5 meters of the base.
+
+    raytrace_range: 19.9   # Determines the range to which we will raytrace freespace given a sensor reading.
+                           # Setting it to 3.0 meters means that the robot will attempt to clear out space in front of it up to
+                           # 3.0 meters away given a sensor reading.
+
+    observation_sources: laser_scan laser_clearing_scan map_cloud fakePointCloud obstaclesPointCloud
+
+    laser_scan: {data_type: LaserScan, #expected_update_rate: 1.0,
+                observation_persistence: 0.5, marking: true, clearing: true, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
+
+    laser_clearing_scan: {data_type: LaserScan, #expected_update_rate: 1.0,
+               observation_persistence: 0.0, marking: false, clearing: true, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
+
+
+    map_cloud: {data_type: PointCloud2, expected_update_rate: 2137483649.0,
+                observation_persistence: 0.0, marking: true, clearing: false, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
+
+    fakePointCloud: {data_type: PointCloud2, expected_update_rate: 10.0,
+                observation_persistence: 0.0, marking: true, clearing: false, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
+
+    obstaclesPointCloud: {data_type: PointCloud2, expected_update_rate: 10.0,
+                observation_persistence: 0.0, marking: true, clearing: false, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
+
+  inflation_layer:
+    inflation_radius: 2.90 # Should be set to the maximum distance from obstacles at which a cost should be incurred.
+                          # For example, setting the inflation radius at 0.55 meters means that the robot will treat all paths that
+                          # stay 0.55 meters or more away from obstacles as having equal obstacle cost.
+
+    cost_scaling_factor: 3.0 # A scaling factor to apply to cost values during inflation. The cost function is computed as follows
+                              # for all cells in the costmap further than the inscribed radius distance and closer than the inflation
+                              # radius distance away from an actual obstacle:
+                              # exp(-1.0 * cost_scaling_factor * (distance_from_obstacle - inscribed_radius)) * (costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1),
+                              # where costmap_2d::INSCRIBED_INFLATED_OBSTACLE is currently 254. NOTE: since the cost_scaling_factor is
+                              # multiplied by a negative in the formula, increasing the factor will decrease the resulting cost values.
