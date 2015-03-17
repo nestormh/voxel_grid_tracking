@@ -67,8 +67,8 @@ void PolarCell::addPointToHistogram(const PointXYZRGBDirected& point)
     item.numPoints++;
     item.magnitudeSum += point.magnitude;
     
-    if (point.y > m_maxHeight) 
-        m_maxHeight = point.y;
+    if (fabs(point.y) > m_maxHeight) 
+        m_maxHeight = fabs(point.y);
 }
 
 void PolarCell::updateYawAndMagnitude()

@@ -144,7 +144,7 @@ void polar_grid_tracking::getBinaryMapFromPointCloud(const pcl::PointCloud< pcl:
     
     const double factorX = m_grid.cols() / (maxX - minX);
     const double factorZ = m_grid.rows() / maxZ;
-    
+
     BOOST_FOREACH(pcl::PointXYZRGB& point, *pointCloud) {
         
         const uint32_t xPos = (point.x - minX) * factorX;

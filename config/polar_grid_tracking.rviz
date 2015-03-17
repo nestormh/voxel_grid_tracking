@@ -23,8 +23,8 @@ Panels:
         - /MarkerArray2
         - /MarkerArray2/Namespaces1
         - /PointCloud23
-      Splitter Ratio: 0.471053
-    Tree Height: 341
+      Splitter Ratio: 0.28726
+    Tree Height: 693
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -44,7 +44,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Visualization Manager:
   Class: ""
   Displays:
@@ -59,12 +59,12 @@ Visualization Manager:
       Name: Grid
       Normal Cell Count: 0
       Offset:
-        X: 0
-        Y: 0
-        Z: 5.9
-      Plane: XZ
+        X: 0.1
+        Y: 5.9
+        Z: 0
+      Plane: XY
       Plane Cell Count: 60
-      Reference Frame: base_footprint
+      Reference Frame: base_left_cam
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -78,7 +78,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -94,7 +94,7 @@ Visualization Manager:
       Topic: /testGridTracking/pointCloudFiltered
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -107,7 +107,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -120,55 +120,76 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.01
       Style: Points
-      Topic: /testGridTracking/polar_grid_tracking/pointCloudStereo
+      Topic: /voxel_grid_tracking/polar_grid_tracking/pointCloud
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        base_footprint:
+          Value: true
+        base_left_cam:
+          Value: true
+        base_link:
+          Value: true
+        left_cam:
+          Value: true
+        left_cam_old:
+          Value: true
+        map:
+          Value: true
+        odom:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        map:
+          odom:
+            base_link:
+              base_footprint:
+                base_left_cam:
+                  left_cam_old:
+                    left_cam:
+                      {}
       Update Interval: 0
       Value: true
     - Alpha: 0.5
       Class: rviz/GridCells
       Color: 25; 255; 0
-      Enabled: false
+      Enabled: true
       Name: GridCells
-      Topic: /testGridTracking/polar_grid_tracking/binaryMap
-      Value: false
+      Topic: /voxel_grid_tracking/polar_grid_tracking/binaryMap
+      Value: true
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: false
+      Enabled: true
       Name: PoseArray
-      Topic: /testGridTracking/polar_grid_tracking/oldParticles
-      Value: false
+      Topic: /voxel_grid_tracking/polar_grid_tracking/oldParticles
+      Value: true
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 255; 255; 0
-      Enabled: false
+      Enabled: true
       Name: PoseArray
-      Topic: /testGridTracking/polar_grid_tracking/particles
-      Value: false
+      Topic: /voxel_grid_tracking/polar_grid_tracking/particles
+      Value: true
     - Arrow Length: 1
       Class: rviz/PoseArray
       Color: 0; 255; 255
-      Enabled: false
+      Enabled: true
       Name: PoseArray
-      Topic: /testGridTracking/polar_grid_tracking/colAvg
-      Value: false
+      Topic: /voxel_grid_tracking/polar_grid_tracking/colAvg
+      Value: true
     - Class: rviz/Marker
       Enabled: false
-      Marker Topic: /testGridTracking/polar_grid_tracking/polarGrid
+      Marker Topic: /voxel_grid_tracking/polar_grid_tracking/polarGrid
       Name: Marker
       Namespaces:
         {}
@@ -179,18 +200,18 @@ Visualization Manager:
       Color: 255; 255; 0
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/polar_grid_tracking/pointCloudOrientation
+      Topic: /voxel_grid_tracking/polar_grid_tracking/pointCloudOrientation
       Value: false
     - Arrow Length: 0.3
       Class: rviz/PoseArray
       Color: 0; 255; 255
       Enabled: false
       Name: PoseArray
-      Topic: /testGridTracking/polar_grid_tracking/polarCellYaw
+      Topic: /voxel_grid_tracking/polar_grid_tracking/polarCellYaw
       Value: false
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /testGridTracking/polar_grid_tracking/obstacles
+      Marker Topic: /voxel_grid_tracking/polar_grid_tracking/obstacles
       Name: MarkerArray
       Namespaces:
         {}
@@ -198,7 +219,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /testGridTracking/polar_grid_tracking/obstaclesROI
+      Marker Topic: /voxel_grid_tracking/polar_grid_tracking/obstaclesROI
       Name: MarkerArray
       Namespaces:
         {}
@@ -216,7 +237,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -232,9 +253,9 @@ Visualization Manager:
       Topic: /testGridTracking/polar_grid_tracking/pointCloudInObstacle
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: rviz/Image
-      Enabled: true
+      Enabled: false
       Image Topic: /testGridTracking/stereo_and_odom/left/image
       Max Value: 1
       Median window: 5
@@ -243,9 +264,9 @@ Visualization Manager:
       Normalize Range: true
       Queue Size: 2
       Transport Hint: raw
-      Value: true
+      Value: false
     - Class: rviz/Image
-      Enabled: true
+      Enabled: false
       Image Topic: /testGridTracking/stereo_and_odom/right/image
       Max Value: 1
       Median window: 5
@@ -254,11 +275,11 @@ Visualization Manager:
       Normalize Range: true
       Queue Size: 2
       Transport Hint: raw
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 220; 220; 220
-    Fixed Frame: left_cam
+    Fixed Frame: base_left_cam
     Frame Rate: 30
   Name: root
   Tools:
@@ -279,27 +300,32 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 14.7365
+      Distance: 23.9565
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.06
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
       Focal Point:
-        X: 0.108827
-        Y: 8.54856
-        Z: -4.21939
+        X: -2.15424
+        Y: 6.44228
+        Z: -1.45
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.290203
-      Target Frame: left_cam
+      Pitch: 0.509799
+      Target Frame: base_left_cam
       Value: XYOrbit (rviz)
-      Yaw: 4.6213
+      Yaw: 4.72856
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
   Height: 977
   Hide Left Dock: false
-  Hide Right Dock: false
+  Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd000000040000000000000197000002d3fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006901000005fb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c00610079007300000000e1000002d3000000d801000005fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000381fc0200000003fb0000000a00560069006500770073000000003300000381000000ab01000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000500000000abfc0100000003fb0000000a0049006d00610067006501000000000000027d0000005b01000005fb0000000a0049006d0061006700650100000280000002800000005b01000005fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005000000003efc0100000002fb0000000800540069006d00650100000000000005000000027901000005fb0000000800540069006d00650100000000000004500000000000000000000005000000029200000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001c300000340fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006901000005fb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003300000340000000d801000005fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000340fc0200000003fb0000000a00560069006500770073000000003300000340000000ab01000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000500000000abfc0100000003fb0000000a0049006d00610067006500000000000000027d0000005a01000005fb0000000a0049006d0061006700650000000000000005000000005a01000005fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005000000003efc0100000002fb0000000800540069006d00650100000000000005000000027701000005fb0000000800540069006d006501000000000000045000000000000000000000033a0000034000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -307,7 +333,7 @@ Window Geometry:
   Tool Properties:
     collapsed: false
   Views:
-    collapsed: false
+    collapsed: true
   Width: 1280
   X: 1364
   Y: -3

@@ -359,7 +359,8 @@ void polarTracking() {
                                      cameraParams[0], particlesPerCell, threshProbForCreation, 
                                      gridDepthFactor, gridColumnFactor, yawInterval,
                                      threshYaw, threshMagnitude);
-    gridTracker.start();
+//     gridTracker.start();
+    ros::spin();
 }
 
 int main(int argC, char **argV) {
@@ -370,6 +371,12 @@ int main(int argC, char **argV) {
 //         testPointCloud();
 //     }
 //     testStereoTracking();
+//     polar_grid_trackingROS pgt;
+    
+//     ros::spin();
+    //     vgt.start();
+    
+    return 0;
     
     
     return 0;

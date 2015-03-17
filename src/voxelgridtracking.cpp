@@ -507,14 +507,14 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 //     publishParticles();
 //     publishMainVectors();
     cout << __FILE__ << ":" << __LINE__ << endl;
-    publishObstacles();
+//     publishObstacles();
     cout << __FILE__ << ":" << __LINE__ << endl;
 //     publishObstacleCubes();
     cout << __FILE__ << ":" << __LINE__ << endl;
     publishFakePointCloud();
     cout << __FILE__ << ":" << __LINE__ << endl;
     
-    publishROI();
+//     publishROI();
 //     visualizeROI2d();
     END_CLOCK(totalVis, startVis)
     
@@ -646,7 +646,7 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
 
                 currPointCloud->push_back(searchPoint);
 
-                if (m_lastPointCloud) {
+                if (!m_inputFromCameras && m_lastPointCloud) {
 
                     const uint32_t & prevNeighbours = m_kdtreeLastPointCloud.radiusSearch(searchPoint, m_voxelSize / 2.0, 
                                                                                     pointIdxRadiusSearch, pointRadiusSquaredDistance);
@@ -2053,9 +2053,6 @@ void VoxelGridTracking::publishROI()
             const double halfX = obstacle->sizeX() / 2.0;
             const double halfY = obstacle->sizeY() / 2.0;
             const double halfZ = obstacle->sizeZ() / 2.0;
-
-            // A
-            roiMsg.rois3d[i].A.x = (obstacle->centerX() - halfX);
 
             polar_grid_tracking::roi_and_speed_2d roi2D;
             polar_grid_tracking::roi_and_speed_3d roi3D;

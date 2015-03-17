@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.8.3)
 project(polar_grid_tracking)
 
 # If you are compiling for other versions, change this variable
-set(ROS_VERSION indigo)
 
 INCLUDE("polar_grid_tracking.cmake")
 
@@ -25,6 +24,9 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
 )
 
+string(REGEX MATCH "indigo$"
+       ros_version ${pluginlib_PREFIX})
+
 set(ROS_BUILD_TYPE Release)
 
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ffast-math -unroll-loops -march=native -fopenmp -msse3")
@@ -34,9 +36,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math -unroll-loops -march=native 
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(catkin)
-if (ROS_VERSION EQUALS indigo)
+if (ros_version EQUAL indigo)
   find_package(cmake_modules REQUIRED)
-endif (ROS_VERSION EQUALS indigo)
+endif (ros_version EQUAL indigo)
 # find_package(OMPL    REQUIRED )
 # find_package(Boost REQUIRED)
 # set(Boost_USE_STATIC_LIBS OFF) 
@@ -46,7 +48,7 @@ find_package(Boost COMPONENTS filesystem system)
 # find_package(Boost 1.49.0)
 # find_package(CUDA 5.0 REQUIRED)
 # find_package( Eigen3    REQUIRED )
-find_package(Eigen REQUIRED)
+# find_package(Eigen REQUIRED)
 find_package(OpenCV  REQUIRED )
 # find_package(Motif  REQUIRED )
 # find_package(Protobuf REQUIRED)
