@@ -1,18 +1,17 @@
 <launch>
     <arg name="namespace" default="voxel_grid_tracking"/>
-    <arg name="test_name" default="eth_videos"/>
-    <arg name="use_elas" default="true"/>
-    <arg name="use_rsgm" default="false"/>
+    <arg name="test_name" default="eth"/>
+    <arg name="use_elas" default="false"/>
+    <arg name="use_rsgm" default="true"/>
     <arg name="do_evaluation" default="false"/>
     <arg name="evaluation_path" default="/tmp/test"/>
     <arg name="evaluation_header" default="This is a header"/>
     <arg name="voxel_tracking_params_file" 
-         default="$(find polar_grid_tracking)/params/voxel_tracking_final_params.yaml"/>
+         default="$(find polar_grid_tracking)/params/voxel_tracking_default_params.yaml"/>
     <arg name="disparity_filters_params_file" 
          default="$(find disparity_filters)/params/disparity_filters_params.yaml"/>
-    <arg name="wait_time_stereo_and_odom" default="2000"/>
-    <arg name="use_rviz" default="true"/>
-    <arg name="do_publish_intermediate_info" value="true" />
+    <arg name="wait_time_stereo_and_odom" default="0"/>
+    <arg name="use_rviz" default="false"/>
 
     <param name="use_sim_time" value="true"/>
     
@@ -102,13 +101,12 @@
             <param name="motion_frame_id" value="map" />
         </node>-->
         
-<!--         <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-<!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-        <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
+        <node name="svm_pedestrian_tracking" pkg="polar_grid_tracking" type="svm_pedestrian_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/pointCloud"
-                   to="/$(arg namespace)/obstaclesPointCloud" />
+                   to="/filters/filter_manager/point_cloud" /> 
+<!--                    to="/$(arg namespace)/obstaclesPointCloud" /> -->
             <remap from="~/flow_vectors"
                    to="/$(arg namespace)/flow_vectors" />
 <!--             <remap from="~/camera_info" -->
@@ -120,9 +118,9 @@
             <remap from="~/dbg/image_rect_color"
                    to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
             
+            <param name="svm_filename" 
+                   value="$(find polar_grid_tracking)/params/trainedLinearSVMForPeopleDetectionWithHOG.yaml" />
             <rosparam file="$(arg voxel_tracking_params_file)" command="load" ns="" />
-            
-            <param name="publish_intermediate_info" value="$(arg do_publish_intermediate_info)" />
         </node>
         
         <group if="$(arg do_evaluation)">
@@ -148,45 +146,32 @@
     <remap from="/filters/filter_manager/disparity_input" to="/$(arg namespace)/disparity" />
     <remap from="/filters/filter_manager/left/camera_info" to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
     <remap from="/filters/filter_manager/right/camera_info" to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
+    <remap from="/filters/filter_manager/left/image" to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
     <group ns="filters">
         <!-- Filter Manager -->
-        <node pkg="nodelet" type="nodelet" name="filter_manager" args="manager" output="screen" required="false" />
+        <node pkg="nodelet" type="nodelet" name="filter_manager" args="manager" output="screen" required="true" />
         
-        <rosparam file="$(arg disparity_filters_params_file)" command="load" ns="DisparityFiltersNodelet" />
         <node pkg="nodelet" type="nodelet" name="DisparityFiltersNodelet" 
               args="load disparity_filters/DisparityFiltersNodelet filter_manager" output="screen">
-            <param name="threads" value="4" />
-            <param name="disp_count" value="128" />
-            <param name="approximate_sync" value="true" />
-            <param name="queue_size" value="10" />
-            
-            <param name="despeckle_filter" value="true" />
-            <param name="min_speckle_segment_size" value="100" />
-            <param name="speckle_sim_threshold" value="1.0" />
-            
-            <param name="adaptive_mean_filter" value="true" />
-            <param name="gap_filter" value="true" />
-            <param name="block_filter" value="true" />
-            <param name="block_width" value="20" />
-            <param name="block_height" value="20" />
-        </node>    
         
-        <node pkg="nodelet" type="nodelet" name="Depth2PointCloudNodelet" 
+        </node>    
+        <rosparam file="$(arg disparity_filters_params_file)" command="load" ns="" />
+        
+<!--        <node pkg="nodelet" type="nodelet" name="Depth2PointCloudNodelet" 
                 args="load depth_image_proc/point_cloud_xyzrgb filter_manager" output="screen">
             
             <remap from="rgb/image_rect_color" to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
             <remap from="rgb/camera_info" to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
-<!--                 <remap from="depth_registered/image_rect" to="/$(arg namespace)/depth" /> -->
             <remap from="depth_registered/image_rect" to="/filters/filter_manager/depth" />
-        </node>     
+        </node>  -->   
 
             <!-- PCL Manager -->
         <node pkg="nodelet" type="nodelet" name="box_filter_manager" args="manager" output="screen" required="true" />
         
         <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
             <arg name="nodelet_name"     value="cam2footprint_pc_transform" />
-<!--             <arg name="input_topic"     value="/filters/depth_registered/points" /> -->
-            <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" />
+            <arg name="input_topic"     value="/filters/filter_manager/point_cloud" />
+<!--             <arg name="input_topic"     value="/$(arg namespace)/elas_ros/point_cloud" /> -->
             <arg name="output_topic"    value="/$(arg namespace)/point_cloud_footprint"/>
             <arg name="target_frame"    value="base_footprint"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
@@ -217,7 +202,7 @@
             <arg name="input_topic"     value="psz/output" />
 <!--             <arg name="output_topic"    value="/$(arg namespace)/pointCloudTransformed"/> -->
             <arg name="output_topic"    value="/$(arg namespace)/obstaclesPointCloud"/>
-            <arg name="target_frame"    value="map"/>
+            <arg name="target_frame"    value="left_cam"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
         </include>
                 
@@ -235,7 +220,7 @@
     <group if="$(arg use_rviz)">
         <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
         <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-            $(find polar_grid_tracking)/config/VoxelGridTracking.rviz"/>
+            $(find polar_grid_tracking)/config/SVMTracking.rviz"/>
         <!--<node pkg="rosbag" type="record"  name="rosbag"
         args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     </group>

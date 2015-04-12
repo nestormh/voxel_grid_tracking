@@ -1,26 +1,27 @@
 <launch>
     <arg name="namespace" default="verdino"/>
     <arg name="test_name" default="verdino"/>
-    <arg name="use_ps4" default="true"/>
+    <arg name="use_ps4" default="false"/>
     <arg name="use_elas" default="false"/>
     <arg name="use_rsgm" default="false"/>
     <arg name="use_velodyne" default="true"/>
     <arg name="show_rviz" default="true"/>
-
+    <arg name="do_publish_intermediate_info" value="false" />
+    
     <arg name="voxel_tracking_params_file"
          default="$(find polar_grid_tracking)/params/voxel_tracking_verdino_params.yaml"/>
     <arg name="disparity_filters_params_file"
          default="$(find disparity_filters)/params/disparity_filters_params.yaml"/>
 
-    <arg name="use_bag" default="false"/>
-    <arg name="bag_name" default="/home/verdino/ROS/Bolsas/pruebas_velodyne_stereo/testVoxelsNave.bag"/>
+    <arg name="use_bag" default="true"/>
+    <arg name="bag_name" default="/local/imaged/research_data/bags/pruebasEyefish2.bag"/>
 
     <group if="$(arg use_bag)" >
 
         <param name="use_sim_time" value="true"/>
     
-        <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 10" />
-        <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 10" />
+<!--         <node pkg="tf" type="static_transform_publisher" name="map2odom" args="0 0 0 0 0 0 map odom 10" /> -->
+<!--         <node pkg="tf" type="static_transform_publisher" name="odom2basefootprint" args="0 0 0 0 0 0 odom base_footprint 10" /> -->
     </group>
     <!-- else -->
    <group unless="$(arg use_bag)" >
@@ -106,6 +107,8 @@
                    to="/verdino/fakePointCloud" />
             
             <rosparam file="$(arg voxel_tracking_params_file)" command="load" ns="" />
+            
+            <param name="publish_intermediate_info" value="$(arg do_publish_intermediate_info)" />
         </node>
     </group>
     
@@ -185,7 +188,7 @@
             <arg name="nodelet_name"    value="footprint2map_pc_transform" />
             <arg name="input_topic"     value="psz/output" />
             <arg name="output_topic"    value="/$(arg namespace)/obstaclesPointCloud"/>
-            <arg name="target_frame"    value="odom"/>
+            <arg name="target_frame"    value="map"/>
             <arg name="nodelet_manager" value="box_filter_manager"/>
         </include>
     </group>
@@ -193,12 +196,12 @@
     <group if="$(arg show_rviz)">
         <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
         <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-            $(find polar_grid_tracking)/config/VoxelGridTracking.rviz"/>
+            $(find polar_grid_tracking)/config/VoxelGridTrackingVerdino.rviz"/>
         <!--<node pkg="rosbag" type="record"  name="rosbag"
         args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     </group>
     
     <node if="$(arg use_bag)" name="play" pkg="rosbag" type="play" required="true" 
-            args=" -r 1.0 -s 10 &#45;&#45;clock $(arg bag_name)" />
+            args=" -r 0.5 -s 10 &#45;&#45;clock $(arg bag_name)" />
 <!--           args=" -r 0.2 -s 20 &#45;&#45;clock $(arg bag_name)" /> -->
 </launch>

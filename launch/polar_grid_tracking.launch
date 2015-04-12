@@ -4,14 +4,14 @@
     <arg name="use_elas" default="true"/>
     <arg name="use_rsgm" default="false"/>
     <arg name="do_evaluation" default="true"/>
-    <arg name="evaluation_path" default="/tmp/test"/>
+    <arg name="evaluation_path" default="/local/imaged/research_data/voxel_tracking/testPolarGridTracking"/>
     <arg name="evaluation_header" default="This is a header"/>
     <arg name="voxel_tracking_params_file" 
          default="$(find polar_grid_tracking)/params/voxel_tracking_default_params.yaml"/>
     <arg name="disparity_filters_params_file" 
          default="$(find disparity_filters)/params/disparity_filters_params.yaml"/>
-    <arg name="wait_time_stereo_and_odom" default="0"/>
-    <arg name="use_rviz" default="true"/>
+    <arg name="wait_time_stereo_and_odom" default="2000"/>
+    <arg name="use_rviz" default="false"/>
     
     <param name="use_sim_time" value="true"/>
     
@@ -46,7 +46,7 @@
     <group ns="$(arg namespace)">
         
         <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
-        <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" required="true" >
+        <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
             <param name="wait_time" value="$(arg wait_time_stereo_and_odom)" />
         </node> 
         

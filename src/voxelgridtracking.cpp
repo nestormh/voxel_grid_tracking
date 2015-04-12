@@ -120,7 +120,9 @@ VoxelGridTracking::VoxelGridTracking()
     nh.param<string>("camera_frame", m_cameraFrame, "/base_left_cam");
     
     nh.param("use_oflow", m_useOFlow, false);
-
+    
+    nh.param("publish_intermediate_info", m_publishIntermediateInfo, false);
+    
     double dummyDouble;
     nh.param<double>("cell_size_x", dummyDouble, 0.5);
     m_cellSizeX = dummyDouble;
@@ -318,8 +320,8 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
 {
     m_cameraFrame = msgPointCloud->header.frame_id;
     try {
-        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
-        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, ros::Time(0), m_map2CamTransform);
+        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, msgPointCloud->header.stamp, m_pose2MapTransform);
+        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, msgPointCloud->header.stamp, m_map2CamTransform);
     } catch (tf::TransformException ex){
         ROS_ERROR("%s",ex.what());
     }
@@ -487,6 +489,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 // END OF COMMENT
     
     
+    
 //     publishParticles(m_oldParticlesPub, 2.0);
     
 //     initialization();
@@ -499,24 +502,27 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     timeStatsMsg.totalCompute = totalCompute;
     
     INIT_CLOCK(startVis)
-    cout << __FILE__ << ":" << __LINE__ << endl;
-//     publishVoxels();
-    cout << __FILE__ << ":" << __LINE__ << endl;
-//     publishOFlow();
-    cout << __FILE__ << ":" << __LINE__ << endl;
-//     publishParticles();
-//     publishMainVectors();
-    cout << __FILE__ << ":" << __LINE__ << endl;
-//     publishObstacles();
-    cout << __FILE__ << ":" << __LINE__ << endl;
-//     publishObstacleCubes();
-    cout << __FILE__ << ":" << __LINE__ << endl;
+    if (m_publishIntermediateInfo) {
+        cout << __FILE__ << ":" << __LINE__ << endl;
+        publishVoxels();
+        cout << __FILE__ << ":" << __LINE__ << endl;
+        publishOFlow();
+        cout << __FILE__ << ":" << __LINE__ << endl;
+        publishParticles();
+        publishMainVectors();
+        cout << __FILE__ << ":" << __LINE__ << endl;
+        publishObstacles();
+        cout << __FILE__ << ":" << __LINE__ << endl;
+        publishObstacleCubes();
+        cout << __FILE__ << ":" << __LINE__ << endl;
+        
+        publishROI();
+//         visualizeROI2d();
+    }
+    END_CLOCK(totalVis, startVis)
+    
     publishFakePointCloud();
     cout << __FILE__ << ":" << __LINE__ << endl;
-    
-//     publishROI();
-//     visualizeROI2d();
-    END_CLOCK(totalVis, startVis)
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
     timeStatsMsg.totalVisualization = totalVis;
@@ -1763,6 +1769,10 @@ void VoxelGridTracking::publishMainVectors()
                     }
                     mainVector.color.a = 1.0;
                     
+                    mainVector.color.r = 0.0;
+                    mainVector.color.g = 0.0;
+                    mainVector.color.b = 0.0;
+                    
                     //         orientation.lifetime = ros::Duration(5.0);
                     
                     geometry_msgs::Point origin, dest;
@@ -1821,7 +1831,7 @@ void VoxelGridTracking::publishObstacles()
         color.r = (obstacle->vx() / m_maxVelX + 1.0) * 0.5f;
         color.g = (obstacle->vy() / m_maxVelY + 1.0) * 0.5f;
         color.b = 0.0;
-        color.a = 1.0; //(0.8 - (0.4 * obstacle->magnitude() / m_maxMagnitude));
+        color.a = 0.5; //(0.8 - (0.4 * obstacle->magnitude() / m_maxMagnitude));
         
         if (obstacle->magnitude() == 0.0) {
             color.r = color.g = color.b = color.a = 0.0;

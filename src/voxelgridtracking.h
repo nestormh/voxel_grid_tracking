@@ -147,6 +147,8 @@ protected:
     
     bool m_initialized;
     
+    bool m_publishIntermediateInfo;
+    
     tf::StampedTransform m_lastMapOdomTransform;
     tf::StampedTransform m_pose2MapTransform;
     tf::StampedTransform m_map2CamTransform;

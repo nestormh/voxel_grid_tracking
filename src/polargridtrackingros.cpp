@@ -358,6 +358,9 @@ void polar_grid_trackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
                 pcl::copyPointCloud(*m_pointCloud, *pointCloud);
                 
+                m_stereoCameraModel.fromCameraInfo(*leftCameraInfo, *rightCameraInfo);
+                m_currentId = leftCameraInfo->header.seq;
+                
                 compute(pointCloud);
             }
         }
@@ -387,6 +390,17 @@ void polar_grid_trackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::
         prediction();
         measurementBasedUpdate();
         reconstructObjects(pointCloud);
+        
+//         publishPolarGrid();
+//         publishPointCloud(extendedPointCloud);
+//         publishPointCloudOrientation(extendedPointCloud);
+//         publishPolarCellYaw(1.0);
+//         clearObstaclesAndROIs();
+//         publishObstacles();
+//         publishROIs();
+//         publishPointCloudInObstacles(extendedPointCloud);
+//     
+// //         visualizeROI2d();
     } 
 //     publishParticles(m_oldParticlesPub, 2.0);
 // 
@@ -399,7 +413,8 @@ void polar_grid_trackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::
     
     if (m_initialized)
         publishParticles(m_oldParticlesPub, 2.0);
-    publishAll(pointCloud);
+//     publishAll(pointCloud);
+    publishRoiArrays();
 }
 
 void polar_grid_trackingROS::publishAll(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
@@ -647,18 +662,6 @@ void polar_grid_trackingROS::reconstructObjects(const pcl::PointCloud< pcl::Poin
     extendPointCloud(pointCloud, extendedPointCloud);
     
     generateObstacles();
-        
-    publishPolarGrid();
-    publishPointCloud(extendedPointCloud);
-    publishPointCloudOrientation(extendedPointCloud);
-    publishPolarCellYaw(1.0);
-    clearObstaclesAndROIs();
-    publishObstacles();
-    publishROIs();
-    publishRoiArrays();
-    publishPointCloudInObstacles(extendedPointCloud);
-    
-//     visualizeROI2d();
 }
 
 void polar_grid_trackingROS::publishPolarGrid()
@@ -1093,13 +1096,18 @@ void polar_grid_trackingROS::publishRoiArrays()
             points[j].z = roi->at(j).z;
             
             roi3D.center.x += roi->at(j).x;
-            roi3D.center.y += roi->at(j).y;
-            roi3D.center.z += roi->at(j).z;
+            roi3D.center.y += -roi->at(j).z;
+            roi3D.center.z += roi->at(j).y;
         }
         
         roi3D.center.x /= roi->size();
         roi3D.center.y /= roi->size();
         roi3D.center.z /= roi->size();
+        
+        points[0].z -= 1.45;
+        points[1].z -= 1.45;
+        points[6].z -= 1.45;
+        points[7].z -= 1.45;
         
         pcl::PointXYZRGB point3d, point2d;
         
@@ -1126,7 +1134,7 @@ void polar_grid_trackingROS::publishRoiArrays()
         project3dTo2d(point3d, point2d, m_stereoCameraModel);
         roi3D.C = toPoint32(point3d);
         roi2D.C = toPoint2D(point2d);
-        
+
         // D
         point3d.x = points[1].x;
         point3d.y = -points[1].z;

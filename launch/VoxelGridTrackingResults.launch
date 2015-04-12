@@ -10,7 +10,7 @@
          default="$(find polar_grid_tracking)/params/voxel_tracking_default_params.yaml"/>
     <arg name="disparity_filters_params_file" 
          default="$(find disparity_filters)/params/disparity_filters_params.yaml"/>
-    <arg name="wait_time_stereo_and_odom" default="0"/>
+    <arg name="wait_time_stereo_and_odom" default="500"/>
     <arg name="use_rviz" default="true"/>
 
     <param name="use_sim_time" value="true"/>

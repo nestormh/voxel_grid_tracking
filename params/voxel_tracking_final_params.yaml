@@ -37,7 +37,7 @@ pitch_interval: 0.5     # -1, ..., +1 posible vectors
 speed_factor: 0.5       # Percentage (between 0..1) of the maximal speed
 
 # Used to decide if a point is a real point or just noise
-occupancy_prob_tresh: 0.5  
+occupancy_prob_tresh: 0.1 
 
 # Distance used to consider voxels as neighbors in the segmentation stage
 l1_distance_for_neighbor_thresh_x: 1

@@ -123,6 +123,7 @@ void project3dTo2d(const pcl::PointXYZRGB& point3d, pcl::PointXYZRGB& point2d,
     cv::Mat R(stereoCameraModel.right().rotationMatrix());
     
     cv::Mat pointMat = (cv::Mat_<double>(3,1) << point3d.x, point3d.y, point3d.z);
+    
     pointMat = R.inv() * pointMat;
     
     const double d = focalX * baseline / pointMat.at<double>(2, 0);

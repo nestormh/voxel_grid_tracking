@@ -169,3 +169,31 @@ target_link_libraries(voxel_grid_tracking
 #     /usr/local/dislin/lib/dislin_d-10.3.so
 #     /usr/local/dislin/lib/discpp-10.3.so
 )
+
+###########################################################
+# svm_based_tracking
+###########################################################
+add_executable(svm_pedestrian_tracking 
+    svm_detection/svm_pedestrian_tracking.cpp 
+    svm_detection/main_svm_pedestrian_tracking.cpp
+)
+
+include_directories(svm_pedestrian_tracking
+    ${PCL_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIR}
+    ${Boost_INCLUDE_DIR}
+    /opt/ros/indigo/include
+)
+
+link_directories(svm_pedestrian_tracking
+    /usr/local/lib
+    /usr/lib/x86_64-linux-gnu/
+)
+
+target_link_libraries(svm_pedestrian_tracking
+  ${EIGEN3_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+)

@@ -319,7 +319,7 @@ void testStereoTracking() {
         }
         case ObstaclesFromStereo::BAHNHOFSTRASSE:
         {
-            initialIdx = 60; //295; //1; 295; //55;
+            initialIdx = 1; //60; //295; //1; 295; //55;
             lastIdx = 1000;
             correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
             seqName = boost::filesystem::path("bahnhof");
