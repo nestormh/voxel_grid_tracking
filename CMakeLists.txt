@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(polar_grid_tracking)
+project(voxel_grid_tracking)
 
 # If you are compiling for other versions, change this variable
 
-INCLUDE("polar_grid_tracking.cmake")
+INCLUDE("voxel_grid_tracking.cmake")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -101,7 +101,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   geometry_msgs
-  polar_grid_tracking
+  voxel_grid_tracking
 )
 
 # generate_messages()

@@ -320,8 +320,10 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
 {
     m_cameraFrame = msgPointCloud->header.frame_id;
     try {
-        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, msgPointCloud->header.stamp, m_pose2MapTransform);
-        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, msgPointCloud->header.stamp, m_map2CamTransform);
+//         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, msgPointCloud->header.stamp, m_pose2MapTransform);
+//         m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, msgPointCloud->header.stamp, m_map2CamTransform);
+        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
+        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, ros::Time(0), m_map2CamTransform);
     } catch (tf::TransformException ex){
         ROS_ERROR("%s",ex.what());
     }

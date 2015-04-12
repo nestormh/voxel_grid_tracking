@@ -7,7 +7,7 @@
     <arg name="evaluation_path" default="/local/imaged/research_data/voxel_tracking/testPolarGridTracking"/>
     <arg name="evaluation_header" default="This is a header"/>
     <arg name="voxel_tracking_params_file" 
-         default="$(find polar_grid_tracking)/params/voxel_tracking_default_params.yaml"/>
+         default="$(find voxel_grid_tracking)/params/voxel_tracking_default_params.yaml"/>
     <arg name="disparity_filters_params_file" 
          default="$(find disparity_filters)/params/disparity_filters_params.yaml"/>
     <arg name="wait_time_stereo_and_odom" default="2000"/>
@@ -45,8 +45,8 @@
     
     <group ns="$(arg namespace)">
         
-        <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
-        <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
+        <!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="voxel_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
+        <node name="stereo_and_odom" pkg="voxel_grid_tracking" type="stereo_and_odom" output="screen" required="true" >
             <param name="wait_time" value="$(arg wait_time_stereo_and_odom)" />
         </node> 
         
@@ -94,9 +94,9 @@
         <param name="motion_frame_id" value="map" />
         </node>-->
         
-        <!--         <node launch-prefix="gdb &#45;&#45;args" name="polar_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-        <!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="polar_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-        <node name="polar_grid_tracking" pkg="polar_grid_tracking" type="polar_grid_tracking" output="screen" required="true" >
+        <!--         <node launch-prefix="gdb &#45;&#45;args" name="polar_grid_tracking" pkg="voxel_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+        <!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="polar_grid_tracking" pkg="voxel_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+        <node name="polar_grid_tracking" pkg="voxel_grid_tracking" type="polar_grid_tracking" output="screen" required="true" >
             <remap from="~/deltaTime"
                    to="/$(arg namespace)/stereo_and_odom/deltaTime" />
             <remap from="~/inputPointCloud"
@@ -120,7 +120,7 @@
                 <param name="path_location" value="$(arg evaluation_path)"/>
                 <param name="header" value="$(arg evaluation_header)"/>
                 
-                <rosparam file="$(find polar_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" />
+                <rosparam file="$(find voxel_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" />
                 
                 <remap from="/$(arg namespace)/stereo" to="/$(arg namespace)/stereo_and_odom" />
                 <remap from="~/rois_array_rt"
@@ -176,7 +176,7 @@
             </rosparam>
         </node>
 
-<!--         <rosparam file="$(find polar_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" /> -->
+<!--         <rosparam file="$(find voxel_grid_tracking)/params/$(arg test_name).yaml" command="load" ns="" /> -->
 
         <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
             <arg name="nodelet_name"     value="oldcam2baseleftcam_pc_transform" />
@@ -190,7 +190,7 @@
     <group if="$(arg use_rviz)">
         <!-- <node launch-prefix="optirun" pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config  -->
         <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-                $(find polar_grid_tracking)/config/polar_grid_tracking.rviz"/>
+                $(find voxel_grid_tracking)/config/polar_grid_tracking.rviz"/>
         <!--<node pkg="rosbag" type="record"  name="rosbag"
         args="-o /tmp/2011_09_26_drive_0091_sync_" />-->
     </group>

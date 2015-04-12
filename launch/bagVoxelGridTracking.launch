@@ -5,9 +5,9 @@
 
 <group ns="$(arg namespace)">
 
-<!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
-<!--    <node name="voxel_grid_tracking" pkg="polar_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
+<!--     <node launch-prefix="gdb &#45;&#45;args" name="voxel_grid_tracking" pkg="voxel_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="voxel_grid_tracking" pkg="voxel_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" > -->
+<!--    <node name="voxel_grid_tracking" pkg="voxel_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
         <remap from="~/deltaTime"
             to="/$(arg namespace)/stereo_and_odom/deltaTime" />
         <remap from="~/pointCloud"
@@ -23,7 +23,7 @@
 <!--     /clock" /> -->
 
 <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-    $(find polar_grid_tracking)/config/voxel_grid_tracking.rviz"/>
+    $(find voxel_grid_tracking)/config/voxel_grid_tracking.rviz"/>
 
 <!--<node pkg="rosbag" type="record"  name="rosbag"
 args="/voxel_grid_tracking/voxel_grid_tracking/cubes \

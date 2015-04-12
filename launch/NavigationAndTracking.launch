@@ -5,7 +5,7 @@
   <arg name="testname" default="parking_ETSII_vacio"/>
 
     <!-- voxel_grid_tracking -->
-    <include file="$(find polar_grid_tracking)/launch/voxel_grid_tracking.launch"/>
+    <include file="$(find voxel_grid_tracking)/launch/voxel_grid_tracking.launch"/>
     
     <!-- grull_map_to_pointcloud -->
 <!--    <include file="$(find grull_map_to_pointcloud)/launch/launch.launch">
@@ -51,10 +51,10 @@
         <param name="base_local_planner" value="grull_ackermann_base_local_planner/TrajectoryPlannerROS" />
         <param name="base_global_planner" value="navfn/NavfnROS" />
 
-        <rosparam file="$(find polar_grid_tracking)/params/global_costmap_common_params.yaml" command="load" ns="global_costmap" />
-        <rosparam file="$(find polar_grid_tracking)/params/local_costmap_common_params.yaml" command="load" ns="local_costmap" />
-        <rosparam file="$(find polar_grid_tracking)/params/local_costmap_params.yaml" command="load" />
-        <rosparam file="$(find polar_grid_tracking)/params/base_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find voxel_grid_tracking)/params/global_costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find voxel_grid_tracking)/params/local_costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find voxel_grid_tracking)/params/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find voxel_grid_tracking)/params/base_local_planner_params.yaml" command="load" />
 
         <param name="~/global_costmap/robot_base_frame" value="/base_footprint" />
         <param name="~/local_costmap/robot_base_frame" value="/base_footprint" />

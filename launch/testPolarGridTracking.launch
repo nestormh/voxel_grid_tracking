@@ -9,23 +9,23 @@
 <!-- <node pkg="tf" type="static_transform_publisher" name="binarymap_tf" args="0 0 0 0 0 1.57079632679489661923 left_cam binary_map 100" /> -->
 
 <group ns="$(arg namespace)">
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stixels_publisher" pkg="polar_grid_tracking" type="stixels_publisher" output="screen" required="true" > --> -->
-<!--    <node name="stixels_publisher" pkg="polar_grid_tracking" type="stixels_publisher" output="screen" required="true" >
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="stixels_publisher" pkg="voxel_grid_tracking" type="stixels_publisher" output="screen" required="true" > --> -->
+<!--    <node name="stixels_publisher" pkg="voxel_grid_tracking" type="stixels_publisher" output="screen" required="true" >
         <remap from="~/pointCloudStixels" 
             to="/$(arg namespace)/polar_grid_tracking/pointCloudStereo" />
     </node>-->
-<!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
-<!--     <node name="stereo_and_odom" pkg="polar_grid_tracking" type="stereo_and_odom" output="screen" required="true" > --> --> -->
+<!--         <node launch-prefix="gdb -ex run &#45;&#45;args" name="stereo_and_odom" pkg="voxel_grid_tracking" type="stereo_and_odom" output="screen" required="true" > -->
+<!--     <node name="stereo_and_odom" pkg="voxel_grid_tracking" type="stereo_and_odom" output="screen" required="true" > --> --> -->
 <!--         <remap from="~/pointCloudStereo" -->
 <!--                     to="/$(arg namespace)/polar_grid_tracking/pointCloudStereo" /> -->
 <!--     </node>   -->
-<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="polar_grid_tracking" pkg="polar_grid_tracking" type="polar_grid_tracking" output="screen" required="true" > -->
-      <!--<node name="polar_grid_tracking" pkg="polar_grid_tracking" type="polar_grid_tracking" output="screen" required="true" >
+<!--     <node launch-prefix="gdb -ex run &#45;&#45;args" name="polar_grid_tracking" pkg="voxel_grid_tracking" type="polar_grid_tracking" output="screen" required="true" > -->
+      <!--<node name="polar_grid_tracking" pkg="voxel_grid_tracking" type="polar_grid_tracking" output="screen" required="true" >
     </node>-->
     
 </group>
         
 <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
-      $(find polar_grid_tracking)/config/polar_grid_tracking.rviz"/>
+      $(find voxel_grid_tracking)/config/polar_grid_tracking.rviz"/>
     
 </launch>
