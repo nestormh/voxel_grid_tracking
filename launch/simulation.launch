@@ -1,0 +1,87 @@
+<launch>
+<!--     NOTE: If this file is used, it is recommended to switch the input_topic option in the bring_up.launch file -->
+    <arg name="namespace" default="verdino"/>
+    <arg name="test_name" default="verdino"/>
+    <arg name="use_velodyne" default="true"/>
+    <arg name="show_rviz" default="true"/>
+    <arg name="show_gazebo_gui"      default="true"/>
+    
+    <arg name="path_distance_bias_arg" default="0.17" />
+    <arg name="occdist_scale_arg" default="0.20" />
+    <arg name="osc_cost_scale_arg" default="0.02" />
+    <arg name="path_length_scale_arg" default="0.70" />
+    <arg name="curvature_cost_scale_arg" default="0.01" />
+    
+    <arg name="use_observation_source_bag" default="true" />
+    <arg name="observation_source_bag_name" default="/local/imaged/research_data/bags/pruebasEyefish2.bag" />
+    
+    <arg name="use_lattice_arg" default="false" />
+
+    <arg name="do_evaluation" default="true" />
+    <arg name="base_path_results" default="/tmp" />
+    <arg name="eval_file_name" default="/dev/null" />
+    
+    <arg name="bag_name" default="start_goal_loop" />
+    
+    <include file="$(find grull_verdino)/launch/navigation/parking_navigation.launch">
+        <arg name="namespace"    value="verdino"/>
+        <arg name="use_gps"      value="false"/>
+        <arg name="use_filters"  value="false"/>
+        <arg name="simulation"   value="true"/>
+        <arg name="show_gazebo_gui"      value="$(arg show_gazebo_gui)"/>
+        <arg name="velodyne"     value="false"/>
+        <arg name="show_rviz"    value="$(arg show_rviz)"/>
+        <arg name="show_rqt"     value="false"/>
+        <arg name="show_console" value="false"/>
+        
+        <arg name="use_lattice" default="$(arg use_lattice_arg)" />
+<!--         <arg name="start_localization" value="true"/> -->
+<!--         <arg name="world_name"   value="$(find grull_gazebo_models)/worlds/parking_etsii.world"/> -->
+        <arg name="world_name"   value="worlds/empty.world"/>
+<!--         <arg name="world_name"   value="$(find grull_gazebo_models)/worlds/iter.world"/> -->
+        
+        <!--       Voxel Grid Tracking Params -->
+        <arg name="use_voxel_grid_tracking" value="true"/>
+        <arg name="just_velodyne_obstacles" value="false"/>
+        
+        <arg name="navigation_map"
+             value="$(find grull_maps)/pgm/navigation/ETSII_con_parking_navegacion_extendido.yaml" />
+<!--              value="$(find grull_maps)/pgm/navigation/verdino_iter_georreferenciado_navigation.yaml" /> -->
+
+    </include>
+
+    <param name="/verdino/move_base/local_costmap/path_distance_bias" value="$(arg path_distance_bias_arg)" />
+    <param name="/verdino/move_base/local_costmap/occdist_scale" value="$(arg occdist_scale_arg)" />
+    <param name="/verdino/move_base/local_costmap/osc_cost_scale" value="$(arg osc_cost_scale_arg)" />
+    <param name="/verdino/move_base/local_costmap/path_length_scale" value="$(arg path_length_scale_arg)" />
+    <param name="/verdino/move_base/local_costmap/curvature_cost_scale" value="$(arg curvature_cost_scale_arg)" />
+
+    <param name="/verdino/move_base/TrajectoryPlannerROS/path_distance_bias" value="$(arg path_distance_bias_arg)" />
+    <param name="/verdino/move_base/TrajectoryPlannerROS/occdist_scale" value="$(arg occdist_scale_arg)" />
+    <param name="/verdino/move_base/TrajectoryPlannerROS/osc_cost_scale" value="$(arg osc_cost_scale_arg)" />
+    <param name="/verdino/move_base/TrajectoryPlannerROS/path_length_scale" value="$(arg path_length_scale_arg)" />
+    <param name="/verdino/move_base/TrajectoryPlannerROS/curvature_cost_scale" value="$(arg curvature_cost_scale_arg)" />
+
+   <param name="/verdino/move_base/TrajectoryPlannerROS/eval_file_name"
+          value="$(arg eval_file_name)" />
+        
+
+   <param name="/verdino/move_base/TrajectoryPlannerROS/do_evaluation" value="$(arg do_evaluation)" />
+   <param name="/verdino/move_base/goal_topic" value="/verdino/move_base_simple/goal" />
+    
+<!--     <node name="start_goal_play" pkg="rosbag" type="play" required="false"  -->
+<!--           args="&#45;d 10 $(find grull_ackermann_base_local_planner)/bags/$(arg bag_name).bag" /> -->
+    
+    <group if="$(arg use_observation_source_bag)">
+        <node pkg="velodyne_to_ply" type="velodyne_timestamper" name="velodyne_timestamper" output="screen" required="true">
+            <remap from="~/point_cloud" to="/verdino/velodyne_points" />
+        </node>
+        
+        <node name="observation_source_bag_play" pkg="rosbag" type="play" required="false" 
+              args="&#45;d 10 &#45;&#45;start=10 &#45;&#45;loop &#45;&#45;topics /verdino/velodyne_points 
+                    &#45;&#45;bags=$(arg observation_source_bag_name) 
+                    $(arg observation_source_bag_name)" >
+        </node>
+    </group>
+   
+</launch>

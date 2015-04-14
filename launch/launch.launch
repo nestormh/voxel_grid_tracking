@@ -1,0 +1,85 @@
+<launch>
+    <arg name="namespace" default="verdino/voxel_grid_tracking"/>
+    <arg name="env_name" default="verdino"/>
+    <arg name="show_rviz" default="false"/>
+    <arg name="just_velodyne_obstacles" default="false" />
+    <arg name="input_topic" default="/verdino/velodyne_points"/>
+<!--     Debug output for rviz -->
+    <arg name="do_publish_intermediate_info" value="false" />
+    
+    <arg name="voxel_tracking_params_file"
+         default="$(find voxel_grid_tracking)/params/voxel_tracking_verdino_params.yaml"/>
+
+    <group ns="$(arg namespace)">
+        <node unless="$(arg just_velodyne_obstacles)" name="voxel_grid_tracking" pkg="voxel_grid_tracking" type="voxel_grid_tracking" output="screen" required="true" >
+            <remap from="~/deltaTime"
+                   to="/$(arg namespace)/stereo_and_odom/deltaTime" />
+            <remap from="~/pointCloud"
+                   to="/$(arg namespace)/obstaclesPointCloud" />
+            <remap from="~/flow_vectors"
+                   to="/$(arg namespace)/flow_vectors" />
+            <remap from="~/left/camera_info"
+                   to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
+            <remap from="~/right/camera_info"
+                   to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
+            <remap from="~/dbg/image_rect_color"
+                   to="/$(arg namespace)/stereo_and_odom/left/image_rect_color" />
+           <remap from="~fakePointCloud"
+                   to="/verdino/fakePointCloud" />
+            
+            <rosparam file="$(arg voxel_tracking_params_file)" command="load" ns="" />
+            
+            <param name="publish_intermediate_info" value="$(arg do_publish_intermediate_info)" />
+        </node>
+    </group>
+    
+    <!--     I must place the remap here. For some reason, it is ignored in other location -->
+    <remap from="/filters/filter_manager/disparity_input" to="/$(arg namespace)/disparity" />
+    <remap from="/filters/filter_manager/left/camera_info" to="/$(arg namespace)/stereo_and_odom/left/camera_info" />
+    <remap from="/filters/filter_manager/right/camera_info" to="/$(arg namespace)/stereo_and_odom/right/camera_info" />
+    <group ns="filters">
+        <!-- PCL Manager -->
+        <node pkg="nodelet" type="nodelet" name="box_filter_manager" args="manager" output="screen" required="true" />
+        
+        <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
+            <arg name="nodelet_name"     value="cam2footprint_pc_transform" />
+            <arg name="input_topic"     value="$(arg input_topic)" />
+            <arg name="output_topic"    value="/$(arg namespace)/point_cloud_footprint"/>
+            <arg name="target_frame"    value="base_footprint"/>
+            <arg name="nodelet_manager" value="box_filter_manager"/>
+        </include>
+
+        <!-- Run a passthrough filter to delimit in x direction -->
+        <node pkg="nodelet" type="nodelet" name="psx" args="load pcl/PassThrough box_filter_manager" output="screen" required="true">
+            <remap from="~input" to="/$(arg namespace)/point_cloud_footprint" />
+            <param name="filter_field_name" value="x" />
+        </node>
+        
+        <!-- Run a passthrough filter to delimit in y direction -->
+        <node pkg="nodelet" type="nodelet" name="psy" args="load pcl/PassThrough box_filter_manager" output="screen" required="true">
+            <remap from="~input" to="psx/output" />
+            <param name="filter_field_name" value="y" />
+        </node>
+        
+        <!-- Run a passthrough filter to delimit in z direction -->
+        <node pkg="nodelet" type="nodelet" name="psz" args="load pcl/PassThrough box_filter_manager" output="screen" required="true">
+            <remap from="~input" to="psy/output" />
+            <param name="filter_field_name" value="z" />
+        </node>
+        
+       <rosparam file="$(find voxel_grid_tracking)/params/$(arg env_name).yaml" command="load" ns="" />
+        
+        <include file="$(find grull_transform_pointcloud)/launch/launch.launch">
+            <arg name="nodelet_name"    value="footprint2map_pc_transform" />
+            <arg name="input_topic"     value="psz/output" />
+            <arg name="output_topic"    value="/$(arg namespace)/obstaclesPointCloud"/>
+            <arg name="target_frame"    value="map"/>
+            <arg name="nodelet_manager" value="box_filter_manager"/>
+        </include>
+    </group>
+    
+    <group if="$(arg show_rviz)">
+        <node pkg="rviz" type="rviz" name="rviz" required="false"  args="&#45;&#45;display-config 
+            $(find voxel_grid_tracking)/config/VoxelGridTrackingVerdino.rviz"/>
+    </group>
+</launch>

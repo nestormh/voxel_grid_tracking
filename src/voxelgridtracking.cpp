@@ -320,10 +320,10 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
 {
     m_cameraFrame = msgPointCloud->header.frame_id;
     try {
-//         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, msgPointCloud->header.stamp, m_pose2MapTransform);
-//         m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, msgPointCloud->header.stamp, m_map2CamTransform);
-        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
-        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, ros::Time(0), m_map2CamTransform);
+        m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, msgPointCloud->header.stamp, m_pose2MapTransform);
+        m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, msgPointCloud->header.stamp, m_map2CamTransform);
+//         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
+//         m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, ros::Time(0), m_map2CamTransform);
     } catch (tf::TransformException ex){
         ROS_ERROR("%s",ex.what());
     }
@@ -415,7 +415,6 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     timeStatsMsg.header.stamp = ros::Time::now();
     
     INIT_CLOCK(startCompute)
-    cout << "m_useOFlow " << m_useOFlow << endl;
     
     // Grid is reset
     INIT_CLOCK(startCompute1)
@@ -505,18 +504,18 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     
     INIT_CLOCK(startVis)
     if (m_publishIntermediateInfo) {
-        cout << __FILE__ << ":" << __LINE__ << endl;
+//         cout << __FILE__ << ":" << __LINE__ << endl;
         publishVoxels();
-        cout << __FILE__ << ":" << __LINE__ << endl;
+//         cout << __FILE__ << ":" << __LINE__ << endl;
         publishOFlow();
-        cout << __FILE__ << ":" << __LINE__ << endl;
+//         cout << __FILE__ << ":" << __LINE__ << endl;
         publishParticles();
         publishMainVectors();
-        cout << __FILE__ << ":" << __LINE__ << endl;
+//         cout << __FILE__ << ":" << __LINE__ << endl;
         publishObstacles();
-        cout << __FILE__ << ":" << __LINE__ << endl;
+//         cout << __FILE__ << ":" << __LINE__ << endl;
         publishObstacleCubes();
-        cout << __FILE__ << ":" << __LINE__ << endl;
+//         cout << __FILE__ << ":" << __LINE__ << endl;
         
         publishROI();
 //         visualizeROI2d();
@@ -524,7 +523,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
     END_CLOCK(totalVis, startVis)
     
     publishFakePointCloud();
-    cout << __FILE__ << ":" << __LINE__ << endl;
+//     cout << __FILE__ << ":" << __LINE__ << endl;
     
     ROS_INFO("[%s] Total visualization time: %f seconds", __FUNCTION__, totalVis);
     timeStatsMsg.totalVisualization = totalVis;
@@ -654,15 +653,16 @@ void VoxelGridTracking::getVoxelGridFromPointCloud(const PointCloudPtr& pointClo
 
                 currPointCloud->push_back(searchPoint);
 
-                if (!m_inputFromCameras && m_lastPointCloud) {
+                // Avoids using static obstacles
+//                 if (!m_inputFromCameras && m_lastPointCloud) {
 
-                    const uint32_t & prevNeighbours = m_kdtreeLastPointCloud.radiusSearch(searchPoint, m_voxelSize / 2.0, 
-                                                                                    pointIdxRadiusSearch, pointRadiusSquaredDistance);
+//                     const uint32_t & prevNeighbours = m_kdtreeLastPointCloud.radiusSearch(searchPoint, m_voxelSize / 2.0, 
+//                                                                                     pointIdxRadiusSearch, pointRadiusSquaredDistance);
 
-                    if (prevNeighbours != 0)
-                        continue;
+//                     if (prevNeighbours != 0)
+//                         continue;
 
-                }
+//                 }
 
                 if (m_inputFromCameras) {
 

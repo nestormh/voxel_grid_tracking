@@ -202,6 +202,6 @@
     </group>
     
     <node if="$(arg use_bag)" name="play" pkg="rosbag" type="play" required="true" 
-            args=" -r 0.1 -s 10 &#45;&#45;clock $(arg bag_name)" />
+            args=" -r 1.0 -s 10 &#45;&#45;clock $(arg bag_name)" />
 <!--           args=" -r 0.2 -s 20 &#45;&#45;clock $(arg bag_name)" /> -->
 </launch>

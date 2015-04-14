@@ -36,7 +36,7 @@ local_costmap:
                            # Setting it to 3.0 meters means that the robot will attempt to clear out space in front of it up to
                            # 3.0 meters away given a sensor reading.
 
-    observation_sources: laser_scan laser_clearing_scan map_cloud fakePointCloud obstaclesPointCloud
+    observation_sources: laser_scan laser_clearing_scan map_cloud
 
     laser_scan: {data_type: LaserScan, #expected_update_rate: 1.0,
                 observation_persistence: 0.5, marking: true, clearing: true, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
@@ -46,12 +46,6 @@ local_costmap:
 
 
     map_cloud: {data_type: PointCloud2, expected_update_rate: 2137483649.0,
-                observation_persistence: 0.0, marking: true, clearing: false, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
-
-    fakePointCloud: {data_type: PointCloud2, expected_update_rate: 10.0,
-                observation_persistence: 0.0, marking: true, clearing: false, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
-
-    obstaclesPointCloud: {data_type: PointCloud2, expected_update_rate: 10.0,
                 observation_persistence: 0.0, marking: true, clearing: false, max_obstacle_height: 999.0, min_obstacle_height: -999.0}
 
   inflation_layer:
