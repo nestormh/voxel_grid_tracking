@@ -1,0 +1,35 @@
+<launch>
+    <arg name="namespace" default="verdino"/>
+    <arg name="env_name" default="verdino"/>
+    <arg name="show_rviz" default="true"/>
+    
+    <arg name="input_topic" default="/$(arg namespace)/velodyne_points"/>
+    
+    <arg name="do_publish_intermediate_info" value="false" />
+    
+    <arg name="voxel_tracking_params_file"
+         default="$(find voxel_grid_tracking)/params/voxel_tracking_verdino_params.yaml"/>
+    
+    <include file="$(find sequence_reader)/launch/launch.launch">
+        <arg name="namespace" value="$(arg namespace)"/>
+        <arg name="wait_time_sequence_reader" default="200"/>
+        <arg name="use_rviz" value="false"/>
+        <arg name="use_elas" value="false"/>
+        <arg name="use_rsgm" value="false"/>
+        
+        <arg name="static_transforms" value="true" />
+        <arg name="static_odom2basefootprint" value="false" />
+        <arg name="visual_odom" value="false" />
+        
+        <arg name="sequence_file" 
+             value="$(find sequence_reader)/params/kitti_sequence_campus.yaml" />
+    </include>
+    
+    <include file="$(find voxel_grid_tracking)/launch/launch.launch">
+        <arg name="namespace" value="$(arg namespace)"/>
+        <arg name="env_name" value="$(arg namespace)"/>
+        <arg name="show_rviz" value="$(arg show_rviz)"/>
+        <arg name="input_topic" value="/$(arg namespace)/velodyne_points"/>
+    </include>
+    
+</launch>

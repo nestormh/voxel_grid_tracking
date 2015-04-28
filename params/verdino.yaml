@@ -1,12 +1,12 @@
 psx:
     filter_limit_min: 0.0
-    filter_limit_max: 50.0
+    filter_limit_max: 20.0
 
 psy:
-    filter_limit_min: -2.0
-    filter_limit_max: 2.0
+    filter_limit_min: -4.0
+    filter_limit_max: 4.0
 
 psz:
-    filter_limit_min: 0.5
+    filter_limit_min: 0.75
     filter_limit_max: 4.0
 

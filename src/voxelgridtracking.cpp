@@ -269,7 +269,7 @@ VoxelGridTracking::VoxelGridTracking()
             }
         }
     } else {
-        m_pointCloudJustPointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 10, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
+        m_pointCloudJustPointCloudSub = nh.subscribe<sensor_msgs::PointCloud2>("pointCloud", 1, boost::bind(&VoxelGridTracking::pointCloudCallback, this, _1));
     }
     
     image_transport::ImageTransport it(nh);
@@ -410,6 +410,8 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
  */
 void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 {
+    cout << __FILE__ << endl;
+    
     polar_grid_tracking::voxel_tracker_time_stats timeStatsMsg;
     timeStatsMsg.header.seq = m_currentId;
     timeStatsMsg.header.stamp = ros::Time::now();
@@ -2168,7 +2170,7 @@ void VoxelGridTracking::publishFakePointCloud()
         
 //         if ((obstacle->minZ() - (m_cellSizeZ / 2.0)) == m_minZ) {
         if (obstacle->numVoxels() > 1) {
-            const double tColission = 1.0;
+            const double tColission = 3.0;
             const double deltaTime = 0.3;
             
             BOOST_FOREACH(const VoxelPtr & voxel, obstacle->voxels()) {

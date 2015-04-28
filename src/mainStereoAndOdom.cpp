@@ -220,8 +220,8 @@ void testStereoTracking() {
     
     GroundTruthManager gtManager;
     
-//     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::BAHNHOFSTRASSE;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+//     const ObstaclesFromStereo::t_CalibrationFileType calibrationTZype = ObstaclesFromStereo::BAHNHOFSTRASSE;
 //     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::FISHEYE;
     
     ros::NodeHandle nh("~");
