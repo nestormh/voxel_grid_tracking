@@ -29,7 +29,7 @@
 #include <tf/transform_datatypes.h>
 
 #include <geometry_msgs/Point32.h>
-#include <polar_grid_tracking/point_2d.h>
+#include <voxel_grid_tracking/point_2d.h>
 
 using namespace std;
 
@@ -62,7 +62,7 @@ void project3dTo2d(const pcl::PointXYZRGB & point3d, pcl::PointXYZRGB & point2d,
 void project3dTo2d(const pcl::PointXYZRGB & point3d, pcl::PointXYZRGB & point2d, 
                    const image_geometry::StereoCameraModel & stereoCameraModel);
 geometry_msgs::Point32 toPoint32(const pcl::PointXYZRGB & point);
-polar_grid_tracking::point_2d toPoint2D(const pcl::PointXYZRGB & point);
+voxel_grid_tracking::point_2d toPoint2D(const pcl::PointXYZRGB & point);
 
 // From http://stackoverflow.com/questions/16451111/cvmat-conversion-to-eigen-matrix-and-back
 template<typename _Tp, int _rows, int _cols, int _options, int _maxRows, int _maxCols>

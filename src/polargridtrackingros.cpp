@@ -30,8 +30,8 @@
 // #include "tf2_ros/buffer.h"
 
 #include "utilspolargridtracking.h"
-#include "polar_grid_tracking/roiArray.h"
-#include "polar_grid_tracking/voxel_tracker_time_stats.h"
+#include "voxel_grid_tracking/roiArray.h"
+#include "voxel_grid_tracking/voxel_tracker_time_stats.h"
 
 // #include "utils.h"
 
@@ -126,8 +126,8 @@ polar_grid_trackingROS::polar_grid_trackingROS(const uint32_t& rows, const uint3
     m_obstaclesPub = nh.advertise<visualization_msgs::MarkerArray>("obstacles", 10);
     m_roiPub = nh.advertise<visualization_msgs::MarkerArray>("obstaclesROI", 10);
     m_pointCloudInObstaclePub = nh.advertise<sensor_msgs::PointCloud2> ("pointCloudInObstacle", 1);
-    m_ROIPub = nh.advertise<roiArray>("result_rois", 1);
-    m_timeStatsPub = nh.advertise<voxel_tracker_time_stats>("time_stats", 1);
+    m_ROIPub = nh.advertise<voxel_grid_tracking::roiArray>("result_rois", 1);
+    m_timeStatsPub = nh.advertise<voxel_grid_tracking::voxel_tracker_time_stats>("time_stats", 1);
 
     m_lastMapOdomTransform.stamp_ = ros::Time(-1);
 }
@@ -373,7 +373,7 @@ void polar_grid_trackingROS::pointCloudCallback(const sensor_msgs::PointCloud2::
 
 void polar_grid_trackingROS::compute(const pcl::PointCloud< pcl::PointXYZRGB >::Ptr& pointCloud)
 {
-    voxel_tracker_time_stats timeStatsMsg;
+    voxel_grid_tracking::voxel_tracker_time_stats timeStatsMsg;
     timeStatsMsg.header.seq = m_currentId;
     timeStatsMsg.header.stamp = ros::Time::now();
     
@@ -1060,7 +1060,7 @@ void polar_grid_trackingROS::publishROIs()
 
 void polar_grid_trackingROS::publishRoiArrays()
 {
-    roiArray roiMsg;
+    voxel_grid_tracking::roiArray roiMsg;
     roiMsg.rois3d.reserve(m_obstacles.size());
     roiMsg.rois2d.reserve(m_obstacles.size());
     
@@ -1087,8 +1087,8 @@ void polar_grid_trackingROS::publishRoiArrays()
         const pcl::PointCloud<pcl::PointXYZ>::Ptr & roi = m_obstacles[i].roi();
         
         vector<geometry_msgs::Point> points(8);
-        roi_and_speed_2d roi2D;
-        roi_and_speed_3d roi3D;
+        voxel_grid_tracking::roi_and_speed_2d roi2D;
+        voxel_grid_tracking::roi_and_speed_3d roi3D;
         
         for (uint32_t j = 0; j < 8; j++) {
             points[j].x = roi->at(j).x;

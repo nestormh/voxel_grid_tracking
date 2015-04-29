@@ -672,8 +672,8 @@ void VoxelObstacle::updateSpeedFromParticles()
 
 void VoxelObstacle::getROI(const image_geometry::StereoCameraModel & stereoCameraModel,
                            const tf::StampedTransform & map2CamTransform,
-                           polar_grid_tracking::roi_and_speed_2d & roi2D, 
-                           polar_grid_tracking::roi_and_speed_3d & roi3D)
+                           voxel_grid_tracking::roi_and_speed_2d & roi2D, 
+                           voxel_grid_tracking::roi_and_speed_3d & roi3D)
 {
     pcl::PointXYZRGB point3d, point2d;
     

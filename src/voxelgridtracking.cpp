@@ -82,8 +82,8 @@
 #include <queue>
 #include <pcl-1.7/pcl/impl/point_types.hpp>
 
-#include "polar_grid_tracking/roiArray.h"
-#include "polar_grid_tracking/voxel_tracker_time_stats.h"
+#include "voxel_grid_tracking/roiArray.h"
+#include "voxel_grid_tracking/voxel_tracker_time_stats.h"
 #include "utilspolargridtracking.h"
 
 using namespace std;
@@ -297,8 +297,8 @@ VoxelGridTracking::VoxelGridTracking()
     m_obstacleCubesPub = nh.advertise<visualization_msgs::MarkerArray>("cubes", 1);
     m_obstacleSpeedPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeed", 1);
     m_obstacleSpeedTextPub = nh.advertise<visualization_msgs::MarkerArray>("obstacleSpeedText", 1);
-    m_ROIPub = nh.advertise<polar_grid_tracking::roiArray>("result_rois", 1);
-    m_timeStatsPub = nh.advertise<polar_grid_tracking::voxel_tracker_time_stats>("time_stats", 1);
+    m_ROIPub = nh.advertise<voxel_grid_tracking::roiArray>("result_rois", 1);
+    m_timeStatsPub = nh.advertise<voxel_grid_tracking::voxel_tracker_time_stats>("time_stats", 1);
     m_dynObjectsPub = nh.advertise<sensor_msgs::PointCloud2> ("dynamic_objects", 1);
     m_fakePointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("fakePointCloud", 1);
     m_fakeParticlesPub = nh.advertise<geometry_msgs::PoseArray> ("fakeParticles", 1);
@@ -412,7 +412,7 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 {
     cout << __FILE__ << endl;
     
-    polar_grid_tracking::voxel_tracker_time_stats timeStatsMsg;
+    voxel_grid_tracking::voxel_tracker_time_stats timeStatsMsg;
     timeStatsMsg.header.seq = m_currentId;
     timeStatsMsg.header.stamp = ros::Time::now();
     
@@ -2051,7 +2051,7 @@ void VoxelGridTracking::publishObstacleCubes()
 void VoxelGridTracking::publishROI()
 {
     if (m_inputFromCameras) {
-        polar_grid_tracking::roiArray roiMsg;
+        voxel_grid_tracking::roiArray roiMsg;
         roiMsg.rois3d.resize(m_obstacles.size());
         roiMsg.rois2d.resize(m_obstacles.size());
 
@@ -2068,8 +2068,8 @@ void VoxelGridTracking::publishROI()
             const double halfY = obstacle->sizeY() / 2.0;
             const double halfZ = obstacle->sizeZ() / 2.0;
 
-            polar_grid_tracking::roi_and_speed_2d roi2D;
-            polar_grid_tracking::roi_and_speed_3d roi3D;
+            voxel_grid_tracking::roi_and_speed_2d roi2D;
+            voxel_grid_tracking::roi_and_speed_3d roi3D;
 
             obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
                              roi2D, roi3D);
@@ -2106,8 +2106,8 @@ void VoxelGridTracking::visualizeROI2d()
         const double halfY = obstacle->sizeY() / 2.0;
         const double halfZ = obstacle->sizeZ() / 2.0;
         
-        polar_grid_tracking::roi_and_speed_2d roi2D;
-        polar_grid_tracking::roi_and_speed_3d roi3D;
+        voxel_grid_tracking::roi_and_speed_2d roi2D;
+        voxel_grid_tracking::roi_and_speed_3d roi3D;
         
         obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
                          roi2D, roi3D);

@@ -19,7 +19,7 @@
 #define VOXELOBSTACLE_H
 
 #include "voxel.h"
-#include <polar_grid_tracking/roiArray.h>
+#include <voxel_grid_tracking/roiArray.h>
 
 #include <opencv2/opencv.hpp>
 #include <image_geometry/stereo_camera_model.h>
@@ -64,8 +64,8 @@ public:
     
     void getROI(const image_geometry::StereoCameraModel & stereoCameraModel,
                 const tf::StampedTransform & map2CamTransform,
-                polar_grid_tracking::roi_and_speed_2d & roi2D, 
-                polar_grid_tracking::roi_and_speed_3d & roi3D);
+                voxel_grid_tracking::roi_and_speed_2d & roi2D, 
+                voxel_grid_tracking::roi_and_speed_3d & roi3D);
     
     double magnitude() const { return m_magnitude; }
     
@@ -100,8 +100,8 @@ protected:
         
         return newPoint;
     }
-    polar_grid_tracking::point_2d toPoint2D(const pcl::PointXYZRGB & point) {
-        polar_grid_tracking::point_2d newPoint;
+    voxel_grid_tracking::point_2d toPoint2D(const pcl::PointXYZRGB & point) {
+        voxel_grid_tracking::point_2d newPoint;
         newPoint.u = point.x;
         newPoint.v = point.y;
         

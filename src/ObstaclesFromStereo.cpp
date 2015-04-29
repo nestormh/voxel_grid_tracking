@@ -794,7 +794,7 @@ void ObstaclesFromStereo::readEgoValues(const std::string & pathName, vector< t_
     egoValues[0].deltaPos = 0;
 }
 
-vector< polar_grid_tracking::roiArray > ObstaclesFromStereo::readROIList(const string & trackletsPath, const uint32_t & sequenceLength)
+vector< voxel_grid_tracking::roiArray > ObstaclesFromStereo::readROIList(const string & trackletsPath, const uint32_t & sequenceLength)
 {
 //     cout << "trackletsPath " << trackletsPath << endl;
 //     

@@ -30,7 +30,7 @@
 
 #include "params_structs.h"
 
-#include "polar_grid_tracking/roiArray.h"
+#include "voxel_grid_tracking/roiArray.h"
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
@@ -72,7 +72,7 @@ public:
 
     static void showCameraParams(const t_Camera_params & params);
     
-    static vector <polar_grid_tracking::roiArray> readROIList(const string & trackletsPath, const uint32_t & sequenceLength);
+    static vector <voxel_grid_tracking::roiArray> readROIList(const string & trackletsPath, const uint32_t & sequenceLength);
     static vector< visualization_msgs::MarkerArray > readMarkerList(const string & trackletsPath, const uint32_t & sequenceLength);
 private:
     void setParamsGeometry(t_Camera_params & params);
