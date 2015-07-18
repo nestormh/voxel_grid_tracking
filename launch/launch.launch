@@ -85,7 +85,7 @@
             <param name="filter_limit_max" value="1000.0" />
             <param name="filter_limit_negative" value="false" />
             <param name="input_frame" value="base_footprint" />
-            <param name="output_frame" value="odom" />
+            <param name="output_frame" value="map" />
         </node>
     </group>
     

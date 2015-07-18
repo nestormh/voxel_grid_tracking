@@ -9,6 +9,7 @@ float64 prediction
 float64 measurementBasedUpdate
 float64 segment
 float64 updateSpeedFromObstacles
+float64 updateTracks
 float64 initialization
 float64 totalCompute
 float64 totalVisualization

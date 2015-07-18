@@ -62,6 +62,12 @@ public:
     double vy() const { return m_vy; }
     double vz() const { return m_vz; }
     
+    pcl::PointCloud<pcl::PointXYZ>::Ptr getTrack() { return m_track; }
+    void addTrackFromObstacle(const VoxelObstaclePtr & lastObstacle);
+    void startTrack();
+    
+    bool isInObstacle(const pcl::PointXYZ & p);
+    
     void getROI(const image_geometry::StereoCameraModel & stereoCameraModel,
                 const tf::StampedTransform & map2CamTransform,
                 voxel_grid_tracking::roi_and_speed_2d & roi2D, 
@@ -109,6 +115,8 @@ protected:
     }
     
     VoxelList m_voxels;
+    
+    pcl::PointCloud<pcl::PointXYZ>::Ptr m_track;
     
     uint32_t m_idx;
     double m_magnitude;

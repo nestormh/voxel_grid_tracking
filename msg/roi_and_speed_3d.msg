@@ -18,4 +18,6 @@ geometry_msgs/Point32 center
 
 geometry_msgs/Vector3 speed
 
+geometry_msgs/Point32[] track
+
 float32 speed_magnitude

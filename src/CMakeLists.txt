@@ -1,48 +1,48 @@
-# 
-# #################################################################
-# # stereo_and_odom
-# #################################################################
-# add_executable(stereo_and_odom
-# #     obstacle.cpp 
-# #     polarcell.cpp 
-# #     polargridtrackingros.cpp
-#     ObstaclesFromStereo.cpp
-#     sequence_reader/calibrationmanager.cpp
-#     sequence_reader/groundtruthmanager.cpp
-# #     polargridtracking.cpp
-# #     particle.cpp
-# #     cell.cpp
-# #     utils.cpp
-# #     libvisohelper.cpp
-# #     ${VISO_FILES}
-# #     ${POLAR_CALIBRATION_CPP_FILES}
-#     ${LIBELAS_SRC_FILES}
-#     mainStereoAndOdom.cpp
-# )
-# 
-# include_directories(stereo_and_odom
-# #     ${POLAR_CALIBRATION_INCLUDE_DIRS}
-#     ${PCL_INCLUDE_DIRS}/pcl-1.7
-#     ${OpenCV_INCLUDE_DIR}
-#     ${LIBELAS_INCLUDE_DIRS}
-#     ${Boost_INCLUDE_DIR}
-#     /opt/ros/indigo/include
-# )
-# 
-# link_directories(stereo_and_odom
-#     /usr/local/lib
-#     /usr/lib/x86_64-linux-gnu/
-# )
-# 
-# target_link_libraries(stereo_and_odom
-#   ${EIGEN3_LIBRARIES}
-#   ${PCL_LIBRARIES}
-#   ${OpenCV_LIBS}
-#   ${Boost_LIBRARIES}
-#   ${catkin_LIBRARIES}
-# )
-# 
-# add_dependencies(stereo_and_odom ${PROJECT_NAME}_generate_messages_cpp)
+
+#################################################################
+# stereo_and_odom
+#################################################################
+add_executable(stereo_and_odom
+#     obstacle.cpp 
+#     polarcell.cpp 
+#     polargridtrackingros.cpp
+    ObstaclesFromStereo.cpp
+    sequence_reader/calibrationmanager.cpp
+    sequence_reader/groundtruthmanager.cpp
+#     polargridtracking.cpp
+#     particle.cpp
+#     cell.cpp
+#     utils.cpp
+#     libvisohelper.cpp
+#     ${VISO_FILES}
+#     ${POLAR_CALIBRATION_CPP_FILES}
+    ${LIBELAS_SRC_FILES}
+    mainStereoAndOdom.cpp
+)
+
+include_directories(stereo_and_odom
+#     ${POLAR_CALIBRATION_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}/pcl-1.7
+    ${OpenCV_INCLUDE_DIR}
+    ${LIBELAS_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIR}
+    /opt/ros/indigo/include
+)
+
+link_directories(stereo_and_odom
+    /usr/local/lib
+    /usr/lib/x86_64-linux-gnu/
+)
+
+target_link_libraries(stereo_and_odom
+  ${EIGEN3_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OpenCV_LIBS}
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
+
+add_dependencies(stereo_and_odom ${PROJECT_NAME}_generate_messages_cpp)
 
 set(VISO_FILES 
     libviso2/filter.cpp

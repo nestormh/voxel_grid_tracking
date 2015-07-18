@@ -44,6 +44,9 @@ l1_distance_for_neighbor_thresh_x: 1
 l1_distance_for_neighbor_thresh_y: 1
 l1_distance_for_neighbor_thresh_z: 1
 
+# Publish debug visualization
+publish_intermediate_info: false
+
 # Method used to compute the speed of obstacles
 #speed_method_mean, speed_method_circ_hist
 obstacle_speed_method: "speed_method_circ_hist"

@@ -306,6 +306,9 @@ VoxelGridTracking::VoxelGridTracking()
     m_segmentedPointCloudPub = nh.advertise<sensor_msgs::PointCloud2> ("segmentedPointCloud", 1);
     m_debugSegmentPub = nh.advertise<sensor_msgs::PointCloud2> ("debugSegment", 1);
     m_debugProbPub = nh.advertise<sensor_msgs::PointCloud2> ("debugProbPub", 1);
+    m_debugUpdateTracks = nh.advertise<visualization_msgs::MarkerArray>("tracking", 1);
+    m_debugROIs = nh.advertise<sensor_msgs::PointCloud2>("debug_roi", 1);
+    m_debugROIs2 = nh.advertise<sensor_msgs::PointCloud2>("debug_roi_transformed", 1);
 //     ros::spin();
 }
 
@@ -350,7 +353,7 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
                                            const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
                                            const sensor_msgs::CameraInfoConstPtr& rightCameraInfo) 
 {
-    m_cameraFrame = msgPointCloud->header.frame_id;
+    m_cameraFrame = leftCameraInfo->header.frame_id;
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
         m_tfListener.lookupTransform(m_cameraFrame, m_mapFrame, ros::Time(0), m_map2CamTransform);
@@ -379,7 +382,7 @@ void VoxelGridTracking::pointCloudCallback(const sensor_msgs::PointCloud2::Const
                                            const sensor_msgs::CameraInfoConstPtr& leftCameraInfo, 
                                            const sensor_msgs::CameraInfoConstPtr& rightCameraInfo) 
 {
-    m_cameraFrame = msgPointCloud->header.frame_id;
+    m_cameraFrame = leftCameraInfo->header.frame_id;
     try {
         m_tfListener.lookupTransform(m_mapFrame, m_poseFrame, ros::Time(0), m_pose2MapTransform);
     } catch (tf::TransformException ex){
@@ -482,13 +485,19 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
         END_CLOCK(totalCompute8, startCompute8)
         ROS_INFO("[%s] %d, updateSpeedFromObstacles: %f seconds", __FUNCTION__, __LINE__, totalCompute8);
         timeStatsMsg.updateSpeedFromObstacles = totalCompute8;
-        INIT_CLOCK(startCompute2)
+        
+        INIT_CLOCK(startCompute9)
+        updateTracks();
+        END_CLOCK(totalCompute9, startCompute9)
+        ROS_INFO("[%s] %d, updateTracks: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
+        timeStatsMsg.updateTracks = totalCompute9;
+        
     }
-    INIT_CLOCK(startCompute9)
+    INIT_CLOCK(startCompute10)
     initialization();
-    END_CLOCK(totalCompute9, startCompute9)
-    ROS_INFO("[%s] %d, initialization: %f seconds", __FUNCTION__, __LINE__, totalCompute9);
-    timeStatsMsg.initialization = totalCompute9;
+    END_CLOCK(totalCompute10, startCompute10)
+    ROS_INFO("[%s] %d, initialization: %f seconds", __FUNCTION__, __LINE__, totalCompute10);
+    timeStatsMsg.initialization = totalCompute10;
 // END OF COMMENT
     
     
@@ -518,11 +527,12 @@ void VoxelGridTracking::compute(const PointCloudPtr& pointCloud)
 //         cout << __FILE__ << ":" << __LINE__ << endl;
         publishObstacleCubes();
 //         cout << __FILE__ << ":" << __LINE__ << endl;
-        
-        publishROI();
-//         visualizeROI2d();
+        publishTracks();
     }
     END_CLOCK(totalVis, startVis)
+//     visualizeROI2d();
+//     visualizeROI3d();
+    publishROI();
     
     publishFakePointCloud();
 //     cout << __FILE__ << ":" << __LINE__ << endl;
@@ -1364,6 +1374,29 @@ void VoxelGridTracking::filterObstacles()
     }
 }
 
+void VoxelGridTracking::updateTracks()
+{
+    if (m_prevObstacles.size() != 0) {
+        
+        BOOST_FOREACH(const VoxelObstaclePtr & obstacle, m_obstacles) {
+            pcl::PointXYZ o;
+            o.x = obstacle->centerX() - obstacle->vx() * obstacle->magnitude() * m_deltaTime;
+            o.y = obstacle->centerY() - obstacle->vy() * obstacle->magnitude() * m_deltaTime;
+            o.z = obstacle->centerZ() - obstacle->vz() * obstacle->magnitude() * m_deltaTime;
+            
+            BOOST_FOREACH(const VoxelObstaclePtr & lastObstacle, m_prevObstacles) {
+                // TODO: Select that closer to the center
+                if (lastObstacle->isInObstacle(o)) {
+                    obstacle->addTrackFromObstacle(lastObstacle);
+                } else {
+                    obstacle->startTrack();
+                }
+            }
+        }        
+    }
+    m_prevObstacles = m_obstacles;
+}
+
 void VoxelGridTracking::publishVoxels()
 {
     visualization_msgs::MarkerArray voxelMarkers;
@@ -2073,6 +2106,15 @@ void VoxelGridTracking::publishROI()
 
             obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
                              roi2D, roi3D);
+            
+            BOOST_FOREACH(const pcl::PointXYZ & p, *(obstacle->getTrack())) {
+                geometry_msgs::Point32 center;
+                center.x = p.x;
+                center.y = p.y;
+                center.z = p.z;
+                
+                roi3D.track.push_back(center);
+            }
 
             roiMsg.rois3d[i] = roi3D;
             roiMsg.rois2d[i] = roi2D;
@@ -2118,21 +2160,22 @@ void VoxelGridTracking::visualizeROI2d()
         pointBR.x = max(roi2D.D.u, roi2D.H.u);
         pointBR.y = max(roi2D.D.v, roi2D.H.v);
 
-        const float MAX_SPEED = 20.0f;
-        float speedX = roi2D.speed.x;
-        float speedY = roi2D.speed.y;
-        cv::Scalar color;
-        if ((speedX == 0.0f) && (speedY == 0.0f)) {
-            color = cv::Scalar::all(0);
-        } else {
-            if (speedX > MAX_SPEED) speedX = MAX_SPEED;
-            if (speedX < -MAX_SPEED) speedX = -MAX_SPEED;
-            if (speedY > MAX_SPEED) speedY = MAX_SPEED;
-            if (speedY < -MAX_SPEED) speedY = -MAX_SPEED;
-            color = cv::Scalar(speedX / MAX_SPEED * 128 + 128, 
-                                speedY / MAX_SPEED * 128 + 128, 
-                                128);
-        }
+//         const float MAX_SPEED = 20.0f;
+//         float speedX = roi2D.speed.x;
+//         float speedY = roi2D.speed.y;
+//         cv::Scalar color;
+//         if ((speedX == 0.0f) && (speedY == 0.0f)) {
+//             color = cv::Scalar::all(0);
+//         } else {
+//             if (speedX > MAX_SPEED) speedX = MAX_SPEED;
+//             if (speedX < -MAX_SPEED) speedX = -MAX_SPEED;
+//             if (speedY > MAX_SPEED) speedY = MAX_SPEED;
+//             if (speedY < -MAX_SPEED) speedY = -MAX_SPEED;
+//             color = cv::Scalar(speedX / MAX_SPEED * 128 + 128, 
+//                                 speedY / MAX_SPEED * 128 + 128, 
+//                                 128);
+//         }
+        cv::Scalar color = cv::Scalar::all(255);
         cv::rectangle(img, pointUL, pointBR, color, 2);
     }
     
@@ -2141,6 +2184,163 @@ void VoxelGridTracking::visualizeROI2d()
     cv::waitKey(200);
 }
 
+void VoxelGridTracking::visualizeROI3d()
+{
+    PointCloudPtr pointCloud(new PointCloud);
+    PointCloudPtr pointCloudTransformed(new PointCloud);
+    
+    const double & tx = m_stereoCameraModel.right().projectionMatrix()(0, 3);
+    const double & ty = m_stereoCameraModel.right().projectionMatrix()(1, 3);
+    const double & tz = m_stereoCameraModel.right().projectionMatrix()(2, 3);
+    cv::Mat R(m_stereoCameraModel.right().rotationMatrix());
+    tf::Vector3 point;
+    
+    cv::Mat pointMat;
+    
+    for (uint32_t i = 0; i < m_obstacles.size(); i++) {
+        const VoxelObstaclePtr & obstacle = m_obstacles[i];
+                
+        voxel_grid_tracking::roi_and_speed_2d roi2D;
+        voxel_grid_tracking::roi_and_speed_3d roi3D;
+        
+        obstacle->getROI(m_stereoCameraModel, m_map2CamTransform,
+                         roi2D, roi3D);
+        
+        PointType p;
+        p.r = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][0] * 255.0;
+        p.g = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][1] * 255.0;
+        p.b = m_obstacleColors[i % MAX_OBSTACLES_VISUALIZATION][2] * 255.0;
+        
+        p.x = roi3D.A.x;
+        p.y = roi3D.A.y;
+        p.z = roi3D.A.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        PointType p2d;
+        project3dTo2d(p, p2d, m_stereoCameraModel, m_map2CamTransform);
+        cout << cv::Point3d(p.x, p.y, p.z) << " -> " << cv::Point2d(p2d.x, p2d.y) << endl;
+        
+        p.x = roi3D.B.x;
+        p.y = roi3D.B.y;
+        p.z = roi3D.B.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.C.x;
+        p.y = roi3D.C.y;
+        p.z = roi3D.C.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.D.x;
+        p.y = roi3D.D.y;
+        p.z = roi3D.D.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.E.x;
+        p.y = roi3D.E.y;
+        p.z = roi3D.E.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.F.x;
+        p.y = roi3D.F.y;
+        p.z = roi3D.F.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.G.x;
+        p.y = roi3D.G.y;
+        p.z = roi3D.G.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.H.x;
+        p.y = roi3D.H.y;
+        p.z = roi3D.H.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        p.x = pointMat.at<double>(0, 0);
+        p.y = pointMat.at<double>(1, 0);
+        p.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p);
+        
+        p.x = roi3D.A.x;
+        p.y = roi3D.A.y;
+        p.z = roi3D.A.z;
+        pointCloud->push_back(p);
+        point = m_map2CamTransform * tf::Vector3(p.x, p.y, p.z);
+        pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
+        pointMat = R.inv() * pointMat;
+        PointType p2;
+        p2.r = p.r;
+        p2.g = p.g;
+        p2.b = p.b;
+        p2.x = pointMat.at<double>(0, 0);
+        p2.y = pointMat.at<double>(1, 0);
+        p2.z = pointMat.at<double>(2, 0);
+        pointCloudTransformed->push_back(p2);
+    }           
+    
+    sensor_msgs::PointCloud2 cloudMsg;
+    pcl::toROSMsg (*pointCloud, cloudMsg);
+    cloudMsg.header.frame_id = m_mapFrame;
+    cloudMsg.header.stamp = ros::Time::now();
+    
+    m_debugROIs.publish(cloudMsg);
+
+    sensor_msgs::PointCloud2 cloudMsgTransformed;
+    pcl::toROSMsg (*pointCloudTransformed, cloudMsgTransformed);
+    cloudMsgTransformed.header.frame_id = m_cameraFrame;
+    cloudMsgTransformed.header.stamp = ros::Time::now();
+    
+    m_debugROIs2.publish(cloudMsgTransformed);
+}
 
 tf::Quaternion getQuaternion(const double &vx, const double &vy, const double &vz)
 {
@@ -2250,5 +2450,213 @@ void VoxelGridTracking::publishFakePointCloud()
     
     m_fakeParticlesPub.publish(fakeParticles);
 }
+
+void VoxelGridTracking::publishTracks()
+{
+    visualization_msgs::MarkerArray tracksCleaner;
+    
+    for (uint32_t i = 0; i < MAX_OBSTACLES_VISUALIZATION * 3; i++) {
+        visualization_msgs::Marker voxelMarker;
+        voxelMarker.header.frame_id = m_mapFrame;
+        voxelMarker.header.stamp = ros::Time();
+        voxelMarker.id = i;
+        voxelMarker.ns = "tracks";
+        voxelMarker.type = visualization_msgs::Marker::LINE_STRIP;
+        voxelMarker.action = visualization_msgs::Marker::DELETE;
+        
+        tracksCleaner.markers.push_back(voxelMarker);
+    }
+    
+    m_debugUpdateTracks.publish(tracksCleaner);
+    
+    visualization_msgs::MarkerArray trackMarkers;
+    
+    uint32_t idCount = 0;
+    uint32_t obstId = 0;
+    
+//     BOOST_FOREACH(const VoxelObstaclePtr & obstacle, m_obstacles) {
+//         if (obstacle->numVoxels() < 2) {
+//             continue;
+//         }
+//         
+//         visualization_msgs::Marker obstacleMarker;
+//         obstacleMarker.header.frame_id = m_mapFrame;
+//         obstacleMarker.header.stamp = ros::Time();
+//         obstacleMarker.id = idCount++;
+//         obstacleMarker.ns = "obstacleCubes";
+//         obstacleMarker.type = visualization_msgs::Marker::CUBE;
+//         obstacleMarker.action = visualization_msgs::Marker::ADD;
+//         
+//         obstacleMarker.pose.position.x = obstacle->centerX();
+//         obstacleMarker.pose.position.y = obstacle->centerY();
+//         obstacleMarker.pose.position.z = obstacle->centerZ();
+//         
+//         obstacleMarker.pose.orientation.x = 0.0;
+//         obstacleMarker.pose.orientation.y = 0.0;
+//         obstacleMarker.pose.orientation.z = 0.0;
+//         obstacleMarker.pose.orientation.w = 1.0;
+//         obstacleMarker.scale.x = 2 * max(fabs(obstacle->maxX() - obstacle->centerX()),
+//                                              fabs(obstacle->minX() - obstacle->centerX()));
+//         obstacleMarker.scale.y = 2 * max(fabs(obstacle->maxY() - obstacle->centerY()),
+//                                              fabs(obstacle->minY() - obstacle->centerY()));
+//         obstacleMarker.scale.z = 2 * max(fabs(obstacle->maxZ() - obstacle->centerZ()),
+//                                              fabs(obstacle->minZ() - obstacle->centerZ()));
+// //         obstacleMarker.color.r = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][0];
+// //         obstacleMarker.color.g = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][1];
+// //         obstacleMarker.color.b = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][2];
+//         obstacleMarker.color.r = 1.0f;
+//         obstacleMarker.color.g = 0.0f;
+//         obstacleMarker.color.b = 0.0f;
+//         obstacleMarker.color.a = 0.5f;
+//         
+//         trackMarkers.markers.push_back(obstacleMarker);
+//         
+//         visualization_msgs::Marker speedVector;
+//         speedVector.header.frame_id = m_mapFrame;
+//         speedVector.header.stamp = ros::Time();
+//         speedVector.id = idCount;
+//         speedVector.ns = "speedVector";
+//         speedVector.type = visualization_msgs::Marker::ARROW;
+//         speedVector.action = visualization_msgs::Marker::ADD;
+//         
+//         speedVector.pose.orientation.x = 0.0;
+//         speedVector.pose.orientation.y = 0.0;
+//         speedVector.pose.orientation.z = 0.0;
+//         speedVector.pose.orientation.w = 1.0;
+//         speedVector.scale.x = 0.01;
+//         speedVector.scale.y = 0.03;
+//         speedVector.scale.z = 0.1;
+//         speedVector.color.a = 1.0;
+//         speedVector.color.r = 255.0;
+//         speedVector.color.g = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][1];
+//         speedVector.color.b = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][2];
+//         
+//         geometry_msgs::Point origin, dest;
+//         origin.x = obstacle->centerX();
+//         origin.y = obstacle->centerY();
+//         origin.z = obstacle->centerZ();        
+//         
+//         dest.x = obstacle->centerX() + obstacle->vx() * obstacle->magnitude() * 5.0;
+//         dest.y = obstacle->centerY() + obstacle->vy() * obstacle->magnitude() * 5.0;
+//         dest.z = obstacle->centerZ() + obstacle->vz() * obstacle->magnitude() * 5.0;
+//         
+//         speedVector.points.push_back(origin);
+//         speedVector.points.push_back(dest);
+//         
+//         trackMarkers.markers.push_back(speedVector);
+//         
+//         visualization_msgs::Marker speedVectorPrev;
+//         speedVectorPrev.header.frame_id = m_mapFrame;
+//         speedVectorPrev.header.stamp = ros::Time();
+//         speedVectorPrev.id = idCount;
+//         speedVectorPrev.ns = "speedVectorPrev";
+//         speedVectorPrev.type = visualization_msgs::Marker::ARROW;
+//         speedVectorPrev.action = visualization_msgs::Marker::ADD;
+//         
+//         speedVectorPrev.pose.orientation.x = 0.0;
+//         speedVectorPrev.pose.orientation.y = 0.0;
+//         speedVectorPrev.pose.orientation.z = 0.0;
+//         speedVectorPrev.pose.orientation.w = 1.0;
+//         speedVectorPrev.scale.x = 0.01;
+//         speedVectorPrev.scale.y = 0.03;
+//         speedVectorPrev.scale.z = 0.1;
+//         speedVectorPrev.color.a = 0.75;
+//         speedVectorPrev.color.r = 255.0;
+//         speedVectorPrev.color.g = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][1];
+//         speedVectorPrev.color.b = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][2];
+//         
+//         geometry_msgs::Point origin2, dest2;
+//         origin2.x = obstacle->centerX() - obstacle->vx() * obstacle->magnitude() * 1.0;
+//         origin2.y = obstacle->centerY() - obstacle->vy() * obstacle->magnitude() * 1.0;
+//         origin2.z = obstacle->centerZ() - obstacle->vz() * obstacle->magnitude() * 1.0;     
+//         
+//         dest2.x = origin2.x - obstacle->vx() * obstacle->magnitude() * 5.0;
+//         dest2.y = origin2.y - obstacle->vy() * obstacle->magnitude() * 5.0;
+//         dest2.z = origin2.z - obstacle->vz() * obstacle->magnitude() * 5.0;
+//         
+//         speedVectorPrev.points.push_back(origin2);
+//         speedVectorPrev.points.push_back(dest2);
+//         
+//         trackMarkers.markers.push_back(speedVectorPrev);
+//         
+//         obstId++;
+//     }
+//     
+//     obstId = 0;
+//     BOOST_FOREACH(const VoxelObstaclePtr & obstacle, m_prevObstacles) {
+//         if (obstacle->numVoxels() < 2) {
+//             continue;
+//         }
+//         
+//         visualization_msgs::Marker obstacleMarker;
+//         obstacleMarker.header.frame_id = m_mapFrame;
+//         obstacleMarker.header.stamp = ros::Time();
+//         obstacleMarker.id = idCount++;
+//         obstacleMarker.ns = "obstacleCubes";
+//         obstacleMarker.type = visualization_msgs::Marker::CUBE;
+//         obstacleMarker.action = visualization_msgs::Marker::ADD;
+//         
+//         obstacleMarker.pose.position.x = obstacle->centerX();
+//         obstacleMarker.pose.position.y = obstacle->centerY();
+//         obstacleMarker.pose.position.z = obstacle->centerZ();
+//         
+//         obstacleMarker.pose.orientation.x = 0.0;
+//         obstacleMarker.pose.orientation.y = 0.0;
+//         obstacleMarker.pose.orientation.z = 0.0;
+//         obstacleMarker.pose.orientation.w = 1.0;
+//         obstacleMarker.scale.x = 2 * max(fabs(obstacle->maxX() - obstacle->centerX()),
+//                                          fabs(obstacle->minX() - obstacle->centerX()));
+//         obstacleMarker.scale.y = 2 * max(fabs(obstacle->maxY() - obstacle->centerY()),
+//                                          fabs(obstacle->minY() - obstacle->centerY()));
+//         obstacleMarker.scale.z = 2 * max(fabs(obstacle->maxZ() - obstacle->centerZ()),
+//                                          fabs(obstacle->minZ() - obstacle->centerZ()));
+// //         obstacleMarker.color.r = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][0];
+// //         obstacleMarker.color.g = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][1];
+// //         obstacleMarker.color.b = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][2];
+//         obstacleMarker.color.r = 0.0f;
+//         obstacleMarker.color.g = 0.0f;
+//         obstacleMarker.color.b = 1.0f;
+//         obstacleMarker.color.a = 0.5f;
+//         
+//         trackMarkers.markers.push_back(obstacleMarker);
+//         obstId++;
+//         
+//     }
+    
+    obstId = 0;
+    BOOST_FOREACH(const VoxelObstaclePtr & obstacle, m_obstacles) {
+        if (obstacle->numVoxels() < 2) {
+            continue;
+        }
+        
+        visualization_msgs::Marker obstacleMarker;
+        obstacleMarker.header.frame_id = m_mapFrame;
+        obstacleMarker.header.stamp = ros::Time();
+        obstacleMarker.id = idCount++;
+        obstacleMarker.ns = "obstacleTracks";
+        obstacleMarker.type = visualization_msgs::Marker::LINE_STRIP;
+        obstacleMarker.action = visualization_msgs::Marker::ADD;
+        
+        BOOST_FOREACH(const pcl::PointXYZ & p, *(obstacle->getTrack())) {
+            geometry_msgs::Point pGeom;
+            pGeom.x = p.x;
+            pGeom.y = p.y;
+            pGeom.z = obstacle->centerZ();
+            obstacleMarker.points.push_back(pGeom);
+        }
+        obstacleMarker.scale.x = 0.5f;
+        
+        obstacleMarker.color.r = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][0];
+        obstacleMarker.color.g = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][1];
+        obstacleMarker.color.b = m_obstacleColors[obstId % MAX_OBSTACLES_VISUALIZATION][2];
+        obstacleMarker.color.a = 1.0f;
+        
+        trackMarkers.markers.push_back(obstacleMarker);
+        obstId++;
+    }
+    
+    m_debugUpdateTracks.publish(trackMarkers);    
+}
+
 
 }

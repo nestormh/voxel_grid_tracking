@@ -12,17 +12,17 @@
     
     <include file="$(find sequence_reader)/launch/launch.launch">
         <arg name="namespace" value="$(arg namespace)"/>
-        <arg name="wait_time_sequence_reader" default="200"/>
+        <arg name="wait_time_sequence_reader" default="0"/>
         <arg name="use_rviz" value="false"/>
-        <arg name="use_elas" value="false"/>
+        <arg name="use_elas" value="true"/>
         <arg name="use_rsgm" value="false"/>
         
         <arg name="static_transforms" value="true" />
         <arg name="static_odom2basefootprint" value="false" />
-        <arg name="visual_odom" value="false" />
+        <arg name="visual_odom" value="true" />
         
         <arg name="sequence_file" 
-             value="$(find sequence_reader)/params/kitti_sequence_campus.yaml" />
+             value="$(find sequence_reader)/params/bahnhoffstrasse.yaml" />
     </include>
     
     <include file="$(find voxel_grid_tracking)/launch/launch.launch">

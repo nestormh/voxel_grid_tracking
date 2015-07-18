@@ -220,8 +220,8 @@ void testStereoTracking() {
     
     GroundTruthManager gtManager;
     
-    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
-//     const ObstaclesFromStereo::t_CalibrationFileType calibrationTZype = ObstaclesFromStereo::BAHNHOFSTRASSE;
+//     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::KARLSRUHE_V2;
+    const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::BAHNHOFSTRASSE;
 //     const ObstaclesFromStereo::t_CalibrationFileType calibrationType = ObstaclesFromStereo::FISHEYE;
     
     ros::NodeHandle nh("~");
@@ -321,10 +321,16 @@ void testStereoTracking() {
         {
             initialIdx = 1; //60; //295; //1; 295; //55;
             lastIdx = 1000;
+            
             correspondencesPath = boost::filesystem::path("/local/imaged/stixels");
             seqName = boost::filesystem::path("bahnhof");
             leftImagePattern = "seq03-img-left/image_%08d_0.png";
             rightImagePattern = "seq03-img-right/image_%08d_1.png";
+
+//             correspondencesPath = boost::filesystem::path("/media/nestor/data/research_data/sequences");
+//             seqName = boost::filesystem::path("jelmoli");
+//             leftImagePattern = "seq04-img-left/image_%08d_0.png";
+//             rightImagePattern = "seq04-img-right/image_%08d_1.png";
             
             ObstaclesFromStereo::getParams("/local/imaged/stixels/bahnhof", cameraParams, ObstaclesFromStereo::BAHNHOFSTRASSE);
             
@@ -625,10 +631,11 @@ void testStereoTracking() {
         // Publish point cloud
         uint8_t keycode;
 //         if (i < 15)
-//             keycode = cv::waitKey(0);
+            keycode = cv::waitKey(0);
 //         else
         cout << "deltaTime " << deltaTime << endl;
 //             keycode = cv::waitKey((uint32_t)(deltaTime * 2000));
+//         waitTime=0;
         keycode = cv::waitKey(waitTime);
         if (keycode == 27) {
             break;

@@ -36,6 +36,8 @@ namespace voxel_grid_tracking {
     m_minX = m_minY = m_minZ = std::numeric_limits<double>::max();
     m_maxX = m_maxY = m_maxZ = std::numeric_limits<double>::min();
     
+    m_track.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    
     addVoxelToObstacle(voxel);
     
 }
@@ -51,6 +53,8 @@ VoxelObstacle::VoxelObstacle(const uint32_t& obstIdx, const double& threshYaw,
 {
     m_minX = m_minY = m_minZ = std::numeric_limits<double>::max();
     m_maxX = m_maxY = m_maxZ = std::numeric_limits<double>::min();
+    
+    m_track.reset(new pcl::PointCloud<pcl::PointXYZ>);
 }
 
 bool VoxelObstacle::addVoxelToObstacle(VoxelPtr& voxel)
@@ -333,6 +337,46 @@ void VoxelObstacle::update(const double & m_voxelSizeX, const double & m_voxelSi
     m_sizeY = m_maxY - m_minY + m_voxelSizeY;
     m_sizeZ = m_maxZ - m_minZ + m_voxelSizeZ;
 }
+
+bool VoxelObstacle::isInObstacle(const pcl::PointXYZ& p)
+{
+//     cout << "isInObstacle? [" << p.x << "," << p.y << "," << p.z << "]" << endl;
+//     cout << "X = " << "[" << m_minX << " - " << m_maxX << "]" << endl;
+//     cout << "Y = " << "[" << m_minY << " - " << m_maxY << "]" << endl;
+//     cout << "Z = " << "[" << m_minZ << " - " << m_maxZ << "]" << endl;
+    
+    if (p.x < m_minX) return false;
+    if (p.x > m_maxX) return false;
+
+    if (p.y < m_minY) return false;
+    if (p.y > m_maxY) return false;
+
+    if (p.z < m_minZ) return false;
+    if (p.z > m_maxZ) return false;
+    
+    return true;
+}
+
+void VoxelObstacle::addTrackFromObstacle(const VoxelObstaclePtr& lastObstacle)
+{
+    pcl::copyPointCloud(*lastObstacle->getTrack(), *m_track);
+
+    pcl::PointXYZ p;
+    p.x = m_centerX;
+    p.y = m_centerY;
+    p.z = m_centerZ;
+    m_track->push_back(p);
+}
+
+void VoxelObstacle::startTrack()
+{
+    pcl::PointXYZ p;
+    p.x = m_centerX;
+    p.y = m_centerY;
+    p.z = m_centerZ;
+    m_track->push_back(p);
+}
+
 
 double VoxelObstacle::commonVolume(const VoxelObstacle& obst1, const VoxelObstacle& obst2)
 {

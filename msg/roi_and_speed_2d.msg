@@ -16,4 +16,6 @@ point_2d H
 
 point_2d center
 
+point_2d[] track
+
 Vector2 speed

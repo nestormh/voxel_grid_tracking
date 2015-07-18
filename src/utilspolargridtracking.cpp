@@ -92,10 +92,10 @@ void project3dTo2d(const pcl::PointXYZRGB& point3d, pcl::PointXYZRGB& point2d,
     cv::Mat R(stereoCameraModel.right().rotationMatrix());
     
     tf::Vector3 point = map2CamTransform * tf::Vector3(point3d.x, point3d.y, point3d.z);
-    
+
     cv::Mat pointMat = (cv::Mat_<double>(3,1) << point[0], point[1], point[2]);
     pointMat = R.inv() * pointMat;
-    
+
     const double d = focalX * baseline / pointMat.at<double>(2, 0);
     const double u = centerX + ((pointMat.at<double>(0, 0) * d) / baseline);
     const double v = centerY + ((pointMat.at<double>(1, 0) * focalY * d) / (focalX * baseline));

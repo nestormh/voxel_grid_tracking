@@ -113,6 +113,7 @@ protected:
     void filterObstacles();
     void joinCommonVolumes();
     void updateSpeedFromObstacles();
+    void updateTracks();
     
     void updateFromOFlow();
     
@@ -126,6 +127,8 @@ protected:
     void publishROI();
     void publishFakePointCloud();
     void visualizeROI2d();
+    void visualizeROI3d();
+    void publishTracks();
     
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr m_pointCloud;
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr m_oFlowCloud;
@@ -156,6 +159,7 @@ protected:
     tf::TransformListener m_tfListener;
     
     VoxelObstacleList m_obstacles;
+    VoxelObstacleList m_prevObstacles;
     
     uint32_t m_currentId;
     
@@ -241,6 +245,9 @@ protected:
     image_transport::Subscriber m_debugImgSub;
     ros::Publisher m_fakePointCloudPub;
     ros::Publisher m_fakeParticlesPub;
+    ros::Publisher m_debugUpdateTracks;
+    ros::Publisher m_debugROIs;
+    ros::Publisher m_debugROIs2;
 };
 
 }
